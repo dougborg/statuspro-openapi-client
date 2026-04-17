@@ -1,49 +1,42 @@
-# Architecture Decision Records - StatusPro MCP Server
+# Architecture Decision Records — StatusPro MCP Server
 
 This directory contains Architecture Decision Records (ADRs) specific to the
 `statuspro-mcp-server` package.
 
-## What is an ADR?
-
-An Architecture Decision Record (ADR) is a document that captures an important
-architectural decision made along with its context and consequences.
+> **Inherited from the parent project.** This repository was forked from
+> `katana-openapi-client`. The decisions captured here still apply; some
+> examples may still reference the original project's domain objects while
+> this repository is new enough that new ADR write-ups haven't yet replaced
+> them.
 
 ## Format
 
-We use the format proposed by Michael Nygard in his article
+We use the format proposed by Michael Nygard in
 [Documenting Architecture Decisions](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions):
 
-- **Title**: A short noun phrase describing the decision
-- **Status**: Proposed | Accepted | Deprecated | Superseded
-- **Context**: What is the issue that we're seeing that is motivating this decision?
-- **Decision**: What is the change that we're proposing and/or doing?
-- **Consequences**: What becomes easier or more difficult to do because of this change?
-
-## ADR Lifecycle
-
-1. **Proposed**: The ADR is proposed and under discussion
-1. **Accepted**: The ADR has been accepted and is being implemented
-1. **Deprecated**: The ADR is no longer recommended but still in use
-1. **Superseded**: The ADR has been replaced by another ADR
+- **Title** — noun phrase describing the decision
+- **Status** — Proposed | Accepted | Deprecated | Superseded
+- **Context** — what is motivating this decision?
+- **Decision** — what is the change being proposed?
+- **Consequences** — what becomes easier or harder?
 
 ## Index
 
-### Accepted Architecture Decisions
+### Accepted
 
-- [ADR-010: Create StatusPro MCP Server for Claude Code Integration](0010-statuspro-mcp-server.md)
+- [ADR-0016: Tool Interface Pattern](0016-tool-interface-pattern.md)
+- [ADR-0017: Automated Tool Documentation](0017-automated-tool-documentation.md)
 
-## Creating a New ADR
+## Creating a new ADR
 
 1. Copy the template from the shared ADR directory
-1. Update the number (NNNN) to be the next sequential number
+1. Number it sequentially
 1. Fill in the sections
-1. Create a PR for discussion
-1. After acceptance, update status to "Accepted"
+1. Open a PR for discussion
+1. Update status to "Accepted" after approval
 
-## Related Documentation
+## Related
 
-- [Architecture Design](../architecture.md) - MCP architecture and patterns
-- [Implementation Plan](../implementation-plan.md) - MCP v0.1.0 roadmap
-- [Development Guide](../development.md) - Development workflow
-- [Contributing Guide](../../../docs/CONTRIBUTING.md) - Contribution guidelines
-- [Monorepo ADRs](../../../docs/adr/README.md) - Shared/monorepo-level ADRs
+- [Development Guide](../development.md)
+- [Contributing Guide](../../../docs/CONTRIBUTING.md)
+- [Monorepo ADRs](../../../docs/adr/README.md)

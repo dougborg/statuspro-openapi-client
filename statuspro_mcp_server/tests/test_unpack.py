@@ -235,21 +235,23 @@ class TestUnpackWithFastMCPSimulation:
         """Simulate how FastMCP would call an async tool with unpacked params."""
 
         @unpack_pydantic_params
-        async def check_inventory(request: Annotated[SimpleRequest, Unpack()]) -> dict:
-            """Simulated inventory check tool."""
+        async def update_order_status(
+            request: Annotated[SimpleRequest, Unpack()],
+        ) -> dict:
+            """Simulated order status update tool."""
             return {"name": request.name, "limit": request.limit, "stock": 100}
 
         # Simulate FastMCP extracting parameters and calling the function
-        # FastMCP would see: check_inventory(name: str, limit: int = 10)
-        sig = inspect.signature(check_inventory)
+        # FastMCP would see: update_order_status(name: str, limit: int = 10)
+        sig = inspect.signature(update_order_status)
 
         # Verify FastMCP would see flattened signature
         param_names = list(sig.parameters.keys())
         assert param_names == ["name", "limit"]
 
         # Simulate FastMCP calling with individual parameters
-        result = await check_inventory(name="WIDGET-001", limit=50)
-        assert result == {"name": "WIDGET-001", "limit": 50, "stock": 100}
+        result = await update_order_status(name="st000003", limit=50)
+        assert result == {"name": "st000003", "limit": 50, "stock": 100}
 
     def test_signature_introspection(self):
         """Test that signature introspection works as expected for tool registration."""

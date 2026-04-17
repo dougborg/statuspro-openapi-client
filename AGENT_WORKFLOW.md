@@ -76,11 +76,11 @@ Each agent has domain-specific knowledge and follows project patterns.
 For straightforward tasks, use a specialist agent directly:
 
 ```
-@agent-dev implement the create_sales_order tool following the purchase order pattern
+@agent-dev implement the bulk_update_order_status tool following the update_order_status pattern
 ```
 
 ```
-@agent-test write comprehensive tests for the inventory helper functions
+@agent-test write comprehensive tests for the orders helper functions
 ```
 
 ```
@@ -198,7 +198,7 @@ Here's how multiple agents work together on a feature:
 1. **Planning Phase**
 
    ```
-   @agent-plan break down "Add sales order support" into implementation tasks
+   @agent-plan break down "Add richer comment filtering" into implementation tasks
    → Creates detailed plan with phases
    → Identifies dependencies
    → Creates individual issues
@@ -207,7 +207,7 @@ Here's how multiple agents work together on a feature:
 1. **Implementation Phase**
 
    ```
-   @agent-dev implement sales_orders.py following purchase order pattern
+   @agent-dev implement a new tool for filtering by date range, following the list_orders pattern
    → Implements tool with proper patterns
    → Adds error handling and logging
    → Creates PR with changes
@@ -216,7 +216,7 @@ Here's how multiple agents work together on a feature:
 1. **Testing Phase**
 
    ```
-   @agent-test write comprehensive tests for sales_orders tool
+   @agent-test write comprehensive tests for new tool
    → Writes unit tests for all functions
    → Tests success and error paths
    → Verifies 90%+ coverage
@@ -225,7 +225,7 @@ Here's how multiple agents work together on a feature:
 1. **Documentation Phase**
 
    ```
-   @agent-docs document the sales_orders tool
+   @agent-docs document the new tool
    → Adds docstrings
    → Updates README
    → Adds cookbook example
@@ -234,7 +234,7 @@ Here's how multiple agents work together on a feature:
 1. **Review Phase**
 
    ```
-   @agent-review review PR #123 for sales orders
+   @agent-review review PR #123 for new tool
    → Checks pattern adherence
    → Verifies test coverage
    → Validates documentation
@@ -385,8 +385,8 @@ git commit -m "feat: your commit message"
 **Examples:**
 
 ```bash
-git commit -m "feat(mcp): add inventory resources"
-git commit -m "fix(client): handle null values in variants"
+git commit -m "feat(mcp): add status-history resource"
+git commit -m "fix(client): handle null status on orders"
 git commit -m "docs: update AGENT_WORKFLOW.md"
 git commit -m "test: add coverage for edge cases"
 ```
@@ -746,8 +746,8 @@ ______________________________________________________________________
 **Solution:**
 
 - Follow conventional commits format
-- Be specific: "fix(client): handle null variant names"
-- Include context: "refactor: extract helper for variant display names"
+- Be specific: "fix(client): handle empty viable-statuses response"
+- Include context: "refactor: extract helper for order status mapping"
 
 ______________________________________________________________________
 

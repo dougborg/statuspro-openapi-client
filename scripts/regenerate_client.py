@@ -530,45 +530,6 @@ def fix_specific_generated_issues(workspace_path: Path) -> bool:
     """Fix specific issues in generated code that ruff can't handle automatically."""
     print("🔧 Fixing specific generated code issues...")
 
-    # Fix the B032 issue and type annotation in receive_purchase_order.py
-    receive_po_file = (
-        workspace_path
-        / "statuspro_public_api_client"
-        / "api"
-        / "purchase_order"
-        / "receive_purchase_order.py"
-    )
-    if receive_po_file.exists():
-        try:
-            content = receive_po_file.read_text(encoding="utf-8")
-            # Remove the standalone type annotation that causes B032
-            content = content.replace(
-                '    _kwargs["json"]: dict[str, Any] | list[dict[str, Any]]\n', ""
-            )
-            # Add explicit cast to fix ty error - ty doesn't narrow types in for loops
-            if (
-                "for componentsschemas_purchase_order_receive_request_type_0_item_data in body:"
-                in content
-            ):
-                # Add cast import if not present
-                if "from typing import" in content and "cast" not in content:
-                    content = re.sub(
-                        r"from typing import ([^\n]+)",
-                        r"from typing import \1, cast",
-                        content,
-                        count=1,
-                    )
-                # Add cast before the loop
-                content = re.sub(
-                    r'(if isinstance\(body, list\):)\s*\n(\s+)_kwargs\["json"\] = \[\]\s*\n(\s+)for componentsschemas_purchase_order_receive_request_type_0_item_data in body:',
-                    r'\1\n\2_kwargs["json"] = []\n\2# Cast needed for type checker to understand loop variable type\n\2typed_body = cast(list["PurchaseOrderReceiveRow"], body)\n\2for componentsschemas_purchase_order_receive_request_type_0_item_data in typed_body:',
-                    content,
-                )
-            receive_po_file.write_text(content, encoding="utf-8")
-            print("   ✓ Fixed B032 and type annotation in receive_purchase_order.py")
-        except Exception as e:
-            print(f"   ⚠️  Could not fix receive_purchase_order.py: {e}")
-
     # Fix Union types in client_types.py to use | syntax
     client_types_file = (
         workspace_path / "statuspro_public_api_client" / "client_types.py"

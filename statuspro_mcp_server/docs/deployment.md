@@ -59,7 +59,7 @@ git commit -m "docs(mcp): update README examples"
 
 | Commit Type   | Example                    | Release? | Version Bump        |
 | ------------- | -------------------------- | -------- | ------------------- |
-| `feat(mcp):`  | Add inventory tool         | ✅       | MINOR (0.1.0→0.2.0) |
+| `feat(mcp):`  | Add new order tool         | ✅       | MINOR (0.1.0→0.2.0) |
 | `fix(mcp):`   | Fix auth error             | ✅       | PATCH (0.1.0→0.1.1) |
 | `perf(mcp):`  | Optimize query performance | ✅       | PATCH (0.1.0→0.1.1) |
 | `feat(mcp)!:` | Breaking API change        | ✅       | MAJOR (0.1.0→1.0.0) |
@@ -334,7 +334,7 @@ This project uses semantic versioning with pre-release identifiers:
 ### Example Version Progression:
 
 ```
-0.1.0a1  (first alpha - inventory tools)
+0.1.0a1  (initial release)
   ↓ feat(mcp): add search
 0.2.0a1  (new feature added)
   ↓ fix(mcp): auth error

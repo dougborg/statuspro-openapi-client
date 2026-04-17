@@ -1,614 +1,223 @@
-# Cookbook: Common Patterns
+# Cookbook: Common Patterns (TypeScript)
 
-This cookbook provides ready-to-use code patterns for common tasks with the TypeScript
-StatusPro client.
+Ready-to-use recipes for the StatusPro TypeScript client. See the
+[guide](guide.md) for the conceptual overview.
 
-## Table of Contents
+## Contents
 
-- [Getting Products](#getting-products)
-- [Managing Inventory](#managing-inventory)
-- [Working with Sales Orders](#working-with-sales-orders)
-- [Purchase Orders](#purchase-orders)
-- [Manufacturing Orders](#manufacturing-orders)
-- [Error Handling Patterns](#error-handling-patterns)
-- [Performance Optimization](#performance-optimization)
-- [Testing Patterns](#testing-patterns)
+- [List orders with filters](#list-orders-with-filters)
+- [Look up an order by number + email](#look-up-an-order-by-number--email)
+- [Get one order with full detail](#get-one-order-with-full-detail)
+- [Change an order's status safely](#change-an-orders-status-safely)
+- [Add a public comment](#add-a-public-comment)
+- [Push back a due date](#push-back-a-due-date)
+- [Bulk-update up to 50 orders](#bulk-update-up-to-50-orders)
+- [Load the full status catalog](#load-the-full-status-catalog)
+- [Pagination: one page vs. all pages](#pagination-one-page-vs-all-pages)
+- [Testing patterns](#testing-patterns)
 
-## Getting Products
-
-### List All Products
+## List orders with filters
 
 ```typescript
-import { StatusProClient } from 'statuspro-openapi-client';
+import { StatusProClient, listOrders } from '@statuspro/client';
 
 const client = await StatusProClient.create();
 
-// Auto-pagination collects all products
-const response = await client.get('/products');
-const { data: products, pagination } = await response.json();
-
-console.log(`Found ${products.length} products`);
-console.log(`Collected from ${pagination.collected_pages} pages`);
-```
-
-### Filter Products
-
-```typescript
-// Get only sellable products
-const response = await client.get('/products', {
-  is_sellable: true,
-  is_producible: true,
+const { data } = await listOrders({
+  client: client.sdk,
+  query: {
+    status_code: 'st000002',
+    exclude_cancelled: true,
+    due_date_to: '2026-03-08T00:00:00+00:00',
+    per_page: 50,
+  },
 });
-const { data: products } = await response.json();
-```
 
-### Get Product by ID
-
-```typescript
-const response = await client.get('/products/123');
-if (response.ok) {
-  const product = await response.json();
-  console.log(`Product: ${product.name}`);
-} else {
-  console.error(`Product not found: ${response.status}`);
+for (const order of data?.data ?? []) {
+  console.log(`${order.name}: ${order.status?.name ?? '—'}`);
 }
 ```
 
-### Create a New Product
+## Look up an order by number + email
 
 ```typescript
-const response = await client.post('/products', {
-  name: 'Widget Pro',
-  sku: 'WGT-PRO-001',
-  is_sellable: true,
-  is_producible: true,
-  sales_price: 29.99,
+import { lookupOrder } from '@statuspro/client';
+
+const { data: order } = await lookupOrder({
+  client: client.sdk,
+  query: { number: '1188', email: 'customer@example.com' },
 });
 
-if (response.ok) {
-  const product = await response.json();
-  console.log(`Created product: ${product.id}`);
-} else {
-  const error = await response.json();
-  console.error('Failed to create product:', error);
+if (order) {
+  console.log(`Order ${order.id}: ${order.status?.name}`);
 }
 ```
 
-### Update a Product
+## Get one order with full detail
 
 ```typescript
-const response = await client.patch('/products/123', {
-  name: 'Widget Pro v2',
-  sales_price: 34.99,
+import { getOrder } from '@statuspro/client';
+
+const { data: order } = await getOrder({
+  client: client.sdk,
+  path: { order: 6110375248088 },
 });
 
-if (response.ok) {
-  console.log('Product updated');
+if (order) {
+  console.log(`${order.name} — ${order.history?.length ?? 0} history entries`);
 }
 ```
 
-## Managing Inventory
+## Change an order's status safely
 
-### Check Stock Levels
-
-```typescript
-const response = await client.get('/stock');
-const { data: stockItems } = await response.json();
-
-// Find low stock items
-const lowStock = stockItems.filter((item: any) =>
-  item.in_stock < item.reorder_point
-);
-
-console.log(`${lowStock.length} items below reorder point`);
-```
-
-### Search for Variant by SKU
-
-```typescript
-const response = await client.get('/variants', {
-  search: 'WGT-PRO-001',
-});
-const { data: variants } = await response.json();
-
-const variant = variants.find((v: any) => v.sku === 'WGT-PRO-001');
-if (variant) {
-  console.log(`Found variant ID: ${variant.id}`);
-}
-```
-
-### Get Stock for Specific Variant
-
-```typescript
-const variantId = 123;
-const response = await client.get(`/variants/${variantId}/stock`);
-const stock = await response.json();
-
-console.log(`In stock: ${stock.in_stock}`);
-console.log(`Committed: ${stock.committed}`);
-console.log(`Expected: ${stock.expected}`);
-console.log(`Available: ${stock.available}`);
-```
-
-## Working with Sales Orders
-
-### List Recent Sales Orders
-
-```typescript
-// Get orders from the last 30 days
-const thirtyDaysAgo = new Date();
-thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-const response = await client.get('/sales_orders', {
-  created_at_min: thirtyDaysAgo.toISOString(),
-});
-const { data: orders } = await response.json();
-
-console.log(`${orders.length} orders in the last 30 days`);
-```
-
-### Get Order Details
-
-```typescript
-const orderId = 456;
-const response = await client.get(`/sales_orders/${orderId}`);
-const order = await response.json();
-
-console.log(`Order: ${order.order_no}`);
-console.log(`Customer: ${order.customer?.name}`);
-console.log(`Total: ${order.total_price}`);
-console.log(`Items: ${order.sales_order_rows?.length}`);
-```
-
-### Create a Sales Order
-
-```typescript
-const response = await client.post('/sales_orders', {
-  customer_id: 789,
-  delivery_deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-  sales_order_rows: [
-    {
-      variant_id: 123,
-      quantity: 10,
-      unit_price: 29.99,
-    },
-  ],
-});
-
-if (response.ok) {
-  const order = await response.json();
-  console.log(`Created order: ${order.order_no}`);
-}
-```
-
-### Update Order Status
-
-```typescript
-const response = await client.patch(`/sales_orders/${orderId}`, {
-  status: 'DONE',
-});
-```
-
-## Purchase Orders
-
-### List Pending Purchase Orders
-
-```typescript
-const response = await client.get('/purchase_orders', {
-  status: 'NOT_RECEIVED',
-});
-const { data: orders } = await response.json();
-
-console.log(`${orders.length} pending purchase orders`);
-```
-
-### Create Purchase Order
-
-```typescript
-const response = await client.post('/purchase_orders', {
-  supplier_id: 101,
-  location_id: 1,
-  purchase_order_rows: [
-    {
-      variant_id: 456,
-      quantity: 100,
-      purchase_price: 15.00,
-    },
-  ],
-});
-
-if (response.ok) {
-  const po = await response.json();
-  console.log(`Created PO: ${po.order_no}`);
-}
-```
-
-### Receive Items
-
-```typescript
-const poId = 789;
-const response = await client.post(`/purchase_orders/${poId}/receive`, {
-  items: [
-    {
-      purchase_order_row_id: 123,
-      quantity: 100,
-    },
-  ],
-});
-```
-
-## Manufacturing Orders
-
-### List Active Manufacturing Orders
-
-```typescript
-const response = await client.get('/manufacturing_orders', {
-  status: 'IN_PROGRESS',
-});
-const { data: orders } = await response.json();
-
-for (const order of orders) {
-  console.log(`MO ${order.id}: ${order.product_variant?.sku} - ${order.status}`);
-}
-```
-
-### Create Manufacturing Order
-
-```typescript
-const response = await client.post('/manufacturing_orders', {
-  variant_id: 123,
-  planned_quantity: 50,
-  location_id: 1,
-  production_deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-});
-
-if (response.ok) {
-  const mo = await response.json();
-  console.log(`Created MO: ${mo.id}`);
-}
-```
-
-### Complete Manufacturing Order
-
-```typescript
-const moId = 456;
-const response = await client.patch(`/manufacturing_orders/${moId}`, {
-  status: 'DONE',
-  actual_quantity: 48,
-});
-```
-
-## Error Handling Patterns
-
-### Comprehensive Error Handler
+Call `/viable-statuses` first to confirm the target status is a valid
+transition.
 
 ```typescript
 import {
-  parseError,
-  AuthenticationError,
-  RateLimitError,
-  ValidationError,
-  ServerError,
-  NetworkError,
-} from 'statuspro-openapi-client';
+  getViableStatuses,
+  updateOrderStatus,
+} from '@statuspro/client';
 
-async function handleApiCall<T>(
-  operation: () => Promise<Response>,
-  resourceName: string
-): Promise<T | null> {
-  try {
-    const response = await operation();
-
-    if (response.ok) {
-      return await response.json();
-    }
-
-    const body = await response.json().catch(() => null);
-    const error = parseError(response, body);
-
-    if (error instanceof AuthenticationError) {
-      console.error('Authentication failed. Check your API key.');
-      throw error;
-    }
-
-    if (error instanceof RateLimitError) {
-      console.error(`Rate limited. Retry after ${error.retryAfter ?? 60}s`);
-      // The client handles retries automatically, but you may want to log this
-      throw error;
-    }
-
-    if (error instanceof ValidationError) {
-      console.error(`Validation failed for ${resourceName}:`);
-      for (const detail of error.details) {
-        console.error(`  - ${detail.field}: ${detail.message}`);
-      }
-      throw error;
-    }
-
-    if (error instanceof ServerError) {
-      console.error(`Server error (${error.statusCode}). Try again later.`);
-      throw error;
-    }
-
-    console.error(`API error: ${error.message}`);
-    throw error;
-  } catch (error) {
-    if (error instanceof NetworkError) {
-      console.error('Network error. Check your connection.');
-    }
-    throw error;
-  }
-}
-
-// Usage
-const product = await handleApiCall(
-  () => client.get('/products/123'),
-  'product'
-);
-```
-
-### Retry with Custom Logic
-
-```typescript
-async function withRetry<T>(
-  operation: () => Promise<T>,
-  maxAttempts = 3,
-  delayMs = 1000
-): Promise<T> {
-  let lastError: Error | undefined;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error as Error;
-      console.error(`Attempt ${attempt} failed: ${lastError.message}`);
-
-      if (attempt < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
-      }
-    }
-  }
-
-  throw lastError;
-}
-
-// Usage for operations the client doesn't auto-retry
-const result = await withRetry(
-  async () => {
-    const response = await client.post('/custom_endpoint', data);
-    if (!response.ok) throw new Error(`Failed: ${response.status}`);
-    return response.json();
-  },
-  3,
-  2000
-);
-```
-
-## Performance Optimization
-
-### Batch Processing
-
-```typescript
-async function processBatch<T, R>(
-  items: T[],
-  processor: (item: T) => Promise<R>,
-  batchSize = 5,
-  delayMs = 100
-): Promise<R[]> {
-  const results: R[] = [];
-
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
-
-    const batchResults = await Promise.all(
-      batch.map(item => processor(item))
-    );
-    results.push(...batchResults);
-
-    // Delay between batches to respect rate limits
-    if (i + batchSize < items.length) {
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    }
-  }
-
-  return results;
-}
-
-// Usage: Update multiple products
-const productUpdates = [
-  { id: 1, name: 'Updated 1' },
-  { id: 2, name: 'Updated 2' },
-  // ...
-];
-
-await processBatch(
-  productUpdates,
-  async (update) => {
-    const response = await client.patch(`/products/${update.id}`, update);
-    return response.json();
-  },
-  5,
-  200
-);
-```
-
-### Parallel Requests with Limit
-
-```typescript
-import pLimit from 'p-limit';
-
-// Limit concurrent requests
-const limit = pLimit(5);
-
-const productIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-const products = await Promise.all(
-  productIds.map(id =>
-    limit(async () => {
-      const response = await client.get(`/products/${id}`);
-      return response.json();
-    })
-  )
-);
-```
-
-### Caching Layer
-
-```typescript
-class CachedClient {
-  private cache = new Map<string, { data: any; expires: number }>();
-  private client: StatusProClient;
-  private ttlMs: number;
-
-  constructor(client: StatusProClient, ttlMs = 60000) {
-    this.client = client;
-    this.ttlMs = ttlMs;
-  }
-
-  async get(path: string): Promise<any> {
-    const cached = this.cache.get(path);
-
-    if (cached && cached.expires > Date.now()) {
-      return cached.data;
-    }
-
-    const response = await this.client.get(path);
-    const data = await response.json();
-
-    this.cache.set(path, {
-      data,
-      expires: Date.now() + this.ttlMs,
-    });
-
-    return data;
-  }
-
-  invalidate(path?: string) {
-    if (path) {
-      this.cache.delete(path);
-    } else {
-      this.cache.clear();
-    }
-  }
-}
-
-// Usage
-const cachedClient = new CachedClient(client, 5 * 60 * 1000); // 5 min cache
-const products = await cachedClient.get('/products');
-```
-
-## Testing Patterns
-
-### Mocking the Client
-
-```typescript
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { StatusProClient } from 'statuspro-openapi-client';
-
-describe('ProductService', () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
-  let client: StatusProClient;
-
-  beforeEach(() => {
-    mockFetch = vi.fn();
-    client = StatusProClient.withApiKey('test-key', {
-      fetch: mockFetch,
-      autoPagination: false, // Disable for predictable tests
-    });
+async function advanceToShipped(orderId: number): Promise<boolean> {
+  const { data: viable } = await getViableStatuses({
+    client: client.sdk,
+    path: { order: orderId },
   });
 
-  it('should fetch products', async () => {
-    mockFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ data: [{ id: 1, name: 'Test' }] }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
+  const shipped = viable?.find(s => (s.name ?? '').toLowerCase().includes('ship'));
+  if (!shipped) {
+    console.warn(`No shipped-like status is a valid transition for order ${orderId}`);
+    return false;
+  }
 
-    const response = await client.get('/products');
+  const { response } = await updateOrderStatus({
+    client: client.sdk,
+    path: { order: orderId },
+    body: {
+      status_code: shipped.code,
+      comment: 'Shipped via carrier.',
+      public: true,
+      email_customer: true,
+    },
+  });
+  return response.ok;
+}
+```
+
+## Add a public comment
+
+```typescript
+import { addOrderComment, RateLimitError, parseError } from '@statuspro/client';
+
+const { response } = await addOrderComment({
+  client: client.sdk,
+  path: { order: 123 },
+  body: { comment: 'Parts received, starting assembly.', public: true },
+});
+
+if (!response.ok) {
+  const error = parseError(response, await response.json());
+  if (error instanceof RateLimitError) {
+    // /comment is limited to 5/min
+    console.warn('Rate-limited; try again shortly.');
+  }
+}
+```
+
+## Push back a due date
+
+```typescript
+import { setOrderDueDate } from '@statuspro/client';
+
+await setOrderDueDate({
+  client: client.sdk,
+  path: { order: 123 },
+  body: { due_date: '2026-03-13T17:00:00+00:00' },
+});
+```
+
+## Bulk-update up to 50 orders
+
+```typescript
+import { bulkUpdateOrderStatus } from '@statuspro/client';
+
+const { response } = await bulkUpdateOrderStatus({
+  client: client.sdk,
+  body: {
+    order_ids: [6110375248088, 6110375248089, 6110375248090],
+    status_code: 'st000003',
+    email_customer: false,
+  },
+});
+
+// 202 Accepted: the update is queued and applied asynchronously.
+console.log(`Bulk status code: ${response.status}`);
+```
+
+## Load the full status catalog
+
+```typescript
+import { getStatuses } from '@statuspro/client';
+
+const { data: statuses } = await getStatuses({ client: client.sdk });
+
+for (const s of statuses ?? []) {
+  console.log(`${s.code.padEnd(10)}  ${s.name}  (${s.color ?? '—'})`);
+}
+```
+
+## Pagination: one page vs. all pages
+
+```typescript
+// Auto-paginated (default) — collects every page of /orders
+const all = await client.get('/orders');
+const { data: allOrders, pagination } = await all.json();
+console.log(`${pagination.total_items} orders across ${pagination.collected_pages} pages`);
+
+// Single page — explicit `page` disables auto-pagination
+const single = await client.get('/orders', { page: 1, per_page: 25 });
+const { data: firstPage, meta } = await single.json();
+console.log(`Page ${meta.current_page}/${meta.last_page}`);
+```
+
+## Testing patterns
+
+Mock the fetch layer rather than the SDK:
+
+```typescript
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { StatusProClient } from '@statuspro/client';
+
+describe('my app', () => {
+  beforeEach(() => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({
+        data: [
+          {
+            id: 1,
+            name: '#1001',
+            order_number: '1001',
+            customer: { name: 'Test', email: 'test@example.com' },
+            status: { code: 'st000002', name: 'In Production' },
+          },
+        ],
+        meta: { current_page: 1, last_page: 1, per_page: 100, total: 1, from: 1, to: 1 },
+      }),
+    } as Response);
+  });
+
+  it('lists orders', async () => {
+    const client = StatusProClient.withApiKey('test-key');
+    const response = await client.get('/orders');
     const { data } = await response.json();
-
     expect(data).toHaveLength(1);
-    expect(data[0].name).toBe('Test');
-  });
-
-  it('should handle errors', async () => {
-    mockFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 })
-    );
-
-    const response = await client.get('/products/999');
-    expect(response.status).toBe(404);
+    expect(data[0].status.code).toBe('st000002');
   });
 });
 ```
 
-### Testing with Fake Timers
-
-```typescript
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-
-describe('Retry behavior', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('should retry on rate limit', async () => {
-    const mockFetch = vi.fn()
-      .mockResolvedValueOnce(new Response(null, { status: 429 }))
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: [] }), { status: 200 })
-      );
-
-    const client = StatusProClient.withApiKey('test-key', {
-      fetch: mockFetch,
-      retry: { maxRetries: 1 },
-    });
-
-    const responsePromise = client.get('/products');
-
-    // Advance timer for retry delay
-    await vi.advanceTimersByTimeAsync(1000);
-
-    const response = await responsePromise;
-    expect(response.status).toBe(200);
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-  });
-});
-```
-
-### Integration Test Pattern
-
-```typescript
-import { describe, it, expect } from 'vitest';
-import { StatusProClient } from 'statuspro-openapi-client';
-
-describe('Integration Tests', () => {
-  // Skip if no API key
-  const apiKey = process.env.STATUSPRO_API_KEY;
-  const runIntegration = apiKey ? it : it.skip;
-
-  runIntegration('should fetch real products', async () => {
-    const client = StatusProClient.withApiKey(apiKey!, {
-      pagination: { maxItems: 5 }, // Limit for test
-    });
-
-    const response = await client.get('/products');
-    expect(response.ok).toBe(true);
-
-    const { data } = await response.json();
-    expect(Array.isArray(data)).toBe(true);
-  });
-});
-```
-
-## Next Steps
-
-- **[Guide](guide.md)** - Comprehensive client guide
-- **[Testing Guide](testing.md)** - Testing strategy and patterns
-- **[ADRs](adr/README.md)** - Architecture Decision Records
+See the [testing guide](testing.md) for the full testing strategy.

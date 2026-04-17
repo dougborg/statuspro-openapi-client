@@ -7,7 +7,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StatusProClient } from '../src/client.js';
-import { getAllProducts } from '../src/generated/sdk.gen.js';
+import { listOrders } from '../src/generated/sdk.gen.js';
 
 describe('SDK Integration', () => {
   let mockFetch: ReturnType<typeof vi.fn>;
@@ -30,7 +30,7 @@ describe('SDK Integration', () => {
         autoPagination: false,
       });
 
-      await getAllProducts({ client: statuspro.sdk });
+      await listOrders({ client: statuspro.sdk });
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const [, options] = mockFetch.mock.calls[0];
@@ -54,7 +54,7 @@ describe('SDK Integration', () => {
         retry: { maxRetries: 1 },
       });
 
-      const resultPromise = getAllProducts({ client: statuspro.sdk });
+      const resultPromise = listOrders({ client: statuspro.sdk });
 
       // Advance timer for retry delay
       await vi.advanceTimersByTimeAsync(1000);
@@ -91,7 +91,7 @@ describe('SDK Integration', () => {
         autoPagination: true, // enabled
       });
 
-      await getAllProducts({ client: statuspro.sdk });
+      await listOrders({ client: statuspro.sdk });
 
       // Should have made 2 requests (one for each page)
       expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -114,7 +114,7 @@ describe('SDK Integration', () => {
       });
 
       // Using getConfig() instead of { client: statuspro.sdk }
-      await getAllProducts(statuspro.getConfig());
+      await listOrders(statuspro.getConfig());
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const [, options] = mockFetch.mock.calls[0];
@@ -135,7 +135,7 @@ describe('SDK Integration', () => {
         autoPagination: false,
       });
 
-      const result = await getAllProducts({ client: statuspro.sdk });
+      const result = await listOrders({ client: statuspro.sdk });
 
       expect(result.error).toBeDefined();
       expect(result.response?.status).toBe(404);
@@ -156,7 +156,7 @@ describe('SDK Integration', () => {
       // Note: throwOnError: true should cause the SDK to throw
       // However, the generated SDK may handle this differently
       // This test verifies the response is returned with error status
-      const result = await getAllProducts({ client: statuspro.sdk });
+      const result = await listOrders({ client: statuspro.sdk });
       expect(result.response?.status).toBe(500);
     });
   });
@@ -176,7 +176,7 @@ describe('SDK Integration', () => {
         autoPagination: false,
       });
 
-      await getAllProducts({ client: statuspro.sdk });
+      await listOrders({ client: statuspro.sdk });
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       // SDK passes a Request object to fetch, not a URL string

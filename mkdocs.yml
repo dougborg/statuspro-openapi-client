@@ -1,5 +1,5 @@
 site_name: StatusPro OpenAPI Client
-site_description: Production-ready Python client for StatusPro Manufacturing ERP API
+site_description: Production-ready Python client, TypeScript client, and MCP server for the StatusPro API
 site_author: Doug Borg
 site_url: https://dougborg.github.io/statuspro-openapi-client/
 # Note: Custom domain (statuspro-openapi-client.dougborg.org) available once DNS is configured

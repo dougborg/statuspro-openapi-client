@@ -6,7 +6,7 @@
  *
  * @example
  * ```typescript
- * import type { Product, SalesOrder, Variant } from 'statuspro-openapi-client/types';
+ * import type { OrderListItem, Status, OrderResponse } from '@statuspro/client/types';
  * ```
  */
 

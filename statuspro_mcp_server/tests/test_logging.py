@@ -190,7 +190,7 @@ async def test_logging_performance_metrics():
 
     logger.info(
         "tool_executed",
-        tool_name="check_inventory",
+        tool_name="update_order_status",
         sku="TEST-001",
         duration_ms=duration_ms,
     )

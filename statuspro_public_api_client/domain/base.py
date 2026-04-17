@@ -31,15 +31,15 @@ class StatusProBaseModel(BaseModel):
 
     Example:
         ```python
-        class ProductDomain(StatusProBaseModel):
+        class OrderDomain(StatusProBaseModel):
             id: int
             name: str
-            sku: str
+            order_number: str | None = None
 
             @computed_field
             @property
             def display_name(self) -> str:
-                return f"{self.name} ({self.sku})"
+                return f"Order {self.name} (#{self.order_number})"
         ```
     """
 
@@ -80,9 +80,9 @@ class StatusProBaseModel(BaseModel):
 
         Example:
             ```python
-            variant = StatusProVariant(id=123, sku="ABC-001", sales_price=99.99)
-            data = variant.model_dump_for_etl()
-            # {"id": 123, "sku": "ABC-001", "sales_price": 99.99}
+            order = Order(id=123, name="#1188", order_number="1188")
+            data = order.model_dump_for_etl()
+            # {"id": 123, "name": "#1188", "order_number": "1188"}
             ```
         """
         return self.model_dump(exclude_none=True, by_alias=True)
@@ -95,9 +95,9 @@ class StatusProBaseModel(BaseModel):
 
         Example:
             ```python
-            variant = StatusProVariant(id=123, sku="ABC-001")
-            json_str = variant.to_warehouse_json()
-            # '{"id":123,"sku":"ABC-001"}'
+            order = Order(id=123, name="#1188")
+            json_str = order.to_warehouse_json()
+            # '{"id":123,"name":"#1188"}'
             ```
         """
         return self.model_dump_json(exclude_none=True, by_alias=True)
