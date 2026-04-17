@@ -33,8 +33,8 @@ We will **auto-generate Pydantic v2 models** from the same OpenAPI spec using
 1. **Auto-Generation**: Use datamodel-code-generator to generate Pydantic models from
    `docs/statuspro-openapi.yaml`
 1. **Domain Grouping**: Split generated models into domain-grouped files using AST
-   parsing (base, common, inventory, stock, sales_orders, purchase_orders,
-   manufacturing, contacts, webhooks, errors)
+   parsing. StatusPro groups are small (errors, orders, statuses); the machinery is
+   inherited from the larger Katana project where splitting was more valuable.
 1. **Registry**: Maintain bidirectional mapping between attrs and Pydantic classes for
    easy conversion
 1. **Pydantic v2 Config**: Models use `frozen=True`, `extra="forbid"`,
@@ -52,16 +52,9 @@ statuspro_public_api_client/
 │   ├── _auto_registry.py     # Auto-generated registry entries
 │   └── _generated/           # Auto-generated domain files
 │       ├── __init__.py       # Re-exports all models
-│       ├── base.py           # BaseEntity hierarchy
-│       ├── common.py         # Shared types, enums, utilities
-│       ├── inventory.py      # Products, Materials, Variants
-│       ├── stock.py          # Batches, Stock levels
-│       ├── sales_orders.py
-│       ├── purchase_orders.py
-│       ├── manufacturing.py
-│       ├── contacts.py       # Customers, Suppliers
-│       ├── webhooks.py
-│       └── errors.py
+│       ├── errors.py         # ErrorResponse, ValidationErrorResponse, MessageResponse
+│       ├── orders.py         # Order, OrderListItem/Response, Customer, Status, etc.
+│       └── statuses.py       # StatusDefinition, ViableStatus
 ```
 
 ### Generation Process
@@ -82,21 +75,21 @@ The generation script (`scripts/generate_pydantic_models.py`):
 ### Conversion Methods
 
 ```python
-from statuspro_public_api_client.models_pydantic import Product as PydanticProduct
-from statuspro_public_api_client.models import Product as AttrsProduct
+from statuspro_public_api_client.models_pydantic import OrderResponse as PydanticOrder
+from statuspro_public_api_client.models import OrderResponse as AttrsOrder
 
 # Convert attrs → pydantic
-pydantic_product = PydanticProduct.from_attrs(attrs_product)
+pydantic_order = PydanticOrder.from_attrs(attrs_order)
 
 # Convert pydantic → attrs
-attrs_product = pydantic_product.to_attrs()
+attrs_order = pydantic_order.to_attrs()
 ```
 
 ## Consequences
 
 ### Positive Consequences
 
-- **Full Coverage**: All 287+ models generated automatically
+- **Full Coverage**: All 20 models generated automatically
 - **Type Safety**: Pydantic validation, clean `Optional[T]` types
 - **Immutability**: Frozen by default, prevents accidental mutations
 - **JSON Schema**: Automatic generation for documentation

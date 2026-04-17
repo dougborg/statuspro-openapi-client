@@ -37,7 +37,7 @@ Every generated endpoint module includes:
 - `asyncio_detailed()` - Async, returns full Response
 - `asyncio()` - Async, returns parsed data only
 
-Example from `api/product/get_all_products.py`:
+Example from `api/product/list_orders.py`:
 
 ```python
 # Synchronous
@@ -65,13 +65,13 @@ Users choose based on their needs:
 # Async application (recommended for web servers)
 async def main():
     async with StatusProClient() as client:
-        response = await get_all_products.asyncio_detailed(client=client)
+        response = await list_orders.asyncio_detailed(client=client)
         products = response.parsed.data
 
 # Sync application (scripts, notebooks)
 def main():
     with StatusProClient() as client:
-        response = get_all_products.sync_detailed(client=client)
+        response = list_orders.sync_detailed(client=client)
         products = response.parsed.data
 ```
 
@@ -108,7 +108,7 @@ Provide only async API:
 ```python
 async def main():
     async with StatusProClient() as client:
-        response = await get_all_products.asyncio_detailed(client=client)
+        response = await list_orders.asyncio_detailed(client=client)
 ```
 
 **Pros:**
@@ -134,7 +134,7 @@ Provide only sync API:
 ```python
 def main():
     with StatusProClient() as client:
-        response = get_all_products.sync_detailed(client=client)
+        response = list_orders.sync_detailed(client=client)
 ```
 
 **Pros:**
@@ -164,7 +164,7 @@ async def async_wrapper():
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(
         None,
-        lambda: get_all_products.sync_detailed(client=client)
+        lambda: list_orders.sync_detailed(client=client)
     )
 ```
 
@@ -198,8 +198,8 @@ Example:
 ```python
 # Concurrent requests (much faster than sync)
 async with StatusProClient() as client:
-    products_task = get_all_products.asyncio_detailed(client=client)
-    orders_task = get_all_sales_orders.asyncio_detailed(client=client)
+    products_task = list_orders.asyncio_detailed(client=client)
+    orders_task = list_orders.asyncio_detailed(client=client)
 
     products, orders = await asyncio.gather(products_task, orders_task)
 ```
@@ -219,7 +219,7 @@ Example:
 ```python
 # Simple script
 with StatusProClient() as client:
-    response = get_all_products.sync_detailed(client=client)
+    response = list_orders.sync_detailed(client=client)
     for product in response.parsed.data:
         print(product.name)
 ```

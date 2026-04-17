@@ -4,12 +4,13 @@
 
 Accepted
 
-Date: 2025-01-11
+Date: 2025-01-11 (updated 2026-04-17 for StatusPro fork — examples replaced,
+core decision unchanged)
 
 ## Context
 
-MCP tools need consistent, type-safe interfaces for requests and responses. We needed to
-decide:
+MCP tools need consistent, type-safe interfaces for requests and responses.
+We needed to decide:
 
 - How to structure tool parameters (flat vs nested)
 - How to handle validation
@@ -19,105 +20,125 @@ decide:
 
 ## Decision
 
-We adopt the **Unpack Pattern with Pydantic Models** combined with **FastMCP
-Elicitation** for destructive operations.
+We adopt the **Pydantic parameter annotations** pattern combined with **FastMCP
+Elicitation** for destructive operations. StatusPro's tools are small enough
+that we use Pydantic `Field()` on each parameter directly rather than a
+nested request model + `Unpack()` decorator; the Katana parent project used
+the Unpack pattern for its larger request bodies and we kept the decorator
+infrastructure (`unpack.py`) as an option.
 
-### Pattern Components
+### Pattern components
 
-#### 1. Request Models
-
-Pydantic models define tool parameters with full type safety and validation:
-
-```python
-class CreatePurchaseOrderRequest(BaseModel):
-    """Request to create a purchase order."""
-    supplier_id: int = Field(..., description="Supplier ID")
-    location_id: int = Field(..., description="Location ID where items will be received")
-    order_number: str = Field(..., description="Purchase order number")
-    items: list[PurchaseOrderItem] = Field(..., description="Line items", min_length=1)
-    confirm: bool = Field(False, description="If false, returns preview. If true, creates order.")
-```
-
-#### 2. Unpack Decorator
-
-Flattens nested models for FastMCP compatibility:
+#### 1. Per-parameter annotations (typical StatusPro tool)
 
 ```python
-@observe_tool
-@unpack_pydantic_params
-async def create_purchase_order(
-    request: Annotated[CreatePurchaseOrderRequest, Unpack()],
-    context: Context
-) -> PurchaseOrderResponse:
-    """Create a new purchase order with user confirmation."""
+@mcp.tool(
+    name="update_order_status",
+    description="Change an order's status. Two-step confirm.",
+)
+async def update_order_status(
+    context: Context,
+    order_id: int,
+    status_code: Annotated[
+        str, Field(description="8-char status code, e.g. 'st000003'")
+    ],
+    comment: Annotated[str | None, Field(description="Optional history comment")] = None,
+    public: Annotated[bool, Field(description="Visible to the customer")] = False,
+    email_customer: bool = True,
+    email_additional: bool = True,
+    confirm: Annotated[bool, Field(description="Must be true to apply the change")] = False,
+) -> dict[str, Any]:
     ...
 ```
 
-#### 3. Response Models
+#### 2. Request model + Unpack decorator (for complex bodies)
 
-Structured responses with success/failure states:
+When a request has many fields or nested structure, wrap it in a Pydantic
+model and use the `@unpack_pydantic_params` decorator (still available via
+`statuspro_mcp/unpack.py`):
 
 ```python
-class PurchaseOrderResponse(BaseModel):
-    """Response from creating a purchase order."""
-    id: int | None = None
-    order_number: str
-    supplier_id: int
-    status: str
-    total_cost: float | None = None
-    is_preview: bool
-    message: str
-    warnings: list[str] = []
-    next_actions: list[str] = []
+class BulkStatusUpdateRequest(BaseModel):
+    order_ids: list[int] = Field(..., min_length=1, max_length=50)
+    status_code: str
+    comment: str | None = None
+    public: bool = False
+    email_customer: bool = True
+    confirm: bool = False
+
+@unpack_pydantic_params
+async def bulk_update_order_status(
+    request: Annotated[BulkStatusUpdateRequest, Unpack()],
+    context: Context,
+) -> dict[str, Any]:
+    ...
 ```
 
-#### 4. Elicitation Pattern (Safety-Critical Operations)
+#### 3. Response shape
 
-For destructive operations, we use FastMCP's elicitation to request user confirmation:
+StatusPro tools return plain dicts. The mutation tools follow this shape:
 
 ```python
-# Preview mode (confirm=false) - show what would happen
-if not request.confirm:
-    return preview_response()
+{
+    "confirmed": bool,
+    "success": bool,
+    "status_code": int,    # HTTP status from the API
+    # For bulk ops:
+    "note": "Bulk updates are queued and processed asynchronously.",
+}
+```
+
+Non-mutation tools return typed Pydantic responses (e.g. `list[OrderSummary]`,
+`list[StatusEntry]`).
+
+#### 4. Elicitation pattern (safety-critical operations)
+
+For destructive operations, we use FastMCP's elicitation to request user
+confirmation:
+
+```python
+# Preview mode (confirm=false) — show what would happen
+if not confirm:
+    return {"preview": preview, "confirmed": False}
 
 # Request user confirmation via elicitation
-elicit_result = await context.elicit(
-    f"Create purchase order {order_number} with {item_count} items totaling ${total}?",
-    ConfirmationSchema,
+result = await require_confirmation(
+    context,
+    f"Change order {order_id} status to {status_code}?",
 )
+if result is not ConfirmationResult.CONFIRMED:
+    return {"preview": preview, "confirmed": False, "result": result.value}
 
-# Handle user response
-if elicit_result.action != "accept":
-    return cancelled_response()
-
-if not elicit_result.data.confirm:
-    return declined_response()
-
-# User confirmed - proceed with operation
-result = await create_order()
-return success_response(result)
+# User confirmed — proceed with the API call
+response = await update_order_status_api.asyncio_detailed(...)
+return {"confirmed": True, "success": is_success(response), ...}
 ```
 
-#### 5. Shared Schemas
+#### 5. Shared schemas
 
-Common schemas are extracted to `statuspro_mcp/tools/schemas.py` to avoid duplication:
+Common schemas live in `statuspro_mcp/tools/schemas.py` so every mutation
+tool reuses the same confirmation flow:
 
 ```python
 # statuspro_mcp/tools/schemas.py
 class ConfirmationSchema(BaseModel):
     """Schema for user confirmation elicitation."""
-    confirm: bool = Field(..., description="True to proceed, False to cancel")
+    confirm: bool = Field(..., description="Confirm the action (true to proceed)")
+
+
+async def require_confirmation(context: Context, message: str) -> ConfirmationResult:
+    ...
 ```
 
 ### Benefits
 
-- **Type Safety**: Pydantic validates all inputs at runtime
-- **Documentation**: Model fields are self-documenting with descriptions
-- **IDE Support**: Autocomplete and type checking work perfectly
+- **Type safety**: Pydantic validates all inputs at runtime
+- **Documentation**: Field descriptions are self-documenting
+- **IDE support**: Autocomplete and type checking work perfectly
 - **Testability**: Easy to mock and test with Pydantic models
-- **Consistency**: All tools follow the same pattern
+- **Consistency**: All mutation tools follow the same two-step confirm pattern
 - **Safety**: Destructive operations require explicit user confirmation
-- **DRY**: Shared schemas eliminate duplication
+- **DRY**: Shared `require_confirmation` helper across every mutation tool
 
 ## Consequences
 
@@ -126,83 +147,77 @@ class ConfirmationSchema(BaseModel):
 - Type-safe tool interfaces prevent runtime errors
 - Self-documenting parameters improve developer experience
 - Validation errors are clear and actionable
-- Easy to add new parameters (just update model)
 - Elicitation prevents accidental destructive operations
-- Shared schemas ensure consistency across tools
+- Shared helpers ensure consistency across tools
 
 ### Negative
 
-- More boilerplate (request/response models for each tool)
-- Unpack decorator adds complexity
-- Learning curve for new contributors
-- Elicitation adds extra step for confirmed operations
+- Per-parameter `Annotated[...]` annotations are verbose for wide signatures
+- Unpack decorator adds complexity where it's used
+- Elicitation adds an extra round-trip for confirmed operations
 
 ### Neutral
 
-- Models live in same file as tool implementation
-- Each tool has 2-3 model classes (Request, Response, nested types)
-- Elicitation pattern only used for destructive operations
+- Elicitation pattern only used for destructive operations (4 of 9 tools)
+- Preview-then-confirm means every mutation is at minimum a two-call flow
 
-## Alternatives Considered
+## Alternatives considered
 
-### Alternative 1: Flat Parameters
+### Alternative 1: Flat untyped parameters
 
 ```python
-async def create_purchase_order(
-    supplier_id: int,
-    location_id: int,
-    order_number: str,
-    items: list[dict],  # ❌ Not type-safe
-    context: Context
+async def update_order_status(
+    order_id: int,
+    status_code: str,
+    comment: str | None,    # ❌ No Field description
+    ...
+    context: Context,
 ) -> dict:
     ...
 ```
 
-**Why rejected**: No validation, not type-safe, hard to document nested structures
+**Why rejected**: No validation, tool schemas lose field descriptions the
+model sees, harder to keep tools consistent.
 
-### Alternative 2: Dictionary-Based
+### Alternative 2: Dictionary-based
 
 ```python
-async def create_purchase_order(
-    params: dict,  # ❌ No type safety
-    context: Context
+async def update_order_status(
+    params: dict,    # ❌ No type safety
+    context: Context,
 ) -> dict:
     ...
 ```
 
-**Why rejected**: No IDE support, no validation, no documentation
+**Why rejected**: No IDE support, no validation, no documentation.
 
-### Alternative 3: Manual Confirmation via Response Field
+### Alternative 3: Manual confirmation via response field (no elicitation)
 
 ```python
-# Return a "pending" response, require second call to confirm
-async def create_purchase_order(...) -> dict:
+async def update_order_status(...) -> dict:
     if not confirmed:
         return {"status": "pending", "confirmation_required": True}
-    # Otherwise create
+    # Otherwise apply
 ```
 
-**Why rejected**: Two API calls required, harder to use, no built-in UI support
+**Why rejected**: Two round trips, harder to use, no built-in UI integration
+for preview/confirm in Claude Desktop.
 
-## Implementation Examples
+## Implementation examples
 
-Tools using this pattern:
+Mutation tools using this pattern (all follow two-step confirm with elicitation):
 
-- `create_purchase_order` - Preview/confirm with elicitation
-- `receive_purchase_order` - Preview/confirm with elicitation
-- `create_manufacturing_order` - Preview/confirm with elicitation
-- `fulfill_order` - Preview/confirm with elicitation
-- `verify_order_document` - Read-only, no elicitation needed
-- `search_items` - Read-only, no elicitation needed
+- `update_order_status`
+- `add_order_comment`
+- `update_order_due_date`
+- `bulk_update_order_status`
+
+Read-only tools (no elicitation):
+
+- `list_orders`, `get_order`, `lookup_order`, `list_statuses`, `get_viable_statuses`
 
 ## References
 
 - [ADR-0011: Pydantic Domain Models](../../statuspro_public_api_client/docs/adr/0011-pydantic-domain-models.md)
 - [ADR-0017: Automated Tool Documentation](0017-automated-tool-documentation.md)
-- [statuspro_mcp/unpack.py](../../src/statuspro_mcp/unpack.py) - Unpack decorator
-  implementation
-- [statuspro_mcp/tools/schemas.py](../../src/statuspro_mcp/tools/schemas.py) - Shared
-  confirmation schema
-- [FastMCP Documentation](https://github.com/jlowin/fastmcp) - Elicitation pattern
-- [PR #173](https://github.com/dougborg/statuspro-openapi-client/pull/173) - Elicitation
-  implementation
+- [FastMCP Documentation](https://github.com/jlowin/fastmcp) — Elicitation pattern
