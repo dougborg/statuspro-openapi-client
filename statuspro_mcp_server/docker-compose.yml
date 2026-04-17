@@ -1,0 +1,49 @@
+# StatusPro MCP Server — Docker Compose
+#
+# Quick start:
+#   cp .env.example .env          # add your STATUSPRO_API_KEY
+#   docker compose up             # starts HTTP server on port 8765
+#
+# The .env file is loaded automatically from the project root.
+# Run from the repo root: docker compose -f statuspro_mcp_server/docker-compose.yml up
+# Or from this directory:  docker compose --env-file ../.env up
+
+services:
+  statuspro-mcp:
+    image: statuspro-mcp-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: statuspro-mcp-server
+    restart: unless-stopped
+    ports:
+      - "${MCP_PORT:-8765}:8765"
+    environment:
+      - STATUSPRO_API_KEY=${STATUSPRO_API_KEY:?Set STATUSPRO_API_KEY in .env or environment}
+      - STATUSPRO_BASE_URL=${STATUSPRO_BASE_URL:-https://app.orderstatuspro.com/api/v1}
+      # Auth (optional — set at least MCP_AUTH_TOKEN for security)
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
+      - MCP_GITHUB_CLIENT_ID=${MCP_GITHUB_CLIENT_ID:-}
+      - MCP_GITHUB_CLIENT_SECRET=${MCP_GITHUB_CLIENT_SECRET:-}
+      - MCP_BASE_URL=${MCP_BASE_URL:-}
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /home/mcp/.cache:uid=1000,gid=1000
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 8765), 2); s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

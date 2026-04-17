@@ -1,0 +1,106 @@
+name: Update MCP Client Dependency
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  update-dependency:
+    # Only run if the Release workflow succeeded
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+
+      - name: Check for new client release
+        id: check-release
+        run: |
+          # Get the most recent client-v* tag
+          LATEST_CLIENT_TAG=$(git tag --list 'client-v*' --sort=-version:refname | head -n 1)
+
+          if [ -z "$LATEST_CLIENT_TAG" ]; then
+            echo "No client tags found"
+            echo "has_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Extract version from tag (client-v0.28.0 -> 0.28.0)
+          CLIENT_VERSION="${LATEST_CLIENT_TAG#client-v}"
+          echo "client_version=$CLIENT_VERSION" >> $GITHUB_OUTPUT
+
+          # Check if this tag was created in the last workflow run
+          TAG_DATE=$(git log -1 --format=%ct "$LATEST_CLIENT_TAG")
+          WORKFLOW_DATE=$(date -d "${{ github.event.workflow_run.created_at }}" +%s)
+
+          if [ "$TAG_DATE" -ge "$WORKFLOW_DATE" ]; then
+            echo "New client release detected: $CLIENT_VERSION"
+            echo "has_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "No new client release in this workflow run"
+            echo "has_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check current MCP dependency
+        id: check-current
+        if: steps.check-release.outputs.has_release == 'true'
+        run: |
+          CLIENT_VERSION="${{ steps.check-release.outputs.client_version }}"
+          CURRENT_DEP=$(grep "statuspro-openapi-client>=" \
+            statuspro_mcp_server/pyproject.toml \
+            | sed 's/.*>=\([0-9.]*\).*/\1/')
+
+          echo "current_version=$CURRENT_DEP" >> $GITHUB_OUTPUT
+
+          if [ "$CURRENT_DEP" = "$CLIENT_VERSION" ]; then
+            echo "MCP dependency already up to date"
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+          else
+            echo "MCP dependency needs update: $CURRENT_DEP -> $CLIENT_VERSION"
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install uv
+        if: steps.check-current.outputs.needs_update == 'true'
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          python-version: "3.14"
+
+      - name: Update MCP dependency
+        if: steps.check-current.outputs.needs_update == 'true'
+        run: |
+          CLIENT_VERSION="${{ steps.check-release.outputs.client_version }}"
+
+          # Update the dependency in pyproject.toml
+          sed -i \
+            "s/statuspro-openapi-client>=.*\",/statuspro-openapi-client>=$CLIENT_VERSION\",/" \
+            statuspro_mcp_server/pyproject.toml
+
+          # Verify the change
+          echo "Updated dependency:"
+          grep "statuspro-openapi-client>=" statuspro_mcp_server/pyproject.toml
+
+      - name: Update lockfile
+        if: steps.check-current.outputs.needs_update == 'true'
+        run: |
+          uv sync --all-extras
+
+      - name: Commit and push
+        if: steps.check-current.outputs.needs_update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add statuspro_mcp_server/pyproject.toml uv.lock
+          git commit -m "chore(mcp): update client dependency to v${{ steps.check-release.outputs.client_version }}"
+          git push origin main

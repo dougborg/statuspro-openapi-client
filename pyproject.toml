@@ -1,0 +1,626 @@
+[project]
+name = "statuspro-openapi-client"
+version = "0.1.0"
+description = "Pythonic StatusPro API client with automatic retries, rate-limit awareness, and auto-pagination"
+authors = [
+    {name = "Doug Borg", email = "dougborg@dougborg.org"},
+]
+maintainers = [
+    {name = "Doug Borg", email = "dougborg@dougborg.org"},
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = [
+  "statuspro",
+  "api-client",
+  "openapi",
+  "async",
+  "retry",
+  "pagination",
+  "rate-limiting",
+  "httpx",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Office/Business",
+  "Typing :: Typed",
+]
+dependencies = [
+  # Generated client dependencies
+  "httpx>=0.28.1",
+  "attrs>=24.0.0",
+  "python-dateutil>=2.9.0",
+  # Enhanced client dependencies
+  "tenacity>=9.1.0",
+  "python-dotenv>=1.0.0",
+  # Security-critical: urllib3 >= 2.6.3 fixes CVE-2025-66471, CVE-2025-66418, and CVE-2026-21441
+  "urllib3>=2.6.3",
+  "pydantic>=2.12.0",
+  "email-validator>=2.2.0",  # Required for Pydantic EmailStr fields
+  "typing-extensions>=4.13.0",
+  "httpx-retries>=0.4.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/dougborg/statuspro-openapi-client"
+Repository = "https://github.com/dougborg/statuspro-openapi-client"
+Documentation = "https://dougborg.github.io/statuspro-openapi-client/"
+"Bug Tracker" = "https://github.com/dougborg/statuspro-openapi-client/issues"
+Changelog = "https://github.com/dougborg/statuspro-openapi-client/blob/main/docs/CHANGELOG.md"
+
+[project.scripts]
+statuspro-version = "semantic_release.cli:main"
+statuspro-release = "semantic_release.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  # Testing
+  "pytest>=9.0.0",
+  "pytest-asyncio>=0.26.0",
+  "pytest-cov>=7.0.0",
+  "pytest-mock>=3.14.0",
+  "pytest-timeout>=2.4.0",
+  "pytest-xdist>=3.6.1",
+  "tox>=4.25.0",
+  # Code quality and linting
+  "ruff>=0.14.0",
+  "pre-commit>=4.5.0",
+  # Build tools
+  "build>=1.2.0",
+  # YAML linting
+  "yamllint>=1.37.0",
+  # OpenAPI validation
+  "pyyaml>=6.0.0",
+  "openapi-spec-validator>=0.7.0",
+  # Markdown formatting
+  "mdformat>=0.7.21",
+  "mdformat-gfm>=0.4.1",
+  "mdformat-tables>=1.0.0",
+  "mdformat-toc>=0.3.0",
+  # Type stubs
+  "types-python-dateutil>=2.9.0",
+  "types-PyYAML>=6.0.0",
+  "types-urllib3>=1.26.0",
+  # OpenAPI tools
+  "openapi-python-client>=0.25.2",
+  "datamodel-code-generator>=0.27.0",
+  # Semantic release
+  "python-semantic-release>=10.5.0",
+  # MCP server (workspace member) — needed to run statuspro_mcp_server/tests/
+  "statuspro-mcp-server",
+]
+
+docs = [
+  # Documentation - MkDocs
+  "mkdocs>=1.6.0",
+  "mkdocs-material>=9.7.0",
+  "mkdocstrings[python]>=0.29.0",
+  "mkdocs-gen-files>=0.5.0",
+  "mkdocs-literate-nav>=0.6.0",
+  "mkdocs-swagger-ui-tag>=0.7.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "aiofiles>=25.1.0",
+    "aiohttp>=3.13.3",
+    "brotli>=1.2.0",
+    "poethepoet>=0.37.0",
+    "ty>=0.0.1a25",
+    "types-jsonschema>=4.25.1.20251009",
+]
+
+# =============================================================================
+# UV Workspace Configuration
+# =============================================================================
+# Monorepo structure for statuspro-openapi-client and statuspro-mcp-server packages.
+# See ADR-010 for architectural decisions and rationale.
+
+[tool.uv.sources]
+statuspro-mcp-server = { workspace = true }
+
+[tool.uv.workspace]
+members = [".", "statuspro_mcp_server"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["statuspro_public_api_client"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"docs/statuspro-openapi.yaml" = "statuspro_public_api_client/statuspro-openapi.yaml"
+
+# =============================================================================
+# Type Checker Configuration (ty)
+# =============================================================================
+# ty is Astral's Rust-based type checker, drop-in replacement for mypy
+# See: https://astral.sh/blog/ty
+#
+# Note: ty v0.0.1a25 is in pre-alpha and has limited configuration support.
+# Supported fields: environment, src, rules, terminal, overrides
+# The configuration is minimal as most options are passed via command line flags.
+
+[tool.ty]
+# ty auto-discovers source files from project root
+# Use --exclude flags in command line for exclusions (see typecheck task below)
+
+# =============================================================================
+# Legacy mypy configuration (kept for reference/fallback)
+# =============================================================================
+# Uncomment to revert to mypy if needed
+#
+# [tool.mypy]
+# files = ["statuspro_public_api_client", "tests", "scripts"]
+# exclude = [
+#   "tests/conftest.py",
+#   "scripts/extract_all_statuspro_docs.py",
+# ]
+# warn_unused_configs = true
+# warn_redundant_casts = true
+# warn_unused_ignores = true
+# strict_equality = true
+# extra_checks = true
+# check_untyped_defs = true
+# disallow_subclassing_any = true
+# disallow_untyped_decorators = true
+# disallow_any_generics = true
+#
+# [[tool.mypy.overrides]]
+# module = ["statuspro_openapi_client.configuration"]
+# warn_unused_ignores = true
+# strict_equality = true
+# extra_checks = true
+# check_untyped_defs = true
+# disallow_subclassing_any = true
+# disallow_untyped_decorators = true
+# disallow_any_generics = true
+# disallow_untyped_calls = true
+# disallow_incomplete_defs = true
+# disallow_untyped_defs = true
+# no_implicit_reexport = true
+# warn_return_any = true
+#
+# [[tool.mypy.overrides]]
+# module = ["statuspro_public_api_client.statuspro_client"]
+# disable_error_code = ["misc", "arg-type"]
+
+# =============================================================================
+# Pytest Configuration (Native TOML - pytest 9.0+)
+# =============================================================================
+# Native TOML format under [tool.pytest] provides proper data types.
+# Note: pytest-xdist is available - use `-n auto` to enable parallel execution
+
+[tool.pytest]
+minversion = "9.0"
+addopts = ["-ra", "--strict-markers", "--strict-config", "--timeout=30"]
+testpaths = ["tests", "statuspro_mcp_server/tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# Markers must still be a list even in native TOML (linelist type)
+markers = [
+  "slow: marks tests as slow",
+  "integration: marks tests as integration tests",
+  "unit: marks tests as unit tests",
+  "asyncio: marks tests as async tests",
+  "docs: marks tests as documentation tests (slow, only run in CI docs jobs)",
+  "schema_validation: marks tests that validate OpenAPI schema quality (run with pytest-xdist disabled)",
+]
+
+[tool.coverage.run]
+source = ["statuspro_public_api_client"]
+omit = ["*/tests/*", "*/test_*", "*/conftest.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "if self.debug:",
+  "if settings.DEBUG",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if 0:",
+  "if __name__ == .__main__.:",
+  "class .*\\bProtocol\\):",
+  "@(abc\\.)?abstractmethod",
+]
+
+[tool.ruff]
+line-length = 88
+src = ["statuspro_public_api_client", "tests", "scripts"]
+target-version = "py312"  # Updated to reflect minimum Python version
+fix = true
+show-fixes = true
+output-format = "grouped"
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 72
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+    "PLE",    # pylint errors
+    "PLW",    # pylint warnings
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+    "SIM108", # use ternary operator instead of if-else
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["PLR2004"]  # magic value used in comparison
+
+[tool.ruff.lint.isort]
+known-first-party = ["statuspro_public_api_client"]
+combine-as-imports = true
+force-wrap-aliases = true
+split-on-trailing-comma = true
+
+[tool.mdformat]
+# Basic formatting options
+wrap = 88
+number = false
+# Enable useful plugins
+extensions = [
+  "gfm",    # GitHub Flavored Markdown
+  "tables", # Table formatting
+  "toc",    # Table of contents
+]
+
+# =============================================================================
+# Markdownlint Configuration
+# =============================================================================
+# Configure markdown linting rules for documentation consistency
+
+[tool.markdownlint]
+# MD013: Line length
+line_length = 88
+code_blocks = false  # Don't check line length in code blocks
+tables = false       # Don't check line length in tables
+
+# MD024: Multiple headings with the same content
+# Disable globally except for CHANGELOG.md which uses siblings_only
+MD024 = false
+
+[tool.markdownlint.files."docs/CHANGELOG.md"]
+# Allow duplicate headings in CHANGELOG if they're not siblings
+MD024 = { siblings_only = true }
+
+# =============================================================================
+# Yamllint Configuration
+# =============================================================================
+# Configure YAML linting for consistency across config files
+
+[tool.yamllint]
+extends = "default"
+
+[tool.yamllint.rules.line-length]
+# General line length limit of 120 characters
+# OpenAPI specs are excluded via ignore paths
+max = 120
+
+[tool.yamllint.rules.document-start]
+# Don't require --- at start of YAML files
+present = false
+
+[tool.yamllint.rules.truthy]
+# Allow various boolean representations
+allowed-values = ['true', 'false', 'yes', 'no', 'True', 'False']
+
+[tool.yamllint.rules.comments]
+min-spaces-from-content = 1
+
+[tool.yamllint.rules.indentation]
+spaces = 2
+
+[tool.yamllint.rules.brackets]
+min-spaces-inside = 0
+max-spaces-inside = 1
+
+[tool.yamllint.rules.braces]
+min-spaces-inside = 0
+max-spaces-inside = 1
+
+[tool.yamllint.ignore]
+# Ignore these directories
+paths = [
+  ".github/",
+  ".venv/",
+  "node_modules/",
+  "dist/",
+  "build/",
+  "*.egg-info/",
+  "statuspro_public_api_client/generated/",
+  "docs/original openapi files/",
+]
+
+# =============================================================================
+# datamodel-code-generator Configuration
+# =============================================================================
+# Used to generate Pydantic v2 models from the OpenAPI specification.
+# Run with: datamodel-codegen (reads config from this file)
+# See: https://koxudaxi.github.io/datamodel-code-generator/pyproject_toml/
+
+[tool.datamodel-codegen]
+input = "docs/statuspro-openapi.yaml"
+input-file-type = "openapi"
+output-model-type = "pydantic_v2.BaseModel"
+target-python-version = "3.12"
+use-annotated = true
+use-standard-collections = true
+use-union-operator = true
+field-constraints = true
+reuse-model = true
+snake-case-field = true
+use-double-quotes = true
+collapse-root-models = true
+use-default-kwarg = true
+union-mode = "left_to_right"
+base-class = "statuspro_public_api_client.models_pydantic._base.StatusProPydanticBase"
+disable-warnings = true
+disable-timestamp = true
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+version_variables = ["statuspro_public_api_client/__init__.py:__version__"]
+dist_path = "dist/"
+upload_to_pypi = false
+upload_to_repository = false
+remove_dist = false
+commit_author = "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+commit_message = "chore(release): client v{version}"
+build_command = "pip install mdformat mdformat-gfm mdformat-tables mdformat-toc && mdformat docs/CHANGELOG.md --wrap 88"
+major_on_zero = false
+allow_zero_version = true
+tag_format = "client-v{version}"
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = [
+  "build",
+  "chore",
+  "ci",
+  "docs",
+  "feat",
+  "fix",
+  "perf",
+  "style",
+  "refactor",
+  "test",
+]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+# Only process commits with (client) scope or no scope
+# Commits with (mcp) scope are handled by the MCP server config
+default_bump_level = 0
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = []
+mode = "update"
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "docs/CHANGELOG.md"
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease_token = "rc"
+prerelease = false
+
+[tool.semantic_release.publish]
+dist_glob_patterns = ["dist/*"]
+upload_to_vcs_release = true
+
+# =============================================================================
+# Task Runner Configuration (poethepoet)
+# =============================================================================
+
+[tool.poe.tasks]
+
+# -----------------------------------------------------------------------------
+# Code Formatting Tasks
+# -----------------------------------------------------------------------------
+format-python = "ruff format ."
+format-python-check = "ruff format --check ."
+
+format-markdown = "mdformat README.md docs/*.md --wrap 88"
+format-markdown-check = "mdformat --check README.md docs/*.md"
+
+format = ["format-python", "format-markdown"]
+format-check = ["format-python-check", "format-markdown-check"]
+
+# -----------------------------------------------------------------------------
+# Linting and Type Checking Tasks
+# -----------------------------------------------------------------------------
+# Note: statuspro_mcp_server/ is excluded as it's a separate workspace package
+# with its own dependencies (fastmcp, structlog) that ty needs to resolve.
+# Type check it separately from its own directory.
+# scripts/ is excluded as it contains utility/development scripts with varied typing.
+# tests/conftest.py is excluded because it is pytest-specific support code.
+# tests/test_generate_tools_json.py is excluded because it imports a script via
+# sys.path manipulation that ty cannot resolve statically.
+typecheck = "ty check --exclude 'tests/conftest.py' --exclude 'tests/test_generate_tools_json.py' --exclude 'scripts/' --exclude 'statuspro_mcp_server/' --exclude '.claude/worktrees/'"
+lint-ruff = "ruff check ."
+lint-ruff-fix = "ruff check --fix ."
+lint-yaml = "yamllint ."
+
+lint = ["lint-ruff", "typecheck", "lint-yaml"]
+
+# -----------------------------------------------------------------------------
+# Testing Tasks
+# -----------------------------------------------------------------------------
+# Note: schema_validation tests are excluded by default due to pytest-xdist collection issues
+# Run them explicitly with: pytest -m schema_validation
+#
+# Optimal worker count: 4 (tested on macOS with 11 CPUs available)
+# Performance: sequential 25s → parallel 16s = 36% faster
+# Note: Optimal count may vary by system (4+ cores recommended for best results)
+# Note: Integration tests excluded by default (hit real API, may be rate limited)
+test = "pytest -n 4 -m 'not docs and not schema_validation and not integration'"  # Parallel execution with pytest-xdist
+test-sequential = "pytest -m 'not docs and not schema_validation and not integration'"  # Sequential execution (if parallel has issues)
+test-verbose = "pytest -n 4 -v -m 'not docs and not schema_validation and not integration'"
+test-coverage = "pytest -n 4 --cov=statuspro_public_api_client --cov-report=term-missing -m 'not docs and not schema_validation and not integration'"
+test-coverage-html = "pytest -n 4 --cov=statuspro_public_api_client --cov-report=html -m 'not docs and not schema_validation and not integration'"
+test-unit = "pytest -n 4 -m 'unit and not schema_validation'"
+test-integration = "pytest -n 4 -m 'integration and not schema_validation'"
+test-docs = { shell = "CI_DOCS_BUILD=true pytest -m docs -v --timeout=600" }  # 10 minute timeout for docs
+test-no-docs = "pytest -n 4 -m 'not docs and not schema_validation and not integration'"
+test-all = "pytest -n 4 -m 'not schema_validation and not integration'"  # Run everything except schema_validation and integration (parallel-incompatible, API rate limits)
+test-schema = "pytest -m schema_validation"  # Run schema validation tests only (sequential, may be slow)
+
+# -----------------------------------------------------------------------------
+# OpenAPI and Code Generation Tasks
+# -----------------------------------------------------------------------------
+regenerate-client = "python scripts/regenerate_client.py"
+generate-pydantic = "python scripts/generate_pydantic_models.py"
+regenerate-all = ["regenerate-client", "generate-pydantic"]
+validate-openapi = "openapi-spec-validator docs/statuspro-openapi.yaml"
+validate-openapi-redocly = "npx @redocly/cli lint docs/statuspro-openapi.yaml"
+
+# -----------------------------------------------------------------------------
+# Documentation Tasks
+# -----------------------------------------------------------------------------
+docs-build = "mkdocs build"
+docs-clean = "rm -rf site"
+docs-serve = "mkdocs serve"
+docs-autobuild = "mkdocs serve --watch docs --watch statuspro_public_api_client"
+
+# -----------------------------------------------------------------------------
+# Pre-commit Tasks
+# -----------------------------------------------------------------------------
+pre-commit-install = "pre-commit install"
+pre-commit-uninstall = "pre-commit uninstall"
+pre-commit-run = "pre-commit run --all-files"
+pre-commit-update = "pre-commit autoupdate"
+
+# -----------------------------------------------------------------------------
+# Combined Workflow Tasks
+# -----------------------------------------------------------------------------
+
+# Validation Tiers (for agent workflows)
+quick-check = ["format-check", "lint-ruff"]                              # Tier 1: Fast feedback (~5-10s)
+agent-check = ["format-check", "lint-ruff", "typecheck"]                # Tier 2: Pre-commit (~10-15s)
+check = ["format-check", "lint", "test"]                                 # Tier 3: PR validation (~40s)
+full-check = ["format-check", "lint", "test", "docs-build"]             # Tier 4: Final validation (~50s)
+
+# Other combined workflows
+fix = ["format", "lint-ruff-fix"]
+ci = ["format-check", "lint", "test-coverage", "docs-build"]
+prepare = ["format", "lint", "test", "validate-openapi", "validate-openapi-redocly"]
+validate-all = ["validate-openapi", "validate-openapi-redocly"]
+
+
+# -----------------------------------------------------------------------------
+# Release Tasks
+# -----------------------------------------------------------------------------
+version-check = "semantic-release version --dry-run"
+release-dry = "semantic-release publish --dry-run"
+
+# -----------------------------------------------------------------------------
+# MCP Development Tasks
+# -----------------------------------------------------------------------------
+[tool.poe.tasks.dev]
+help = "Start MCP server with hot-reload (HTTP on port 8765)"
+cmd = "fastmcp run src/statuspro_mcp/server.py:mcp --reload --reload-dir src -t streamable-http --host 0.0.0.0 -p 8765"
+cwd = "statuspro_mcp_server"
+
+[tool.poe.tasks.dev-stdio]
+help = "Start MCP server with hot-reload (stdio for Claude Desktop)"
+cmd = "fastmcp run src/statuspro_mcp/server.py:mcp --reload --reload-dir src"
+cwd = "statuspro_mcp_server"
+
+[tool.poe.tasks.dev-inspect]
+help = "Start MCP server with Inspector UI for debugging"
+cmd = "fastmcp dev inspector src/statuspro_mcp/server.py:mcp --reload --reload-dir src"
+cwd = "statuspro_mcp_server"
+
+# Coverage analysis
+[tool.poe.tasks.analyze-coverage]
+help = "Analyze test coverage by file type (generated vs core logic)"
+cmd = "python scripts/analyze_coverage.py"
+
+# Task help
+[tool.poe.tasks.help]
+help = "Show available tasks"
+shell = """
+echo "🛠️  Available Tasks (run with 'uv run poe <task>'):"
+echo ""
+echo "📁 Code Formatting:"
+echo "   poe format              - Format all code (Python, imports, markdown)"
+echo "   poe format-check        - Check if code is properly formatted"
+echo "   poe format-python       - Format Python code with ruff"
+echo "   poe format-markdown     - Format markdown files"
+echo ""
+echo "📁 Linting & Type Checking:"
+echo "   poe lint                - Run all linters (ty, ruff, yaml)"
+echo "   poe typecheck           - Type checking with ty"
+echo "   poe lint-ruff           - Fast linting with ruff"
+echo "   poe lint-yaml           - YAML file linting"
+echo ""
+echo "📁 Testing:"
+echo "   poe test                - Run all tests"
+echo "   poe test-coverage       - Run tests with coverage report"
+echo "   poe test-unit           - Run unit tests only"
+echo "   poe test-integration    - Run integration tests only"
+echo "   poe analyze-coverage    - Analyze coverage by file type"
+echo ""
+echo "📁 Documentation:"
+echo "   poe docs-build          - Build MkDocs documentation"
+echo "   poe docs-clean          - Clean documentation build files"
+echo "   poe docs-serve          - Serve documentation locally"
+echo "   poe docs-autobuild      - Auto-rebuild docs on changes"
+echo ""
+echo "📁 Pre-commit:"
+echo "   poe pre-commit-install  - Install pre-commit hooks"
+echo "   poe pre-commit-run      - Run pre-commit on all files"
+echo "   poe pre-commit-update   - Update pre-commit hooks"
+echo ""
+echo "📁 Development:"
+echo "   poe check               - Quick check: format-check + lint + test"
+echo "   poe ci                  - Full CI pipeline (includes docs build)"
+echo "   poe fix                 - Auto-fix formatting and linting issues"
+echo "   poe prepare             - Prepare code for commit"
+echo ""
+echo "📁 OpenAPI:"
+echo "   poe regenerate-client   - Regenerate API client from OpenAPI spec"
+echo "   poe validate-openapi    - Validate OpenAPI specification (basic)"
+echo "   poe validate-openapi-redocly - Validate OpenAPI specification (Redocly)"
+echo "   poe validate-all        - Run both OpenAPI validators"
+echo ""
+echo "📁 Utilities:"
+echo "   poe clean               - Clean build artifacts and cache"
+echo "   poe help                - Show this help message"
+echo ""
+"""
+
+[tool.poe.tasks.clean]
+help = "Clean up build artifacts and cache files"
+shell = """
+echo "🧹 Cleaning build artifacts and cache files..."
+rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov dist build *.egg-info docs/_build
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+echo "✨ Workspace cleaned!"
+"""

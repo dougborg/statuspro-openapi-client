@@ -1,0 +1,124 @@
+[project]
+name = "statuspro-mcp-server"
+version = "0.1.0"
+description = "MCP server for the StatusPro API"
+authors = [
+    {name = "Doug Borg", email = "dougborg@dougborg.org"},
+]
+maintainers = [
+    {name = "Doug Borg", email = "dougborg@dougborg.org"},
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = [
+  "statuspro",
+  "mcp",
+  "mcp-server",
+  "model-context-protocol",
+  "claude",
+  "ai-tools",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Office/Business",
+  "Typing :: Typed",
+]
+dependencies = [
+    "fastmcp>=2.13.0",
+    "statuspro-openapi-client>=0.51.0",
+    "prefab-ui>=0.18,<0.19",
+    "pydantic>=2.12.0",
+    "python-dotenv>=1.0.0",
+    "structlog>=25.5.0",
+    "aiosqlite>=0.20.0",
+    "platformdirs>=4.0.0",
+]
+
+# Note: Development dependencies like mcp-hmr require Python >=3.12
+# Install manually for hot-reload development: uv pip install mcp-hmr
+# See docs/mcp-server/DEVELOPMENT.md for setup instructions
+
+[tool.uv.sources]
+statuspro-openapi-client = { workspace = true }
+
+[project.urls]
+Homepage = "https://github.com/dougborg/statuspro-openapi-client"
+Repository = "https://github.com/dougborg/statuspro-openapi-client"
+Documentation = "https://dougborg.github.io/statuspro-openapi-client/"
+"Bug Tracker" = "https://github.com/dougborg/statuspro-openapi-client/issues"
+
+[project.scripts]
+statuspro-mcp-server = "statuspro_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/statuspro_mcp"]
+
+# Pytest Configuration (Native TOML - pytest 9.0+)
+[tool.pytest]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+markers = [
+    "unit: Unit tests with mocks",
+    "integration: Integration tests requiring API key",
+]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+dist_path = "dist/"
+upload_to_pypi = false
+upload_to_repository = false
+remove_dist = false
+commit_author = "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+commit_message = "chore(release): mcp v{version}"
+build_command = "pip install mdformat mdformat-gfm mdformat-tables mdformat-toc && mdformat CHANGELOG.md --wrap 88"
+major_on_zero = false
+allow_zero_version = true
+tag_format = "mcp-v{version}"
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = [
+  "build",
+  "chore",
+  "ci",
+  "docs",
+  "feat",
+  "fix",
+  "perf",
+  "style",
+  "refactor",
+  "test",
+]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+# Only process commits with (mcp) scope
+# Commits with (client) scope or no scope are handled by the client config
+default_bump_level = 0
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = []
+mode = "update"
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease_token = "alpha"
+prerelease = false
+
+[tool.semantic_release.publish]
+dist_glob_patterns = ["dist/*"]
+upload_to_vcs_release = true

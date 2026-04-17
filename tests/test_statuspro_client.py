@@ -1,0 +1,661 @@
+"""Tests for the StatusPro Client with layered transport architecture."""
+
+import json
+import os
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import httpx
+import pytest
+from httpx_retries import RetryTransport
+
+from statuspro_public_api_client import StatusProClient
+from statuspro_public_api_client.statuspro_client import (
+    ErrorLoggingTransport,
+    PaginationTransport,
+    RateLimitAwareRetry,
+    ResilientAsyncTransport,
+    _is_sensitive,
+    _sanitize_body,
+    _sanitize_url,
+)
+
+
+@pytest.mark.unit
+class TestTransportChaining:
+    """Test that the ResilientAsyncTransport factory creates the correct chain."""
+
+    def test_factory_returns_retry_transport(self):
+        """Test that factory returns a RetryTransport instance."""
+        transport = ResilientAsyncTransport(max_retries=3)
+        assert isinstance(transport, RetryTransport)
+
+    def test_factory_respects_max_retries(self):
+        """Test that factory configures retry count correctly."""
+        transport = ResilientAsyncTransport(max_retries=7)
+        # The retry strategy should have total=7
+        assert transport.retry.total == 7
+
+    def test_factory_respects_retry_after_header(self):
+        """Test that factory enables Retry-After header support."""
+        transport = ResilientAsyncTransport()
+        assert transport.retry.respect_retry_after_header is True
+
+    def test_factory_uses_exponential_backoff(self):
+        """Test that factory configures exponential backoff."""
+        transport = ResilientAsyncTransport()
+        assert transport.retry.backoff_factor == 1.0
+
+    def test_factory_uses_rate_limit_aware_retry(self):
+        """Test that factory uses RateLimitAwareRetry."""
+        transport = ResilientAsyncTransport()
+        assert isinstance(transport.retry, RateLimitAwareRetry)
+
+
+@pytest.mark.unit
+class TestRateLimitAwareRetry:
+    """Test the RateLimitAwareRetry class."""
+
+    def test_idempotent_method_retryable_for_429(self):
+        """Test that idempotent methods (GET) are retryable for 429."""
+        retry = RateLimitAwareRetry(
+            total=5,
+            allowed_methods=["GET", "POST"],
+            status_forcelist=[429, 502, 503, 504],
+        )
+
+        assert retry.is_retryable_method("GET")
+        assert retry.is_retryable_status_code(429)
+
+    def test_non_idempotent_method_retryable_for_429(self):
+        """Test that non-idempotent methods (POST, PATCH) are retryable for 429."""
+        retry = RateLimitAwareRetry(
+            total=5,
+            allowed_methods=["GET", "POST", "PATCH"],
+            status_forcelist=[429, 502, 503, 504],
+        )
+
+        # POST should be allowed for 429
+        assert retry.is_retryable_method("POST")
+        assert retry.is_retryable_status_code(429)
+
+        # PATCH should be allowed for 429
+        assert retry.is_retryable_method("PATCH")
+        assert retry.is_retryable_status_code(429)
+
+    def test_idempotent_method_retryable_for_server_errors(self):
+        """Test that idempotent methods are retryable for server errors (502, 503, 504)."""
+        retry = RateLimitAwareRetry(
+            total=5,
+            allowed_methods=["GET", "POST"],
+            status_forcelist=[429, 502, 503, 504],
+        )
+
+        # GET should pass initial check
+        assert retry.is_retryable_method("GET")
+
+        # GET should be retryable for server errors
+        assert retry.is_retryable_status_code(502)
+        assert retry.is_retryable_status_code(503)
+        assert retry.is_retryable_status_code(504)
+
+    def test_non_idempotent_method_not_retryable_for_server_errors(self):
+        """Test that non-idempotent methods (POST, PATCH) are NOT retryable for server errors."""
+        retry = RateLimitAwareRetry(
+            total=5,
+            allowed_methods=["GET", "POST", "PATCH"],
+            status_forcelist=[429, 502, 503, 504],
+        )
+
+        # POST should pass initial check
+        assert retry.is_retryable_method("POST")
+
+        # But POST should NOT be retryable for server errors (not safe to retry)
+        assert not retry.is_retryable_status_code(502)
+        assert not retry.is_retryable_status_code(503)
+        assert not retry.is_retryable_status_code(504)
+
+        # Same for PATCH
+        assert retry.is_retryable_method("PATCH")
+        assert not retry.is_retryable_status_code(502)
+
+    def test_method_state_preserved_across_increment(self):
+        """Test that current method is preserved when retry is incremented."""
+        retry = RateLimitAwareRetry(
+            total=5,
+            allowed_methods=["POST"],
+            status_forcelist=[429, 502, 503, 504],
+        )
+
+        # Set the method
+        retry.is_retryable_method("POST")
+        assert retry._current_method == "POST"
+
+        # Increment should preserve the method
+        new_retry = retry.increment()
+        assert new_retry._current_method == "POST"
+        assert new_retry.attempts_made == 1
+
+    def test_all_methods_in_allowed_list(self):
+        """Test that the factory configures all necessary methods."""
+        transport = ResilientAsyncTransport()
+        retry = transport.retry
+
+        # Should have all idempotent methods plus POST and PATCH
+        expected_methods = {
+            "HEAD",
+            "GET",
+            "PUT",
+            "DELETE",
+            "OPTIONS",
+            "TRACE",
+            "POST",
+            "PATCH",
+        }
+        actual_methods = {str(m) for m in retry.allowed_methods}
+
+        assert expected_methods == actual_methods
+
+    def test_status_forcelist_configured(self):
+        """Test that the factory configures the status codes for retry."""
+        transport = ResilientAsyncTransport()
+        retry = transport.retry
+
+        # Should have 429 (rate limiting) and 5xx server errors
+        expected_statuses = {429, 502, 503, 504}
+        actual_statuses = set(retry.status_forcelist)
+
+        assert expected_statuses == actual_statuses
+
+
+@pytest.mark.unit
+class TestErrorLoggingTransport:
+    """Test the error logging transport layer."""
+
+    @pytest.fixture
+    def mock_wrapped_transport(self):
+        """Create a mock wrapped transport."""
+        mock = AsyncMock(spec=httpx.AsyncHTTPTransport)
+        return mock
+
+    @pytest.fixture
+    def transport(self, mock_wrapped_transport):
+        """Create an error logging transport for testing."""
+        return ErrorLoggingTransport(wrapped_transport=mock_wrapped_transport)
+
+    @pytest.mark.asyncio
+    async def test_successful_request_passes_through(
+        self, transport, mock_wrapped_transport
+    ):
+        """Test that successful requests pass through unchanged."""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_wrapped_transport.handle_async_request.return_value = mock_response
+
+        request = MagicMock(spec=httpx.Request)
+        response = await transport.handle_async_request(request)
+
+        assert response.status_code == 200
+        mock_wrapped_transport.handle_async_request.assert_called_once_with(request)
+
+    @pytest.mark.asyncio
+    async def test_422_validation_error_logging(self, transport, caplog):
+        """422 responses are logged with message and per-field errors."""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 422
+        mock_response.json.return_value = {
+            "message": "The given data was invalid.",
+            "errors": {
+                "status_code": ["The status code field is required."],
+                "order_ids": ["The order ids field must have at least 1 item."],
+            },
+        }
+        mock_request = MagicMock(spec=httpx.Request)
+        mock_request.method = "POST"
+        mock_request.url = "https://app.orderstatuspro.com/api/v1/orders/bulk-status"
+
+        await transport._log_client_error(mock_response, mock_request)
+
+        error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert len(error_logs) == 1
+        msg = error_logs[0].message
+        assert "Validation error 422" in msg
+        assert "The given data was invalid." in msg
+        assert "status_code" in msg
+        assert "order_ids" in msg
+
+    @pytest.mark.asyncio
+    async def test_422_with_unset_fields_uses_additional_properties(
+        self, transport, caplog
+    ):
+        """Test that Unset fields fall back to additional_properties."""
+        # Mock a 422 response where main fields are missing but nested in additional_properties
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 422
+        # Simulate what the API actually returns - data nested in 'error' key
+        mock_response.json.return_value = {
+            "error": {
+                "statusCode": 422,
+                "name": "ValidationError",
+                "message": "Validation failed",
+            }
+        }
+
+        mock_request = MagicMock(spec=httpx.Request)
+        mock_request.method = "PATCH"
+        mock_request.url = "https://app.orderstatuspro.com/api/v1/products/123"
+
+        await transport._log_client_error(mock_response, mock_request)
+
+        error_logs = [
+            record for record in caplog.records if record.levelname == "ERROR"
+        ]
+        assert len(error_logs) == 1
+
+        error_message = error_logs[0].message
+        # Should extract from nested error object
+        assert "Validation error 422" in error_message
+        assert "ValidationError" in error_message or "(not provided)" in error_message
+
+    @pytest.mark.asyncio
+    async def test_400_general_error_logging(self, transport, caplog):
+        """400 responses are logged with their message."""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "Invalid request parameters."}
+        mock_request = MagicMock(spec=httpx.Request)
+        mock_request.method = "GET"
+        mock_request.url = "https://app.orderstatuspro.com/api/v1/orders"
+
+        await transport._log_client_error(mock_response, mock_request)
+
+        error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert len(error_logs) == 1
+        msg = error_logs[0].message
+        assert "Client error 400" in msg
+        assert "Invalid request parameters" in msg
+
+    @pytest.mark.asyncio
+    async def test_error_logging_with_invalid_json(self, transport, caplog):
+        """Test error logging when response contains invalid JSON."""
+        # Mock a response with invalid JSON
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 400
+        mock_response.json.side_effect = ValueError("Invalid JSON")
+        mock_response.text = "Invalid JSON response from server"
+
+        # Mock request
+        mock_request = MagicMock(spec=httpx.Request)
+        mock_request.method = "POST"
+        mock_request.url = "https://app.orderstatuspro.com/api/v1/products"
+
+        # Test the error logging
+        await transport._log_client_error(mock_response, mock_request)
+
+        # Verify fallback error logging
+        error_logs = [
+            record for record in caplog.records if record.levelname == "ERROR"
+        ]
+        assert len(error_logs) == 1
+
+        error_message = error_logs[0].message
+        assert "Client error 400" in error_message
+        assert "Invalid JSON response from server" in error_message
+
+    @pytest.mark.asyncio
+    async def test_429_rate_limit_error(self, transport, caplog):
+        """429 responses are logged with their message."""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 429
+        mock_response.json.return_value = {"message": "Too Many Requests"}
+        mock_request = MagicMock(spec=httpx.Request)
+        mock_request.method = "POST"
+        mock_request.url = "https://app.orderstatuspro.com/api/v1/orders/1/comment"
+
+        await transport._log_client_error(mock_response, mock_request)
+
+        error_logs = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert len(error_logs) == 1
+        msg = error_logs[0].message
+        assert "Client error 429" in msg
+        assert "Too Many Requests" in msg
+
+    @pytest.mark.asyncio
+    async def test_3xx_and_5xx_not_logged(
+        self, transport, mock_wrapped_transport, caplog
+    ):
+        """Test that 3xx and 5xx responses are not logged by error logging transport."""
+        for status_code in [301, 500, 503]:
+            mock_response = MagicMock(spec=httpx.Response)
+            mock_response.status_code = status_code
+            mock_wrapped_transport.handle_async_request.return_value = mock_response
+
+            request = MagicMock(spec=httpx.Request)
+            request.url = "https://api.example.com"
+            response = await transport.handle_async_request(request)
+
+            # Should pass through without logging
+            assert response.status_code == status_code
+
+        # Should have no error logs (only 4xx trigger logging)
+        error_logs = [
+            record for record in caplog.records if record.levelname == "ERROR"
+        ]
+        assert len(error_logs) == 0
+
+
+@pytest.mark.unit
+class TestPaginationTransport:
+    """Test the pagination transport layer."""
+
+    @pytest.fixture
+    def mock_wrapped_transport(self):
+        """Create a mock wrapped transport."""
+        mock = AsyncMock(spec=httpx.AsyncHTTPTransport)
+        return mock
+
+    @pytest.fixture
+    def transport(self, mock_wrapped_transport):
+        """Create a pagination transport for testing."""
+        return PaginationTransport(
+            wrapped_transport=mock_wrapped_transport, max_pages=3
+        )
+
+    @pytest.mark.asyncio
+    async def test_non_get_request_passes_through(
+        self, transport, mock_wrapped_transport
+    ):
+        """Test that non-GET requests pass through without pagination."""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_wrapped_transport.handle_async_request.return_value = mock_response
+
+        # Create a real httpx.Request for POST
+        request = httpx.Request(
+            method="POST",
+            url="https://api.example.com/products",
+        )
+
+        response = await transport.handle_async_request(request)
+
+        assert response.status_code == 200
+        mock_wrapped_transport.handle_async_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_with_auto_pagination_disabled_passes_through(
+        self, transport, mock_wrapped_transport
+    ):
+        """Test that GET requests with auto_pagination=False pass through."""
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_wrapped_transport.handle_async_request.return_value = mock_response
+
+        # Create a GET request with auto_pagination disabled
+        request = httpx.Request(
+            method="GET",
+            url="https://api.example.com/products",
+            extensions={"auto_pagination": False},
+        )
+
+        response = await transport.handle_async_request(request)
+
+        assert response.status_code == 200
+        mock_wrapped_transport.handle_async_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_auto_pagination_collects_multiple_pages(
+        self, transport, mock_wrapped_transport
+    ):
+        """Test that pagination automatically collects multiple pages."""
+        # Create mock responses for 3 pages
+        page1_data = {
+            "data": [{"id": 1}, {"id": 2}],
+            "pagination": {"page": 1, "total_pages": 3},
+        }
+        page2_data = {
+            "data": [{"id": 3}, {"id": 4}],
+            "pagination": {"page": 2, "total_pages": 3},
+        }
+        page3_data = {"data": [{"id": 5}], "pagination": {"page": 3, "total_pages": 3}}
+
+        def create_response(data):
+            mock_resp = MagicMock(spec=httpx.Response)
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = data
+            mock_resp.headers = {}
+
+            # Mock aread for streaming responses
+            async def mock_aread():
+                pass
+
+            mock_resp.aread = mock_aread
+            return mock_resp
+
+        page1_response = create_response(page1_data)
+        page2_response = create_response(page2_data)
+        page3_response = create_response(page3_data)
+
+        mock_wrapped_transport.handle_async_request.side_effect = [
+            page1_response,
+            page2_response,
+            page3_response,
+        ]
+
+        # Create a GET request - auto-pagination is ON by default
+        request = httpx.Request(
+            method="GET",
+            url="https://api.example.com/products",
+        )
+
+        response = await transport.handle_async_request(request)
+
+        # Should have made 3 requests (one per page)
+        assert mock_wrapped_transport.handle_async_request.call_count == 3, (
+            f"Expected 3 requests but got {mock_wrapped_transport.handle_async_request.call_count}"
+        )
+
+        # Response should combine all data
+        combined_data = json.loads(response.content)
+        assert len(combined_data["data"]) == 5
+        assert combined_data["data"][0]["id"] == 1
+        assert combined_data["data"][4]["id"] == 5
+        assert combined_data["pagination"]["collected_pages"] == 3
+        assert combined_data["pagination"]["auto_paginated"] is True
+
+
+@pytest.mark.unit
+class TestStatusProClient:
+    """Test the StatusProClient initialization and configuration."""
+
+    def test_client_initialization_with_api_key(self):
+        """Test that client initializes with API key."""
+        client = StatusProClient(base_url="https://api.example.com", token="test-token")
+        assert client._base_url == "https://api.example.com"
+
+    def test_client_uses_resilient_transport(self):
+        """Test that client uses the resilient transport by default."""
+        client = StatusProClient(base_url="https://api.example.com", token="test-token")
+        # The client should have the resilient transport configured
+        # It's stored in _httpx_args['transport']
+        assert hasattr(client, "_httpx_args")
+        assert "transport" in client._httpx_args
+        # The outermost transport should be a RetryTransport
+        assert isinstance(client._httpx_args["transport"], RetryTransport)
+
+    def test_client_can_override_transport(self):
+        """Test that client allows custom transport."""
+        custom_transport = httpx.AsyncHTTPTransport()
+        client = StatusProClient(
+            base_url="https://api.example.com",
+            token="test-token",
+            async_transport=custom_transport,
+        )
+        # Verify the custom transport was accepted (client should have initialized)
+        assert client._base_url == "https://api.example.com"
+
+    def test_client_reads_env_vars(self):
+        """Test that client reads from environment variables."""
+        with patch.dict(
+            os.environ,
+            {
+                "STATUSPRO_API_KEY": "env-test-token",
+                "STATUSPRO_BASE_URL": "https://env.api.example.com",
+            },
+        ):
+            client = StatusProClient()
+            assert client._base_url == "https://env.api.example.com"
+
+    def test_client_passes_httpx_params_to_base_transport(self):
+        """Test that httpx parameters are correctly passed to the base transport."""
+        # Create client with custom httpx parameters
+        client = StatusProClient(
+            base_url="https://api.example.com",
+            token="test-token",
+            http2=True,
+            verify=False,
+        )
+
+        # The transport should be configured (though we can't easily inspect the nested layers)
+        # At minimum, verify the client was created successfully with the transport
+        assert client._base_url == "https://api.example.com"
+        assert "transport" in client._httpx_args
+
+
+@pytest.mark.unit
+class TestSanitizeUrl:
+    """Test URL sanitization for safe logging."""
+
+    def test_redacts_sensitive_params(self):
+        url = "https://api.example.com/v1/products?api_key=secret123&token=abc"
+        result = _sanitize_url(url)
+        assert "secret123" not in result
+        assert "abc" not in result
+        assert "api_key=***" in result
+        assert "token=***" in result
+
+    def test_preserves_safe_params(self):
+        url = "https://api.example.com/v1/products?page=1&limit=50"
+        result = _sanitize_url(url)
+        assert result == url
+
+    def test_mixed_sensitive_and_safe_params(self):
+        url = "https://api.example.com/v1?page=1&api_key=secret&limit=50"
+        result = _sanitize_url(url)
+        assert "page=1" in result
+        assert "limit=50" in result
+        assert "api_key=***" in result
+        assert "secret" not in result
+
+    def test_no_query_string(self):
+        url = "https://api.example.com/v1/products"
+        assert _sanitize_url(url) == url
+
+    def test_empty_string(self):
+        assert _sanitize_url("") == ""
+
+    def test_preserves_path(self):
+        url = "https://api.example.com/v1/products/123?api_key=secret"
+        result = _sanitize_url(url)
+        assert "/v1/products/123" in result
+
+
+@pytest.mark.unit
+class TestSanitizeBody:
+    """Test request body sanitization for safe logging."""
+
+    def test_redacts_sensitive_keys(self):
+        body = {"password": "secret123", "name": "test"}
+        result = _sanitize_body(body)
+        assert result["password"] == "***"
+        assert result["name"] == "test"
+
+    def test_preserves_safe_keys(self):
+        body = {"name": "Product", "quantity": 10}
+        result = _sanitize_body(body)
+        assert result == body
+
+    def test_case_insensitive_matching(self):
+        body = {"API_KEY": "secret", "Authorization": "Bearer xyz"}
+        result = _sanitize_body(body)
+        assert result["API_KEY"] == "***"
+        assert result["Authorization"] == "***"
+
+    def test_non_dict_input(self):
+        assert _sanitize_body("string") == "[non-dict body]"
+        assert _sanitize_body(42) == "[non-dict body]"
+        assert _sanitize_body(None) == "[non-dict body]"
+        assert _sanitize_body([1, 2]) == "[non-dict body]"
+
+    def test_does_not_mutate_original(self):
+        body = {"password": "secret", "name": "test"}
+        _sanitize_body(body)
+        assert body["password"] == "secret"
+
+    def test_redacts_nested_dict_keys(self):
+        body = {
+            "user": {"name": "John", "password": "secret123"},
+            "public": "data",
+        }
+        result = _sanitize_body(body)
+        assert result["user"]["password"] == "***"
+        assert result["user"]["name"] == "John"
+        assert result["public"] == "data"
+
+    def test_redacts_list_with_dicts(self):
+        body = {
+            "items": [{"id": 1, "api_key": "key123"}, {"id": 2, "api_key": "key456"}]
+        }
+        result = _sanitize_body(body)
+        assert result["items"][0]["api_key"] == "***"
+        assert result["items"][1]["api_key"] == "***"
+        assert result["items"][0]["id"] == 1
+        assert result["items"][1]["id"] == 2
+
+
+@pytest.mark.unit
+class TestIsSensitive:
+    """Test sensitive field name detection."""
+
+    def test_exact_matches(self):
+        assert _is_sensitive("api_key")
+        assert _is_sensitive("password")
+        assert _is_sensitive("token")
+
+    def test_substring_matches(self):
+        assert _is_sensitive("user_email")
+        assert _is_sensitive("auth_token")
+        assert _is_sensitive("my_secret_field")
+
+    def test_case_insensitive(self):
+        assert _is_sensitive("API_KEY")
+        assert _is_sensitive("Password")
+        assert _is_sensitive("TOKEN")
+
+    def test_non_sensitive(self):
+        assert not _is_sensitive("name")
+        assert not _is_sensitive("quantity")
+        assert not _is_sensitive("status")
+        assert not _is_sensitive("page")
+
+
+@pytest.mark.unit
+class TestSecurityWarnings:
+    """Test security-related warnings in StatusProClient."""
+
+    @patch.dict(os.environ, {"STATUSPRO_API_KEY": "test-api-key-12345"})
+    def test_ssl_disabled_logs_warning(self):
+        """StatusProClient should warn when SSL verification is disabled."""
+        mock_logger = MagicMock()
+        StatusProClient(logger=mock_logger, verify=False)
+
+        mock_logger.warning.assert_called_once()
+        call_args = mock_logger.warning.call_args[0][0]
+        assert "SSL certificate verification is disabled" in call_args
+        assert "MITM" in call_args
+
+    @patch.dict(os.environ, {"STATUSPRO_API_KEY": "test-api-key-12345"})
+    def test_ssl_enabled_no_warning(self):
+        """StatusProClient should not warn when SSL verification is enabled (default)."""
+        mock_logger = MagicMock()
+        StatusProClient(logger=mock_logger)
+
+        mock_logger.warning.assert_not_called()

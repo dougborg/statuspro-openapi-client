@@ -1,0 +1,79 @@
+name: "Copilot Setup Steps"
+
+# Automatically run the setup steps when they are changed to allow for easy validation, and
+# allow manual testing through the repository's "Actions" tab
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Set the permissions to the lowest permissions possible needed for your steps.
+    # Copilot will be given its own token for its operations.
+    permissions:
+      # If you want to clone the repository as part of your setup steps, for example
+      # to install dependencies, you'll need the `contents: read` permission. If you
+      # don't clone the repository in your setup steps, Copilot will do this for you
+      # automatically after the steps complete.
+      contents: read
+
+    # You can define any steps you want, and they will run before the agent starts.
+    # If you do not check out your code, Copilot will do this for you.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          echo "🔧 Installing project dependencies with uv..."
+          echo "⏱️  This should only take a few seconds..."
+          uv sync --all-extras
+          echo "✅ Dependencies installed successfully"
+
+      - name: Install pre-commit hooks
+        run: |
+          echo "🪝 Installing pre-commit hooks..."
+          uv run poe pre-commit-install || echo "⚠️  Pre-commit installation may fail in restricted environments"
+          echo "✅ Pre-commit hooks installation attempted"
+
+      - name: Verify installation
+        run: |
+          echo "🔍 Verifying uv environment..."
+          uv --version
+
+          echo "🎯 Verifying poethepoet (poe) task runner..."
+          uv run poe --help > /dev/null
+          echo "✅ Poe task runner available"
+
+          echo "🧪 Testing package imports..."
+          uv run python -c "
+          import statuspro_public_api_client
+          from statuspro_public_api_client import StatusProClient
+          print('✅ Package imports successful')
+          "
+
+      - name: Run quick validation
+        run: |
+          echo "⚡ Running quick validation checks..."
+
+          # Format check (fastest validation)
+          echo "🎨 Checking code formatting..."
+          uv run poe format-check
+
+          echo "✅ Environment setup complete and validated"

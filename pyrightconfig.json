@@ -1,0 +1,29 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "include": [
+    "statuspro_mcp_server",
+    "statuspro_public_api_client",
+    "tests",
+    "scripts"
+  ],
+  "exclude": [
+    ".venv",
+    ".claude/worktrees",
+    "**/__pycache__",
+    "**/node_modules",
+    "statuspro_public_api_client/api",
+    "statuspro_public_api_client/models",
+    "statuspro_public_api_client/client.py",
+    "statuspro_public_api_client/models_pydantic/_generated"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "statuspro_mcp_server",
+      "extraPaths": ["."]
+    }
+  ],
+  "reportMissingImports": "error",
+  "reportMissingTypeStubs": "none"
+}

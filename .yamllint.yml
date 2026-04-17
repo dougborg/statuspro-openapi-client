@@ -1,0 +1,48 @@
+# yamllint configuration for statuspro-openapi-client
+# See https://yamllint.readthedocs.io/ for documentation
+
+extends: default
+
+rules:
+  line-length:
+    max: 120
+    level: error
+    # Ignore line length in the OpenAPI spec file
+    ignore: |
+      docs/statuspro-openapi.yaml
+
+  document-start:
+    # Don't require --- at start of YAML files
+    present: false
+
+  truthy:
+    # Allow various boolean representations; allow GitHub Actions' `on:` key.
+    allowed-values: ['true', 'false', 'yes', 'no', 'True', 'False']
+    check-keys: false
+
+  comments:
+    min-spaces-from-content: 1
+
+  indentation:
+    spaces: 2
+
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+# Ignore these paths completely
+ignore: |
+  .venv/
+  .claude/worktrees/
+  node_modules/
+  dist/
+  build/
+  site/
+  *.egg-info/
+  statuspro_public_api_client/generated/
+  docs/statuspro-openapi.yaml
+  pnpm-lock.yaml

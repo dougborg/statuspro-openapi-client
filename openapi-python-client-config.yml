@@ -1,0 +1,6 @@
+# Configuration for openapi-python-client regeneration.
+# Pinned names keep the generated code inside statuspro_public_api_client/
+# regardless of info.title in the OpenAPI spec.
+project_name_override: statuspro-openapi-client
+package_name_override: statuspro_public_api_client
+use_path_prefixes_for_title_model_names: false

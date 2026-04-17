@@ -1,0 +1,32 @@
+{
+  "name": "statuspro-openapi-client-monorepo",
+  "private": true,
+  "packageManager": "pnpm@9.14.4",
+  "scripts": {
+    "generate": "pnpm -r run generate",
+    "generate:client": "pnpm --filter statuspro-openapi-client run generate",
+    "generate:react": "pnpm --filter statuspro-openapi-client-react run generate",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "clean": "pnpm -r run clean"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.10",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "defu": "^6.1.5",
+      "lodash": "^4.18.0",
+      "picomatch": "^4.0.4",
+      "rollup": "^4.59.0",
+      "vite": "^7.3.2"
+    }
+  }
+}

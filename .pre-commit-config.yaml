@@ -1,0 +1,59 @@
+# Pre-commit configuration for statuspro-openapi-client
+# See https://pre-commit.com for more information
+#
+# This configuration uses LOCAL hooks that run via uv to avoid network
+# restrictions in CI environments (e.g., GitHub Copilot agents that block
+# pip.pypa.io). All tools are installed via project dependencies.
+#
+# See issue #134 for background on why we use local hooks.
+
+repos:
+  - repo: local
+    hooks:
+      # Python formatting and linting with Ruff (via uv)
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      # Markdown formatting (via uv)
+      - id: mdformat
+        name: mdformat
+        entry: uv run mdformat --wrap=88
+        language: system
+        types: [markdown]
+        exclude: |
+          (?x)(
+            CHANGELOG\.md|
+            docs/CHANGELOG\.md|
+            statuspro_public_api_client/docs/CHANGELOG\.md|
+            \.agent\.md$|
+            statuspro_mcp_server/src/statuspro_mcp/templates/.*\.md$|
+            \.claude/skills/.*\.md$
+          )
+        pass_filenames: true
+
+      # YAML linting (via uv)
+      - id: yamllint
+        name: yamllint
+        entry: uv run yamllint -c=.yamllint.yml
+        language: system
+        types: [yaml]
+        pass_filenames: true
+
+      # Run tests (via poe task)
+      - id: pytest
+        name: pytest
+        entry: uv run poe test
+        language: system
+        pass_filenames: false
+        always_run: true
