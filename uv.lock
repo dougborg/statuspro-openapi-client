@@ -2902,7 +2902,7 @@ requires-dist = [
     { name = "mkdocs-literate-nav", marker = "extra == 'docs'", specifier = ">=0.6.0" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.7.0" },
     { name = "mkdocs-swagger-ui-tag", marker = "extra == 'docs'", specifier = ">=0.7.1" },
-    { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.29.0" },
+    { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=1.0.4" },
     { name = "openapi-python-client", marker = "extra == 'dev'", specifier = ">=0.25.2" },
     { name = "openapi-spec-validator", marker = "extra == 'dev'", specifier = ">=0.7.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.5.0" },
