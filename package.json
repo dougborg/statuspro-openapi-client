@@ -13,7 +13,7 @@
     "clean": "pnpm -r run clean"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.10",
+    "@changesets/cli": "^2.31.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2"
   },
