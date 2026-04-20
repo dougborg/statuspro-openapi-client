@@ -73,3 +73,26 @@ updates:
     commit-message:
       prefix: "chore(docker)"
       include: "scope"
+
+  # npm dependencies for the TypeScript client package.
+  # Dependabot reads the workspace root's pnpm-lock.yaml automatically.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "ts-client"
+    groups:
+      npm-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore(ts)"
+      include: "scope"
