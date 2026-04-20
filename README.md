@@ -25,7 +25,7 @@ This monorepo ships:
 | -------------------------------------------------------- | ---------- | ------- | -------------------------------------------------- |
 | [statuspro-openapi-client](statuspro_public_api_client/) | Python     | 0.1.0   | API client with transport-layer resilience         |
 | [statuspro-mcp-server](statuspro_mcp_server/)            | Python     | 0.1.0   | Model Context Protocol server for AI assistants    |
-| [@statuspro/client](packages/statuspro-client/)          | TypeScript | 0.1.0   | TypeScript/JavaScript client with full type safety |
+| [statuspro-client](packages/statuspro-client/)           | TypeScript | 0.1.0   | TypeScript/JavaScript client with full type safety |
 
 ## Features
 
@@ -63,11 +63,11 @@ asyncio.run(main())
 ### TypeScript Client
 
 ```bash
-npm install @statuspro/client
+npm install statuspro-client
 ```
 
 ```typescript
-import { StatusProClient } from '@statuspro/client';
+import { StatusProClient } from 'statuspro-client';
 
 const client = await StatusProClient.create();
 const response = await client.get('/orders');
@@ -236,7 +236,7 @@ uv run poe check              # full: format + lint + typecheck + test
 uv run poe test               # just tests (pytest -n 4)
 uv run poe regenerate-client  # regenerate the Python client from docs/statuspro-openapi.yaml
 uv run poe generate-pydantic  # regenerate Pydantic v2 models
-pnpm --filter @statuspro/client generate  # regenerate the TypeScript client
+pnpm --filter statuspro-client generate  # regenerate the TypeScript client
 ```
 
 ### Commit Standards

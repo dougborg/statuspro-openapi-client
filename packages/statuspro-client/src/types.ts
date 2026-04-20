@@ -6,7 +6,7 @@
  *
  * @example
  * ```typescript
- * import type { OrderListItem, Status, OrderResponse } from '@statuspro/client/types';
+ * import type { OrderListItem, Status, OrderResponse } from 'statuspro-client/types';
  * ```
  */
 

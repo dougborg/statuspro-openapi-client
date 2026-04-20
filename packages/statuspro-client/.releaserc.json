@@ -1,0 +1,76 @@
+{
+  "branches": ["main"],
+  "tagFormat": "ts-v${version}",
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          { "type": "feat", "scope": "ts", "release": "minor" },
+          { "type": "fix", "scope": "ts", "release": "patch" },
+          { "type": "perf", "scope": "ts", "release": "patch" },
+          { "type": "revert", "scope": "ts", "release": "patch" },
+          { "breaking": true, "scope": "ts", "release": "major" },
+          { "type": "*", "release": false }
+        ],
+        "parserOpts": {
+          "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]
+        }
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "parserOpts": {
+          "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]
+        },
+        "presetConfig": {
+          "types": [
+            { "type": "feat", "section": "Features", "hidden": false },
+            { "type": "fix", "section": "Bug Fixes", "hidden": false },
+            { "type": "perf", "section": "Performance Improvements", "hidden": false },
+            { "type": "revert", "section": "Reverts", "hidden": false },
+            { "type": "docs", "section": "Documentation", "hidden": true },
+            { "type": "chore", "section": "Chores", "hidden": true }
+          ]
+        }
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md",
+        "changelogTitle": "# @statuspro/client Changelog"
+      }
+    ],
+    [
+      "@semantic-release/npm",
+      {
+        "pkgRoot": ".",
+        "tarballDir": "dist-npm"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": [
+          "CHANGELOG.md",
+          "package.json"
+        ],
+        "message": "chore(ts-release): ${nextRelease.version}\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "successComment": false,
+        "failComment": false,
+        "assets": [
+          { "path": "dist-npm/*.tgz", "label": "npm tarball" }
+        ]
+      }
+    ]
+  ]
+}

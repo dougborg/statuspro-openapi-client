@@ -1,0 +1,129 @@
+name: Release TS Client
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: "Force-publish current version to npm (bypass semantic-release)"
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  test:
+    name: TS tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: packages/statuspro-client
+        run: pnpm run lint
+
+      - name: Typecheck
+        working-directory: packages/statuspro-client
+        run: pnpm run typecheck
+
+      - name: Test
+        working-directory: packages/statuspro-client
+        run: pnpm run test
+
+      - name: Build
+        working-directory: packages/statuspro-client
+        run: pnpm run build
+
+  release-ts:
+    name: Release TS client
+    needs: test
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-ts
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      id-token: write
+      issues: write
+      pull-requests: write
+    outputs:
+      released: ${{ steps.release.outputs.new_release_published }}
+      version: ${{ steps.release.outputs.new_release_version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: packages/statuspro-client
+        run: pnpm run build
+
+      - name: Check for TS changes since last ts-v tag
+        id: check
+        run: |
+          LAST_TAG=$(git tag --list 'ts-v*' --sort=-v:refname | head -n1)
+          if [ -z "$LAST_TAG" ]; then
+            echo "No prior ts-v tag — first release will run."
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$LAST_TAG"..HEAD -- packages/statuspro-client/ docs/statuspro-openapi.yaml; then
+            echo "No TS-client changes since $LAST_TAG — skipping release."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Changes detected since $LAST_TAG."
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Semantic release
+        id: release
+        if: steps.check.outputs.has_changes == 'true' || inputs.force_publish == true
+        working-directory: packages/statuspro-client
+        env:
+          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+        run: |
+          # Capture semantic-release output so callers can read outputs.
+          OUTPUT=$(npx semantic-release 2>&1) || {
+            EXIT=$?
+            echo "$OUTPUT"
+            exit "$EXIT"
+          }
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "Published release"; then
+            VERSION=$(echo "$OUTPUT" | grep -oE "version [0-9]+\.[0-9]+\.[0-9]+" | head -n1 | awk '{print $2}')
+            echo "new_release_published=true" >> "$GITHUB_OUTPUT"
+            echo "new_release_version=$VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "new_release_published=false" >> "$GITHUB_OUTPUT"
+          fi

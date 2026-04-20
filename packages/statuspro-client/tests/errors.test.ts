@@ -5,10 +5,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   AuthenticationError,
-  StatusProError,
   NetworkError,
   RateLimitError,
   ServerError,
+  StatusProError,
   ValidationError,
   parseError,
 } from '../src/errors.js';

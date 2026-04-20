@@ -1,4 +1,4 @@
-# @statuspro/client
+# statuspro-client
 
 TypeScript/JavaScript client for the
 [StatusPro API](https://app.orderstatuspro.com/api/v1) with automatic
@@ -21,17 +21,17 @@ updating the status of orders.
 ## Installation
 
 ```bash
-npm install @statuspro/client
+npm install statuspro-client
 # or
-pnpm add @statuspro/client
+pnpm add statuspro-client
 # or
-yarn add @statuspro/client
+yarn add statuspro-client
 ```
 
 ## Quick Start
 
 ```typescript
-import { StatusProClient } from '@statuspro/client';
+import { StatusProClient } from 'statuspro-client';
 
 // API key from STATUSPRO_API_KEY env var (or .env)
 const client = await StatusProClient.create();
@@ -48,7 +48,7 @@ console.log(`Found ${meta.total} orders across ${meta.last_page} pages`);
 ## Types-only import
 
 ```typescript
-import type { OrderListItem, Status, OrderResponse } from '@statuspro/client/types';
+import type { OrderListItem, Status, OrderResponse } from 'statuspro-client/types';
 
 function render(order: OrderListItem) {
   // ...
@@ -123,7 +123,7 @@ import {
   AuthenticationError,
   RateLimitError,
   ValidationError,
-} from '@statuspro/client';
+} from 'statuspro-client';
 
 const response = await client.post('/orders/123/comment', {
   comment: 'Shipped.',
@@ -179,7 +179,7 @@ POSTs.
 ## Advanced: Generated SDK
 
 ```typescript
-import { StatusProClient, listOrders, updateOrderStatus } from '@statuspro/client';
+import { StatusProClient, listOrders, updateOrderStatus } from 'statuspro-client';
 
 const statuspro = await StatusProClient.create();
 
@@ -216,7 +216,7 @@ npm install dotenv
 
 ```typescript
 import 'dotenv/config';
-import { StatusProClient } from '@statuspro/client';
+import { StatusProClient } from 'statuspro-client';
 
 const client = StatusProClient.withApiKey(process.env.STATUSPRO_API_KEY!);
 ```
