@@ -395,7 +395,7 @@ export class StatusProClient {
    *
    * @example
    * ```typescript
-   * import { listOrders } from '@statuspro/client';
+   * import { listOrders } from 'statuspro-client';
    *
    * const client = await StatusProClient.create();
    * const { data, error } = await listOrders({ client: client.sdk });
@@ -410,7 +410,7 @@ export class StatusProClient {
    *
    * @example
    * ```typescript
-   * import { listOrders } from '@statuspro/client';
+   * import { listOrders } from 'statuspro-client';
    *
    * const client = await StatusProClient.create();
    * const { data, error } = await listOrders(client.getConfig());
