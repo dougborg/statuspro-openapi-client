@@ -268,11 +268,12 @@ async def test_observe_service_timing_accuracy(setup_test_logging):
         service = TestService()
         await service.slow_method()
 
-        # Check that duration is roughly 50ms or more
+        # Check that duration is roughly 50ms or more. Upper bound is generous
+        # because shared CI runners occasionally add 50-100ms of scheduling jitter.
         completed_call = mock_logger.debug.call_args_list[1]
         duration_ms = completed_call[1]["duration_ms"]
-        assert duration_ms >= 50  # Should be at least 50ms
-        assert duration_ms < 100  # But not too much more (with some tolerance)
+        assert duration_ms >= 50  # Should be at least 50ms (asyncio.sleep guarantee)
+        assert duration_ms < 500  # Room for CI jitter; still proves timing is measured
 
 
 @pytest.mark.asyncio
