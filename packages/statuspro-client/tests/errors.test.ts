@@ -6,11 +6,11 @@ import { describe, expect, it } from 'vitest';
 import {
   AuthenticationError,
   NetworkError,
+  parseError,
   RateLimitError,
   ServerError,
   StatusProError,
   ValidationError,
-  parseError,
 } from '../src/errors.js';
 
 describe('Error Classes', () => {

@@ -27,35 +27,31 @@ export { StatusProClient, type StatusProClientOptions } from './client.js';
 
 // Re-export error types and utilities
 export {
-  StatusProError,
   AuthenticationError,
-  RateLimitError,
-  ValidationError,
-  ServerError,
   NetworkError,
   parseError,
+  RateLimitError,
+  ServerError,
+  StatusProError,
+  ValidationError,
   type ValidationErrorDetail,
 } from './errors.js';
-
+// Re-export the Client type for advanced usage
+export type { Client } from './generated/client/types.gen.js';
+// Re-export generated SDK functions for direct API access
+export * from './generated/sdk.gen.js';
+export {
+  createPaginatedFetch,
+  DEFAULT_PAGINATION_CONFIG,
+  type PaginatedResponse,
+  type PaginationConfig,
+} from './transport/pagination.js';
 // Re-export transport utilities for advanced usage
 export {
   createResilientFetch,
-  type RetryConfig,
   DEFAULT_RETRY_CONFIG,
+  type RetryConfig,
 } from './transport/resilient.js';
-
-export {
-  createPaginatedFetch,
-  type PaginationConfig,
-  DEFAULT_PAGINATION_CONFIG,
-  type PaginatedResponse,
-} from './transport/pagination.js';
-
-// Re-export generated SDK functions for direct API access
-export * from './generated/sdk.gen.js';
-
-// Re-export the Client type for advanced usage
-export type { Client } from './generated/client/types.gen.js';
 
 // Re-export all generated types for convenience
 export * from './types.js';
