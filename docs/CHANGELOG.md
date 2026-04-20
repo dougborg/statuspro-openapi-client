@@ -2,6 +2,10 @@
 
 <!-- version list -->
 
+## v0.1.0 (2026-04-20)
+
+- Initial Release
+
 ## v0.1.0 (unreleased)
 
 Initial monorepo for the StatusPro API client ecosystem:
