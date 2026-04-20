@@ -11,17 +11,17 @@ update), so this client is intentionally compact.
 ## Installation
 
 ```bash
-npm install @statuspro/client
+npm install statuspro-client
 # or
-pnpm add @statuspro/client
+pnpm add statuspro-client
 # or
-yarn add @statuspro/client
+yarn add statuspro-client
 ```
 
 ## Quick Start
 
 ```typescript
-import { StatusProClient } from '@statuspro/client';
+import { StatusProClient } from 'statuspro-client';
 
 const client = await StatusProClient.create();  // reads STATUSPRO_API_KEY
 const response = await client.get('/orders');
@@ -57,7 +57,7 @@ node --env-file=.env your-script.js
 
 ```typescript
 import 'dotenv/config';
-import { StatusProClient } from '@statuspro/client';
+import { StatusProClient } from 'statuspro-client';
 
 const client = StatusProClient.withApiKey(process.env.STATUSPRO_API_KEY!);
 ```
@@ -135,7 +135,7 @@ import {
   RateLimitError,
   ValidationError,
   ServerError,
-} from '@statuspro/client';
+} from 'statuspro-client';
 
 const response = await client.post('/orders/123/status', {
   status_code: 'st000003',
@@ -173,7 +173,7 @@ import {
   listOrders,
   getOrder,
   updateOrderStatus,
-} from '@statuspro/client';
+} from 'statuspro-client';
 
 const client = await StatusProClient.create();
 
