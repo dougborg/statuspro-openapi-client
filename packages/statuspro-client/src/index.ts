@@ -9,7 +9,7 @@
  *
  * @example
  * ```typescript
- * import { StatusProClient } from '@statuspro/client';
+ * import { StatusProClient } from 'statuspro-client';
  *
  * const client = await StatusProClient.create({ apiKey: 'your-api-key' });
  * const response = await client.get('/orders');
@@ -18,7 +18,7 @@
  *
  * @example Types-only import
  * ```typescript
- * import type { OrderListItem, Status } from '@statuspro/client/types';
+ * import type { OrderListItem, Status } from 'statuspro-client/types';
  * ```
  */
 

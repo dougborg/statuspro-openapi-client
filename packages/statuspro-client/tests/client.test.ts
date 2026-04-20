@@ -137,8 +137,8 @@ describe('StatusProClient', () => {
       await client.get('/orders', { status_code: 'st000002', exclude_cancelled: true });
 
       const [url] = mockFetch.mock.calls[0];
-      expect(url).toContain('category=widgets');
-      expect(url).toContain('active=true');
+      expect(url).toContain('status_code=st000002');
+      expect(url).toContain('exclude_cancelled=true');
     });
 
     it('should make POST requests', async () => {
@@ -146,11 +146,11 @@ describe('StatusProClient', () => {
       mockFetch.mockResolvedValueOnce(response);
 
       const client = StatusProClient.withApiKey(TEST_API_KEY, { fetch: mockFetch });
-      await client.post('/orders', { status_code: "st000003", comment: "Shipped" });
+      await client.post('/orders', { status_code: 'st000003', comment: 'Shipped' });
 
       const [, options] = mockFetch.mock.calls[0];
       expect(options.method).toBe('POST');
-      expect(options.body).toBe(JSON.stringify({ status_code: "st000003", comment: "Shipped" }));
+      expect(options.body).toBe(JSON.stringify({ status_code: 'st000003', comment: 'Shipped' }));
     });
 
     it('should make PUT requests', async () => {

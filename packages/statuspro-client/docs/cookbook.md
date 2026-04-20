@@ -19,7 +19,7 @@ Ready-to-use recipes for the StatusPro TypeScript client. See the
 ## List orders with filters
 
 ```typescript
-import { StatusProClient, listOrders } from '@statuspro/client';
+import { StatusProClient, listOrders } from 'statuspro-client';
 
 const client = await StatusProClient.create();
 
@@ -41,7 +41,7 @@ for (const order of data?.data ?? []) {
 ## Look up an order by number + email
 
 ```typescript
-import { lookupOrder } from '@statuspro/client';
+import { lookupOrder } from 'statuspro-client';
 
 const { data: order } = await lookupOrder({
   client: client.sdk,
@@ -56,7 +56,7 @@ if (order) {
 ## Get one order with full detail
 
 ```typescript
-import { getOrder } from '@statuspro/client';
+import { getOrder } from 'statuspro-client';
 
 const { data: order } = await getOrder({
   client: client.sdk,
@@ -77,7 +77,7 @@ transition.
 import {
   getViableStatuses,
   updateOrderStatus,
-} from '@statuspro/client';
+} from 'statuspro-client';
 
 async function advanceToShipped(orderId: number): Promise<boolean> {
   const { data: viable } = await getViableStatuses({
@@ -108,7 +108,7 @@ async function advanceToShipped(orderId: number): Promise<boolean> {
 ## Add a public comment
 
 ```typescript
-import { addOrderComment, RateLimitError, parseError } from '@statuspro/client';
+import { addOrderComment, RateLimitError, parseError } from 'statuspro-client';
 
 const { response } = await addOrderComment({
   client: client.sdk,
@@ -128,7 +128,7 @@ if (!response.ok) {
 ## Push back a due date
 
 ```typescript
-import { setOrderDueDate } from '@statuspro/client';
+import { setOrderDueDate } from 'statuspro-client';
 
 await setOrderDueDate({
   client: client.sdk,
@@ -140,7 +140,7 @@ await setOrderDueDate({
 ## Bulk-update up to 50 orders
 
 ```typescript
-import { bulkUpdateOrderStatus } from '@statuspro/client';
+import { bulkUpdateOrderStatus } from 'statuspro-client';
 
 const { response } = await bulkUpdateOrderStatus({
   client: client.sdk,
@@ -158,7 +158,7 @@ console.log(`Bulk status code: ${response.status}`);
 ## Load the full status catalog
 
 ```typescript
-import { getStatuses } from '@statuspro/client';
+import { getStatuses } from 'statuspro-client';
 
 const { data: statuses } = await getStatuses({ client: client.sdk });
 
@@ -187,7 +187,7 @@ Mock the fetch layer rather than the SDK:
 
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { StatusProClient } from '@statuspro/client';
+import { StatusProClient } from 'statuspro-client';
 
 describe('my app', () => {
   beforeEach(() => {
