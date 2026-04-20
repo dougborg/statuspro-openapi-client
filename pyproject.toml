@@ -45,7 +45,7 @@ dependencies = [
   "python-dotenv>=1.0.0",
   # Security-critical: urllib3 >= 2.6.3 fixes CVE-2025-66471, CVE-2025-66418, and CVE-2026-21441
   "urllib3>=2.6.3",
-  "pydantic>=2.12.0",
+  "pydantic>=2.13.3",
   "email-validator>=2.2.0",  # Required for Pydantic EmailStr fields
   "typing-extensions>=4.13.0",
   "httpx-retries>=0.5.0",
@@ -120,7 +120,7 @@ dev = [
     "aiohttp>=3.13.3",
     "brotli>=1.2.0",
     "poethepoet>=0.37.0",
-    "ty>=0.0.1a25",
+    "ty>=0.0.32",
     "types-jsonschema>=4.25.1.20251009",
 ]
 
