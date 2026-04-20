@@ -101,15 +101,16 @@ jobs:
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Semantic release
+      - name: Semantic release (tag + version bump + changelog, skip npm publish)
         id: release
         if: steps.check.outputs.has_changes == 'true' || inputs.force_publish == true
         working-directory: packages/statuspro-client
         env:
           GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
-          NPM_CONFIG_PROVENANCE: "true"
         run: |
-          # Capture semantic-release output so callers can read outputs.
+          # @semantic-release/npm is configured with npmPublish: false, so this
+          # step only runs analyzeCommits → version bump → tag → GitHub release.
+          # The actual npm publish happens in the next step via OIDC.
           OUTPUT=$(npx semantic-release 2>&1) || {
             EXIT=$?
             echo "$OUTPUT"
@@ -123,3 +124,13 @@ jobs:
           else
             echo "new_release_published=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Publish to npm via OIDC Trusted Publisher
+        if: steps.release.outputs.new_release_published == 'true'
+        working-directory: packages/statuspro-client
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+        run: |
+          # Uses GitHub Actions OIDC — no NPM_TOKEN required.
+          # Requires Trusted Publisher configured on npmjs.com for this package + workflow.
+          pnpm publish --no-git-checks --access public
