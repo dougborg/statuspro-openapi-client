@@ -1,5 +1,5 @@
 site_name: StatusPro OpenAPI Client
-site_description: Production-ready Python client for StatusPro Manufacturing ERP API
+site_description: Production-ready Python client, TypeScript client, and MCP server for the StatusPro API
 site_author: Doug Borg
 site_url: https://dougborg.github.io/statuspro-openapi-client/
 # Note: Custom domain (statuspro-openapi-client.dougborg.org) available once DNS is configured
@@ -127,7 +127,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Client:
+  - Python Client:
       - User Guide: client/guide.md
       - Cookbook: client/cookbook.md
       - Testing: client/testing.md
@@ -140,20 +140,20 @@ nav:
           - ADR-004 Defer Observability to httpx: client/adr/0004-defer-observability-to-httpx.md
           - ADR-005 Sync and Async APIs: client/adr/0005-sync-async-apis.md
           - ADR-006 Response Unwrapping Utilities: client/adr/0006-response-unwrapping-utilities.md
-          - ADR-007 Domain Helper Classes: client/adr/0007-domain-helper-classes.md
           - ADR-008 Avoid Builder Pattern (Proposed): client/adr/0008-avoid-builder-pattern.md
           - ADR-011 Pydantic Domain Models: client/adr/0011-pydantic-domain-models.md
           - ADR-012 Validation Tiers: client/adr/0012-validation-tiers-for-agent-workflows.md
   - MCP Server:
       - Overview: mcp-server/index.md
-      - Architecture: mcp-server/architecture.md
+      - Examples: mcp-server/examples.md
       - Development: mcp-server/development.md
       - Deployment: mcp-server/deployment.md
       - Docker: mcp-server/docker.md
-      - Implementation Plan: mcp-server/implementation-plan.md
+      - Logging: mcp-server/LOGGING.md
       - ADRs:
           - Overview: mcp-server/adr/README.md
-          - ADR-010 StatusPro MCP Server: mcp-server/adr/0010-statuspro-mcp-server.md
+          - ADR-0016 Tool Interface Pattern: mcp-server/adr/0016-tool-interface-pattern.md
+          - ADR-0017 Automated Tool Documentation: mcp-server/adr/0017-automated-tool-documentation.md
   - API Reference: reference/
   - OpenAPI Documentation: openapi-docs.md
   - Development:
@@ -166,6 +166,7 @@ nav:
       - Overview: adr/README.md
       - ADR-009 Migrate to uv: adr/0009-migrate-from-poetry-to-uv.md
       - ADR-013 Module-Local Docs: adr/0013-module-local-documentation.md
+      - ADR-014 GitHub Copilot Custom Agents: adr/0014-github-copilot-custom-agents.md
 
 extra:
   version:

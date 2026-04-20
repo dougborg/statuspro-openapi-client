@@ -65,7 +65,7 @@ Builders would add:
 - ❌ **Learning curve**: Need to learn builder methods
 - ❌ **Two ways to do everything**: Confusing
 - ❌ **Type safety challenges**: Dynamic chaining is hard to type
-- ❌ **Maintenance burden**: 248 endpoints × builder code
+- ❌ **Maintenance burden**: every endpoint needs a builder class
 
 ## Consequences
 
@@ -92,20 +92,16 @@ Builders would add:
 
 ## Detailed Analysis
 
-See [BUILDER_PATTERN_ANALYSIS.md](../BUILDER_PATTERN_ANALYSIS.md) for comprehensive
-analysis with code examples.
-
 ### What Builders Would Look Like
 
 ```python
-# Fluent API
+# Fluent API (hypothetical)
 query = (
-    ProductQuery(client)
-    .sellable()
-    .producible()
-    .not_batch_tracked()
-    .created_between(datetime(2024, 1, 1), datetime(2024, 12, 31))
-    .limit(100)
+    OrderQuery(client)
+    .with_status_code("st000002")
+    .exclude_cancelled()
+    .due_before(datetime(2026, 3, 1))
+    .per_page(100)
     .all()
 )
 ```
@@ -116,27 +112,27 @@ query = (
 
 ```python
 # Builder: What API call is this making?
-products = await ProductQuery(client).sellable().all()
+orders = await OrderQuery(client).with_status_code("st000002").all()
 
 # Direct: Clear what's happening
-response = await get_all_products.asyncio_detailed(
+response = await list_orders.asyncio_detailed(
     client=client,
-    is_sellable=True
+    status_code="st000002",
 )
-products = unwrap_data(response)
+orders = unwrap_data(response)
 ```
 
 **2. Type Safety**
 
 ```python
 # Builder: Dynamic chaining breaks autocomplete
-query.sellable().producible().???  # What methods exist?
+query.with_status_code("st000002").exclude_cancelled().???  # What methods exist?
 
 # Direct: Perfect autocomplete
-await get_all_products.asyncio_detailed(
+await list_orders.asyncio_detailed(
     client=client,
-    is_sellable=  # IDE shows: bool
-    is_producible=  # IDE shows: bool
+    status_code=  # IDE shows: str | None
+    exclude_cancelled=  # IDE shows: bool | None
 )
 ```
 
@@ -144,23 +140,23 @@ await get_all_products.asyncio_detailed(
 
 ```python
 # Builder: Need to trace through multiple methods
-query = ProductQuery(client).sellable()  # Step 1
-query = query.producible()  # Step 2
+query = OrderQuery(client).with_status_code("st000002")  # Step 1
+query = query.exclude_cancelled()  # Step 2
 result = await query.execute()  # Step 3: Where is the actual API call?
 
 # Direct: Single step, clear
-response = await get_all_products.asyncio_detailed(...)  # API call here
+response = await list_orders.asyncio_detailed(...)  # API call here
 ```
 
 **4. Two Ways to Do Everything**
 
 ```python
 # Builder way
-products = await ProductQuery(client).sellable().all()
+orders = await OrderQuery(client).with_status_code("st000002").all()
 
 # Direct way
-response = await get_all_products.asyncio_detailed(client=client, is_sellable=True)
-products = unwrap_data(response)
+response = await list_orders.asyncio_detailed(client=client, status_code="st000002")
+orders = unwrap_data(response)
 
 # Which should users use? Confusion!
 ```
@@ -169,24 +165,24 @@ products = unwrap_data(response)
 
 ### Alternative 1: Full Builder Pattern
 
-Implement builders for all 248 endpoints.
+Implement builders for every endpoint.
 
 **Rejected**: Too much code, breaks transparency, hurts type safety.
 
 ### Alternative 2: Hybrid (Builders for Complex Queries Only)
 
-Builders only for complex endpoints (e.g., `ProductQuery`, `SalesOrderQuery`).
+Builders only for complex endpoints (e.g., `OrderQuery`).
 
 **Rejected**: Still creates two ways to do things, inconsistent API.
 
 ### Alternative 3: Partial Application / Bound Client
 
 ```python
-products = client.products
-result = await products.get_all(is_sellable=True)
+orders = client.orders
+result = await orders.list(status_code="st000002")
 ```
 
-**Considered**: This is essentially what domain helpers provide (ADR-007).
+**Considered**: Essentially what the thin `client.orders` / `client.statuses` helpers do — see the `helpers/` package in the client.
 
 ## What We Do Instead
 

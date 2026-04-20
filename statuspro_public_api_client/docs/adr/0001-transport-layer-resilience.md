@@ -16,11 +16,11 @@ Traditional approaches include:
 1. **Middleware Pattern**: Intercept requests/responses at application layer
 1. **Transport-Layer Pattern**: Implement resilience at the HTTP transport layer
 
-The generated API client has 248 endpoint modules with both sync and async variants. Any
+The generated API client has every endpoint generated with both sync and async variants. Any
 solution needs to:
 
 - Work with both sync and async code
-- Not require modifying 248+ generated files
+- Not require modifying every generated file
 - Survive client regeneration
 - Be maintainable and debuggable
 - Have minimal performance overhead
@@ -111,7 +111,7 @@ async def get_all_products(...):
 
 **Cons:**
 
-- Need to decorate 248+ generated methods
+- Need to decorate every generated method
 - Breaks on regeneration
 - Violates DRY principle
 - Harder to maintain consistency
@@ -139,7 +139,7 @@ class ResilientProductAPI:
 
 **Cons:**
 
-- Need to maintain 248+ wrapper methods
+- Need to maintain a wrapper for every endpoint
 - Type hints break
 - Extra layer of indirection
 - Doesn't survive API changes

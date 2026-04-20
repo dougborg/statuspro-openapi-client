@@ -33,54 +33,56 @@ Every tool has a comprehensive Google-style docstring:
 
 ```python
 @observe_tool
-@unpack_pydantic_params
-async def create_purchase_order(
-    request: Annotated[CreatePurchaseOrderRequest, Unpack()],
-    context: Context
-) -> PurchaseOrderResponse:
-    """Create a new purchase order with user confirmation.
+async def update_order_status(
+    context: Context,
+    order_id: int,
+    status_code: str,
+    comment: str | None = None,
+    public: bool = False,
+    email_customer: bool = True,
+    email_additional: bool = True,
+    confirm: bool = False,
+) -> dict[str, Any]:
+    """Change an order's status with user confirmation.
 
-    🔴 HIGH-RISK OPERATION: Creates financial commitment. User confirmation required.
+    🔴 HIGH-RISK OPERATION: Customer-visible state change. User confirmation required.
 
-    This tool uses FastMCP elicitation to show a preview before creating the order.
-    The user must explicitly confirm before the purchase order is created.
+    Uses FastMCP elicitation to show a preview before applying the change.
+    Call with ``confirm=False`` first to preview, then ``confirm=True`` to apply.
 
     **Workflow**:
-    1. Tool receives request parameters
-    2. Validates supplier and location exist
-    3. Calculates totals and shows preview
-    4. Requests user confirmation via elicitation
-    5. Creates order if confirmed
+    1. Validate the target status is a viable transition (``get_viable_statuses``).
+    2. Call with ``confirm=False`` — returns a preview, no write.
+    3. Call with ``confirm=True`` — elicits user approval, then writes.
 
     **Related Tools**:
-    - `receive_purchase_order` - Receive delivered items
-    - `verify_order_document` - Validate supplier invoice
+    - ``get_viable_statuses`` — confirm target status is reachable
+    - ``add_order_comment`` — record a comment without changing status
 
     **Related Resources**:
-    - `statuspro://suppliers` - Look up supplier_id for PO creation
+    - ``statuspro://statuses`` — look up status codes
 
     Args:
-        request: Purchase order creation request with supplier, items, etc.
         context: FastMCP context for services and elicitation
+        order_id: The StatusPro order id
+        status_code: 8-char status code (e.g. ``"st000003"``)
+        comment: Optional history comment
+        public: Whether the comment is visible to the customer
+        email_customer / email_additional: Which notifications to send
+        confirm: Must be True to apply the change
 
     Returns:
-        PurchaseOrderResponse with success status and order details
-
-    Raises:
-        ValidationError: If parameters are invalid
-        APIError: If StatusPro API call fails
+        dict with ``confirmed``, ``success``, ``status_code`` fields
 
     Example:
         Request: {
-            "supplier_id": 4001,
-            "location_id": 1,
-            "order_number": "PO-2024-001",
-            "items": [
-                {"variant_id": 501, "quantity": 100, "price_per_unit": 25.50}
-            ],
+            "order_id": 6110375248088,
+            "status_code": "st000003",
+            "comment": "Shipped via UPS",
+            "email_customer": true,
             "confirm": false  # Preview mode
         }
-        Returns: Preview showing order details and total
+        Returns: Preview showing the transition and notification plan
     """
 ```
 
@@ -98,20 +100,18 @@ async def create_purchase_order(
 Model fields include rich descriptions that become part of the API schema:
 
 ```python
-class CreatePurchaseOrderRequest(BaseModel):
-    """Request to create a purchase order."""
+class UpdateOrderStatusRequest(BaseModel):
+    """Request to change an order's status."""
 
-    supplier_id: int = Field(..., description="Supplier ID from StatusPro")
-    location_id: int = Field(..., description="Warehouse location ID where items will be received")
-    order_number: str = Field(..., description="Unique PO number (e.g., PO-2025-001)")
-    items: list[PurchaseOrderItem] = Field(
-        ...,
-        description="Items to purchase with quantities and prices",
-        min_length=1
-    )
+    order_id: int = Field(..., description="StatusPro order id")
+    status_code: str = Field(..., description="8-char status code, e.g. 'st000003'")
+    comment: str | None = Field(None, description="Optional history comment")
+    public: bool = Field(False, description="Whether the comment is visible to the customer")
+    email_customer: bool = Field(True, description="Send the customer a status email")
+    email_additional: bool = Field(True, description="Send additional notification emails")
     confirm: bool = Field(
         False,
-        description="If false, returns preview. If true, creates order after user confirmation."
+        description="If false, returns preview. If true, applies after user confirmation."
     )
 ```
 
@@ -283,39 +283,38 @@ Require templates for all tool responses.
 - Layer 3: `@observe_tool` decorator on all tools ✅
 - Layer 4: `scripts/generate_tools_json.py` generator ✅
 
-**Partially Implemented**:
+**Deferred**:
 
-- Layer 5: Templates for `verify_order_document` tool ✅
-- Layer 5: Templates for other tools (future work)
+- Layer 5 (response templates): not yet required — StatusPro tool responses
+  are small and the default JSON surface is adequate.
 
 **Documentation Coverage**:
 
-- 15 foundation tools documented
+- 9 tools documented (5 read-only, 4 mutations)
 - All request/response models documented
 - Cross-references added to related tools/resources
 
 ## Tools Documentation Examples
 
-**Read-Only Tool** (`search_items`):
+**Read-Only Tool** (`list_orders`):
 
 - 🟢 indicator (safe, no confirmation needed)
 - Example request/response
 - Related tools and resources
 - Performance characteristics
 
-**Destructive Tool** (`create_purchase_order`):
+**Destructive Tool** (`update_order_status`):
 
 - 🔴 indicator (requires confirmation)
 - Elicitation workflow documented
 - Preview vs confirm modes explained
 - Safety patterns highlighted
 
-**Verification Tool** (`verify_order_document`):
+**Bulk Tool** (`bulk_update_order_status`):
 
-- 🟡 indicator (reads multiple resources)
-- Template-based response format
-- Discrepancy handling documented
-- Suggested actions explained
+- 🔴 indicator (up to 50 orders at once, 5/min rate limit)
+- 202 Accepted / async-queued response documented
+- Preview shows the full batch before confirmation
 
 ## References
 

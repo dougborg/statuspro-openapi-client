@@ -131,15 +131,15 @@ function createNoOpLogger() {
  * const client = new StatusProClient({ apiKey: 'your-api-key' });
  *
  * // Make a request - auto-pagination collects all pages
- * const response = await client.fetch('/products');
+ * const response = await client.fetch('/orders');
  * const data = await response.json();
- * console.log(data.data); // All products from all pages
+ * console.log(data.data); // All orders from all pages
  * ```
  *
  * @example Disable auto-pagination for a single request
  * ```typescript
  * // Get only page 2
- * const response = await client.fetch('/products?page=2');
+ * const response = await client.fetch('/orders?page=2');
  * ```
  *
  * @example Custom configuration
@@ -271,29 +271,29 @@ export class StatusProClient {
    * - Retries on rate limiting and server errors
    * - Collects all pages for GET requests (auto-pagination)
    *
-   * @param path - API path (e.g., '/products') or full URL
+   * @param path - API path (e.g., '/orders') or full URL
    * @param init - Fetch options (method, body, headers, etc.)
    * @returns Promise resolving to the Response
    *
    * @example GET request with auto-pagination
    * ```typescript
-   * const response = await client.fetch('/products');
+   * const response = await client.fetch('/orders');
    * const { data } = await response.json();
-   * // data contains all products from all pages
+   * // data contains all orders from all pages
    * ```
    *
    * @example POST request
    * ```typescript
-   * const response = await client.fetch('/products', {
+   * const response = await client.fetch('/orders', {
    *   method: 'POST',
-   *   body: JSON.stringify({ name: 'New Product', sku: 'SKU-001' }),
+   *   body: JSON.stringify({ status_code: "st000003", comment: "Shipped" }),
    * });
    * ```
    *
    * @example Disable auto-pagination
    * ```typescript
    * // Explicit page parameter disables auto-pagination
-   * const response = await client.fetch('/products?page=2&limit=50');
+   * const response = await client.fetch('/orders?page=2&per_page=50');
    * ```
    */
   async fetch(path: string, init?: RequestInit): Promise<Response> {
@@ -395,10 +395,10 @@ export class StatusProClient {
    *
    * @example
    * ```typescript
-   * import { getAllProducts } from 'statuspro-openapi-client';
+   * import { listOrders } from 'statuspro-client';
    *
    * const client = await StatusProClient.create();
-   * const { data, error } = await getAllProducts({ client: client.sdk });
+   * const { data, error } = await listOrders({ client: client.sdk });
    * ```
    */
   get sdk(): Client {
@@ -410,10 +410,10 @@ export class StatusProClient {
    *
    * @example
    * ```typescript
-   * import { getAllProducts } from 'statuspro-openapi-client';
+   * import { listOrders } from 'statuspro-client';
    *
    * const client = await StatusProClient.create();
-   * const { data, error } = await getAllProducts(client.getConfig());
+   * const { data, error } = await listOrders(client.getConfig());
    * ```
    */
   getConfig(): { client: Client } {

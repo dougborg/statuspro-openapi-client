@@ -1,7 +1,7 @@
 /**
  * StatusPro OpenAPI Client for TypeScript/JavaScript
  *
- * A resilient client for the StatusPro Manufacturing ERP API with:
+ * A resilient client for the StatusPro API with:
  * - Automatic retries with exponential backoff
  * - Rate limiting awareness (429 handling)
  * - Automatic pagination
@@ -9,16 +9,16 @@
  *
  * @example
  * ```typescript
- * import { StatusProClient } from 'statuspro-openapi-client';
+ * import { StatusProClient } from 'statuspro-client';
  *
  * const client = await StatusProClient.create({ apiKey: 'your-api-key' });
- * const response = await client.get('/products');
+ * const response = await client.get('/orders');
  * const data = await response.json();
  * ```
  *
  * @example Types-only import
  * ```typescript
- * import type { Product, SalesOrder } from 'statuspro-openapi-client/types';
+ * import type { OrderListItem, Status } from 'statuspro-client/types';
  * ```
  */
 

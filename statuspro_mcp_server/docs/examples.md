@@ -1,220 +1,133 @@
-# StatusPro MCP Server - Workflow Examples
+# StatusPro MCP Server — Workflow Examples
 
-This guide provides workflow examples for common manufacturing ERP tasks using the
-StatusPro MCP Server.
+Typical natural-language flows you can try with Claude Desktop once the
+server is connected. Each example shows the underlying tool sequence.
 
-## Quick Start
+> **Tip**: the `statuspro://help` resource surfaces the same information
+> from inside the MCP client.
 
-After connecting to the MCP server, use the `statuspro://help` resource for detailed
-guidance on tools and workflows.
-
-## Core Workflows
-
-### 1. Inventory Management
-
-#### Check Item Stock
+## Looking up an order
 
 ```
-# Search for items
-search_items(query="widget", limit=10)
+User: "Find order 1188 for customer@example.com"
 
-# Get detailed variant information
-get_variant_details(variant_id=12345)
+Model:
+  lookup_order(number="1188", email="customer@example.com")
+  → Order 6110375248088 — "#1188" — Status: "In Production"
 ```
 
-#### Typical Flow
-
-1. **Search** - Use `search_items` to find products by name, SKU, or description
-1. **Inspect** - Use `get_variant_details` for full inventory details including stock
-   levels
-1. **Resources** - Browse `statuspro://inventory/items` for inventory overview
-
-### 2. Purchase Order Lifecycle
-
-#### Create a Purchase Order (Preview/Confirm Pattern)
-
-All create/modify operations use a two-step confirmation:
+## Listing orders by state
 
 ```
-# Step 1: Preview the order (no changes made)
-create_purchase_order(
-    supplier_id=42,
-    location_id=1,
-    line_items=[{"variant_id": 123, "quantity": 100, "unit_cost": 25.50}],
-    confirm=false  # Preview mode
-)
+User: "Show me orders currently in production that are due this week"
 
-# Step 2: Create the order (after reviewing preview)
-create_purchase_order(
-    supplier_id=42,
-    location_id=1,
-    line_items=[{"variant_id": 123, "quantity": 100, "unit_cost": 25.50}],
-    confirm=true  # Creates order, prompts for confirmation
-)
+Model:
+  list_orders(
+    status_code="st000002",
+    exclude_cancelled=True,
+    due_date_to="2026-03-08T00:00:00+00:00",
+    per_page=50,
+  )
+  → [<20 OrderSummary entries>]
 ```
 
-#### Receive a Purchase Order
+## Changing one order's status (two-step confirm)
 
 ```
-# Preview receiving (shows what will happen)
-receive_purchase_order(
-    order_id=1234,
-    line_items=[{"line_item_id": 5678, "quantity": 100}],
-    confirm=false
-)
+User: "Mark order 6110375248088 as shipped and notify the customer"
 
-# Confirm receiving
-receive_purchase_order(
-    order_id=1234,
-    line_items=[{"line_item_id": 5678, "quantity": 100}],
-    confirm=true
-)
+Model:
+  # 1. Verify the target status is reachable.
+  get_viable_statuses(order_id=6110375248088)
+  → [..., Status(code="st000003", name="Shipped"), ...]
+
+  # 2. Preview — confirm=False returns a preview, no write.
+  update_order_status(
+    order_id=6110375248088,
+    status_code="st000003",
+    comment="Shipped via UPS — tracking 1Z999AA10123456784",
+    public=True,
+    email_customer=True,
+    confirm=False,
+  )
+  → {"preview": {...}, "confirmed": False}
+
+  # 3. Execute — confirm=True triggers an elicit for explicit user approval.
+  update_order_status(..., confirm=True)
+  → {"confirmed": True, "success": True, "status_code": 200}
 ```
 
-#### Verify Order Documents
-
-Use document verification to cross-reference supplier documents with orders:
+## Adding a customer-visible comment
 
 ```
-verify_order_document(
-    order_id=1234,
-    document_items=[
-        {"sku": "WIDGET-001", "quantity": 100, "unit_price": 25.50},
-        {"sku": "GADGET-002", "quantity": 50, "unit_price": 15.00}
+User: "Post a public update on order 6110375248088 saying the parts arrived"
+
+Model:
+  add_order_comment(
+    order_id=6110375248088,
+    comment="Parts received — assembly starts tomorrow.",
+    public=True,
+    confirm=False,
+  )
+  → preview
+
+  add_order_comment(..., confirm=True)
+  → {"confirmed": True, "success": True, "status_code": 200}
+```
+
+The `/comment` endpoint is rate-limited to **5 requests/minute**.
+
+## Pushing back a due date
+
+```
+User: "Slip order 6110375248088's due date to next Friday"
+
+Model:
+  update_order_due_date(
+    order_id=6110375248088,
+    due_date="2026-03-13T17:00:00+00:00",
+    confirm=False,
+  )
+  → preview
+
+  update_order_due_date(..., confirm=True)
+```
+
+## Bulk status update (up to 50 orders)
+
+```
+User: "Mark these 25 orders as shipped without emailing customers"
+
+Model:
+  bulk_update_order_status(
+    order_ids=[...25 ids...],
+    status_code="st000003",
+    email_customer=False,
+    confirm=False,
+  )
+  → preview (one preview dict, lists all 25)
+
+  bulk_update_order_status(..., confirm=True)
+  → {"confirmed": True, "success": True, "status_code": 202,
+     "note": "Bulk updates are queued and processed asynchronously."}
+```
+
+`/bulk-status` returns **202 Accepted** — the updates are queued and applied
+in the background. It's also rate-limited to **5 requests/minute**.
+
+## Listing all statuses
+
+```
+User: "What statuses are configured on this account?"
+
+Model:
+  list_statuses()
+  → [
+      {code: "st000001", name: "Order Received", color: "gray"},
+      {code: "st000002", name: "In Production", color: "pink"},
+      {code: "st000003", name: "Shipped",       color: "green"},
+      ...
     ]
-)
 ```
 
-Returns one of three results:
-
-- **Full Match** - All items match perfectly
-- **Partial Match** - Some discrepancies found (quantity, price, or missing items)
-- **No Match** - No items could be matched
-
-### 3. Manufacturing Order Lifecycle
-
-#### Fulfill a Manufacturing Order
-
-```
-# Preview completion
-fulfill_order(
-    order_id=1234,
-    order_type="manufacturing",
-    confirm=false
-)
-
-# Complete the order (marks as DONE)
-fulfill_order(
-    order_id=1234,
-    order_type="manufacturing",
-    confirm=true
-)
-```
-
-Manufacturing order fulfillment:
-
-- Marks the order status as DONE
-- Updates inventory based on bill of materials (BOM)
-- Adds finished goods to stock
-- Consumes raw materials
-
-### 4. Sales Order Fulfillment
-
-#### Fulfill a Sales Order
-
-```
-# Preview fulfillment
-fulfill_order(
-    order_id=5678,
-    order_type="sales",
-    confirm=false
-)
-
-# Create fulfillment record
-fulfill_order(
-    order_id=5678,
-    order_type="sales",
-    confirm=true
-)
-```
-
-Sales order fulfillment:
-
-- Creates a fulfillment record
-- Reduces available inventory
-- Marks items as shipped
-
-## Response Format
-
-All tools return dual-format responses:
-
-1. **Markdown Content** - Human-readable formatted output for display
-1. **Structured Data** - JSON data for programmatic processing
-
-Example response structure:
-
-```json
-{
-  "content": "# Purchase Order Created\n\n**Order**: PO-2024-001...",
-  "structured_content": {
-    "order_id": 1234,
-    "order_number": "PO-2024-001",
-    "status": "open",
-    "is_preview": false,
-    "line_items": [...]
-  }
-}
-```
-
-## Resources
-
-The server provides read-only resources for browsing cached reference data.
-Transactional data (orders, stock movements) uses tools instead.
-
-| Resource                   | Description                             |
-| -------------------------- | --------------------------------------- |
-| `statuspro://help`            | Help index and quick start              |
-| `statuspro://help/workflows`  | Workflow documentation                  |
-| `statuspro://help/tools`      | Tool reference                          |
-| `statuspro://help/resources`  | Resource documentation                  |
-| `statuspro://inventory/items` | Browse product/material/service catalog |
-| `statuspro://suppliers`       | Supplier directory with contact info    |
-| `statuspro://locations`       | Warehouses and facilities               |
-| `statuspro://tax-rates`       | Configured tax rates                    |
-| `statuspro://operators`       | Manufacturing operators                 |
-
-## Safety Patterns
-
-### Preview/Confirm Pattern
-
-All operations that create or modify data use a two-step pattern:
-
-1. **Preview** (`confirm=false`) - Shows what would happen without making changes
-1. **Confirm** (`confirm=true`) - Executes the operation with user confirmation prompt
-
-This prevents accidental modifications and allows reviewing changes before committing.
-
-### Elicitation
-
-When `confirm=true`, the server uses FastMCP's elicitation feature to prompt for
-explicit user confirmation before executing destructive or irreversible operations.
-
-## Error Handling
-
-Tools return structured error information:
-
-- **Validation errors** - Invalid input parameters
-- **API errors** - StatusPro API failures with status codes
-- **Not found errors** - Resources that don't exist
-
-Errors include actionable `next_actions` suggestions when applicable.
-
-## Token Efficiency
-
-The server is designed to minimize token usage:
-
-1. **Minimal Instructions** - Server instructions are brief; use `statuspro://help` for
-   details
-1. **Progressive Discovery** - Load help resources on-demand as needed
-1. **Structured Responses** - Dual markdown/JSON format avoids redundant formatting
-1. **Template System** - Consistent, compact response formatting
+Or browse the `statuspro://statuses` resource for a cached JSON snapshot.

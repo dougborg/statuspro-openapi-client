@@ -1,58 +1,56 @@
-# statuspro-openapi-client
+# statuspro-client
 
 TypeScript/JavaScript client for the
-[StatusPro Manufacturing ERP API](https://orderstatuspro.com/) with automatic resilience
-features.
+[StatusPro API](https://app.orderstatuspro.com/api/v1) with automatic
+resilience. The StatusPro API is a small REST surface for reading and
+updating the status of orders.
 
 ## Features
 
-- **Automatic Retries** - Exponential backoff with configurable retry limits
-- **Rate Limiting Awareness** - Respects 429 responses and `Retry-After` headers
-- **Auto-Pagination** - Automatically collects all pages for GET requests
-- **Type Safety** - Full TypeScript types generated from OpenAPI spec
-- **Browser & Node.js** - Works in both environments
-- **Tree-Shakeable** - Only import what you need
+- **Automatic retries** — exponential backoff with configurable retry limits.
+- **Rate-limit awareness** — respects 429 + `Retry-After` (falls back to
+  exponential backoff; StatusPro doesn't surface the header today).
+- **Auto-pagination** — walks `GET /orders` using the `{data, meta}` envelope
+  and stops at `meta.last_page`; raw-array endpoints (`/statuses`,
+  `/orders/{id}/viable-statuses`) pass through untouched.
+- **Type safety** — full TypeScript types generated from the OpenAPI spec via
+  `@hey-api/openapi-ts`.
+- **Browser & Node.js** — works in both environments.
+- **Tree-shakeable** — only import what you need.
 
 ## Installation
 
 ```bash
-npm install statuspro-openapi-client
+npm install statuspro-client
 # or
-pnpm add statuspro-openapi-client
+pnpm add statuspro-client
 # or
-yarn add statuspro-openapi-client
+yarn add statuspro-client
 ```
 
 ## Quick Start
 
 ```typescript
-import { StatusProClient } from 'statuspro-openapi-client';
+import { StatusProClient } from 'statuspro-client';
 
-// Create client with API key
-const client = await StatusProClient.create({
-  apiKey: 'your-api-key',
-});
-
-// Or use environment variable (STATUSPRO_API_KEY)
+// API key from STATUSPRO_API_KEY env var (or .env)
 const client = await StatusProClient.create();
 
-// Or provide API key directly
+// Or provide the key directly
 const client = StatusProClient.withApiKey('your-api-key');
 
-// Make requests - auto-pagination collects all pages
-const response = await client.get('/products');
-const { data } = await response.json();
-console.log(`Found ${data.length} products`);
+// GET /orders — auto-paginated
+const response = await client.get('/orders');
+const { data, meta } = await response.json();
+console.log(`Found ${meta.total} orders across ${meta.last_page} pages`);
 ```
 
-## Types-Only Import
-
-If you only need TypeScript types without any runtime code:
+## Types-only import
 
 ```typescript
-import type { Product, SalesOrder, Variant } from 'statuspro-openapi-client/types';
+import type { OrderListItem, Status, OrderResponse } from 'statuspro-client/types';
 
-function processProduct(product: Product) {
+function render(order: OrderListItem) {
   // ...
 }
 ```
@@ -61,72 +59,62 @@ function processProduct(product: Product) {
 
 ```typescript
 const client = await StatusProClient.create({
-  // API key (or set STATUSPRO_API_KEY env var)
-  apiKey: 'your-api-key',
+  apiKey: 'your-api-key',                               // or STATUSPRO_API_KEY env var
 
-  // Custom base URL (default: https://app.orderstatuspro.com/api/v1)
-  baseUrl: 'https://app.orderstatuspro.com/api/v1',
+  baseUrl: 'https://app.orderstatuspro.com/api/v1',     // default shown
 
-  // Retry configuration
   retry: {
-    maxRetries: 5,           // Default: 5
-    backoffFactor: 1.0,      // Default: 1.0 (1s, 2s, 4s, 8s, 16s)
-    respectRetryAfter: true, // Default: true
+    maxRetries: 5,
+    backoffFactor: 1.0,       // 1s, 2s, 4s, 8s, 16s
+    respectRetryAfter: true,
   },
 
-  // Pagination configuration
   pagination: {
-    maxPages: 100,           // Default: 100
-    maxItems: undefined,     // Limit total items (optional)
-    defaultPageSize: 250,    // Default: 250
+    maxPages: 100,
+    maxItems: undefined,      // cap total items when set
+    defaultPageSize: 100,     // StatusPro's max per_page
   },
 
-  // Disable auto-pagination globally
-  autoPagination: false,
+  autoPagination: true,        // disable per-request with an explicit `page` param
 });
 ```
 
 ## Retry Behavior
 
-The client implements the same retry strategy as the Python client:
+Mirrors the Python client:
 
 | Status Code      | GET/PUT/DELETE | POST/PATCH |
 | ---------------- | -------------- | ---------- |
-| 429 (Rate Limit) | Retry          | Retry      |
-| 502, 503, 504    | Retry          | No Retry   |
-| Other 4xx        | No Retry       | No Retry   |
-| Network Error    | Retry          | Retry      |
+| 429 (Rate limit) | Retry          | Retry      |
+| 502, 503, 504    | Retry          | No retry   |
+| Other 4xx        | No retry       | No retry   |
+| Network error    | Retry          | Retry      |
 
-**Key behavior**: POST and PATCH requests are retried for rate limiting (429) because
-rate limits are transient and don't indicate idempotency issues.
+**Key behavior**: POST/PATCH are retried on 429 because rate limits are
+transient, not an idempotency problem.
 
 ## Auto-Pagination
 
-Auto-pagination is **ON by default** for all GET requests:
+Auto-pagination is ON by default for GET requests without an explicit `page`
+parameter:
 
 ```typescript
-// Collects all pages automatically
-const response = await client.get('/products');
+const response = await client.get('/orders');
 const { data, pagination } = await response.json();
-console.log(`Collected ${pagination.total_items} items from ${pagination.collected_pages} pages`);
+console.log(`Collected ${pagination.total_items} orders from ${pagination.collected_pages} pages`);
 ```
 
-To disable auto-pagination:
+To disable:
 
 ```typescript
-// Explicit page parameter disables auto-pagination
-const response = await client.get('/products', { page: 2, limit: 50 });
+// Explicit page param disables auto-pagination for that call
+const response = await client.get('/orders', { page: 2, per_page: 50 });
 
-// Or globally via configuration
-const client = await StatusProClient.create({
-  autoPagination: false,
-});
+// Or globally
+const client = await StatusProClient.create({ autoPagination: false });
 ```
 
 ## Error Handling
-
-The client returns standard `Response` objects. Use `parseError` for typed error
-handling:
 
 ```typescript
 import {
@@ -135,9 +123,12 @@ import {
   AuthenticationError,
   RateLimitError,
   ValidationError,
-} from 'statuspro-openapi-client';
+} from 'statuspro-client';
 
-const response = await client.post('/products', { name: 'Widget' });
+const response = await client.post('/orders/123/comment', {
+  comment: 'Shipped.',
+  public: true,
+});
 
 if (!response.ok) {
   const body = await response.json();
@@ -148,8 +139,8 @@ if (!response.ok) {
   } else if (error instanceof RateLimitError) {
     console.error(`Rate limited. Retry after ${error.retryAfter}s`);
   } else if (error instanceof ValidationError) {
+    // StatusPro ValidationErrorResponse: { message, errors: { field: [msg, ...] } }
     console.error('Validation errors:', error.details);
-    // [{ field: 'name', message: 'Required', code: 'missing' }]
   } else {
     console.error(`Error ${error.statusCode}: ${error.message}`);
   }
@@ -159,73 +150,57 @@ if (!response.ok) {
 Available error classes:
 
 - `AuthenticationError` (401)
-- `RateLimitError` (429) - includes `retryAfter` seconds
-- `ValidationError` (422) - includes `details` array
+- `RateLimitError` (429) — includes `retryAfter` seconds when present
+- `ValidationError` (422) — includes per-field errors
 - `ServerError` (5xx)
-- `NetworkError` - connection failures
-- `StatusProError` - base class for all errors
+- `NetworkError` — connection failures
+- `StatusProError` — base class
 
 ## HTTP Methods
 
 ```typescript
-// GET (auto-paginated by default)
-const products = await client.get('/products');
-const productById = await client.get('/products/123');
-const filtered = await client.get('/products', { category: 'widgets' });
+// GET (auto-paginated by default for /orders)
+const orders = await client.get('/orders');
+const order = await client.get('/orders/6110375248088');
+const byStatus = await client.get('/orders', { status_code: 'st000002' });
+const statuses = await client.get('/statuses');  // raw array, no pagination
 
 // POST
-const created = await client.post('/products', {
-  name: 'New Product',
-  sku: 'PROD-001',
+const status = await client.post('/orders/6110375248088/status', {
+  status_code: 'st000003',
+  comment: 'Shipped.',
+  email_customer: true,
 });
-
-// PUT
-const updated = await client.put('/products/123', {
-  name: 'Updated Product',
-});
-
-// PATCH
-const patched = await client.patch('/products/123', {
-  name: 'Patched Name',
-});
-
-// DELETE
-const deleted = await client.delete('/products/123');
 ```
+
+StatusPro does not expose `PUT`, `PATCH`, or `DELETE` — all mutations are
+POSTs.
 
 ## Advanced: Generated SDK
 
-The package exports generated SDK functions with full TypeScript types. You can use them
-with the resilient client:
-
 ```typescript
-import { StatusProClient, getAllProducts, createProduct } from 'statuspro-openapi-client';
+import { StatusProClient, listOrders, updateOrderStatus } from 'statuspro-client';
 
-// Create the resilient client
 const statuspro = await StatusProClient.create();
 
-// Use SDK functions with the resilient client
-const { data, error } = await getAllProducts({ client: statuspro.sdk });
+const { data, error } = await listOrders({ client: statuspro.sdk });
 if (data) {
-  console.log(`Found ${data.length} products`);
+  console.log(`Got ${data.data.length} orders`);
 }
-
-// Or use the config shorthand
-const result = await getAllProducts(statuspro.getConfig());
 ```
 
-The SDK functions provide:
+The SDK functions give you:
 
-- Full TypeScript types for all request/response bodies
-- Auto-completion for query parameters
-- Type-safe error handling
+- Full TypeScript types for every request/response body.
+- Autocomplete on query parameters (page, per_page, search, status_code, …).
+- Type-safe error paths.
 
 ## Environment Variables
 
-- `STATUSPRO_API_KEY` - API key for authentication
-- `STATUSPRO_BASE_URL` - Override the base URL (optional)
+- `STATUSPRO_API_KEY` — bearer token for authentication.
+- `STATUSPRO_BASE_URL` — override the base URL (optional).
 
-### Loading from .env files
+### Loading from `.env` files
 
 **Node.js 20.6+** (recommended):
 
@@ -233,7 +208,7 @@ The SDK functions provide:
 node --env-file=.env your-script.js
 ```
 
-**Node.js 18-20.5** (use dotenv):
+**Node.js 18–20.5** — use `dotenv`:
 
 ```bash
 npm install dotenv
@@ -241,23 +216,20 @@ npm install dotenv
 
 ```typescript
 import 'dotenv/config';
-import { StatusProClient } from 'statuspro-openapi-client';
+import { StatusProClient } from 'statuspro-client';
 
 const client = StatusProClient.withApiKey(process.env.STATUSPRO_API_KEY!);
 ```
 
-> **Note**: This library supports Node.js 18+ but does not bundle dotenv. If you need
-> .env file loading on Node.js < 20.6, install dotenv as a direct dependency in your
-> project.
+> This library supports Node.js 18+ but does not bundle `dotenv`. If you
+> need `.env` loading on Node 18–20.5, install `dotenv` in your project.
 
 ## Documentation
 
-For more detailed documentation:
-
-- **[Client Guide](docs/guide.md)** - Comprehensive usage guide
-- **[Cookbook](docs/cookbook.md)** - Common patterns and recipes
-- **[Testing Guide](docs/testing.md)** - Testing strategy and patterns
-- **[Architecture Decisions](docs/adr/README.md)** - Design decisions and rationale
+- **[Client Guide](docs/guide.md)** — comprehensive usage guide
+- **[Cookbook](docs/cookbook.md)** — common patterns and recipes
+- **[Testing Guide](docs/testing.md)** — testing strategy
+- **[Architecture Decisions](docs/adr/README.md)** — design rationale
 
 ## License
 

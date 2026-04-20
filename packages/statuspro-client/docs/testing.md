@@ -129,7 +129,7 @@ describe('createPaginatedFetch', () => {
       .mockResolvedValueOnce(page3Response);
 
     const paginatedFetch = createPaginatedFetch(mockFetch);
-    const response = await paginatedFetch('https://api.example.com/products');
+    const response = await paginatedFetch('https://api.example.com/orders');
 
     expect(mockFetch).toHaveBeenCalledTimes(3);
 
@@ -142,7 +142,7 @@ describe('createPaginatedFetch', () => {
     mockFetch.mockResolvedValueOnce(response);
 
     const paginatedFetch = createPaginatedFetch(mockFetch);
-    await paginatedFetch('https://api.example.com/products?page=2');
+    await paginatedFetch('https://api.example.com/orders?page=2');
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
@@ -207,7 +207,7 @@ describe('StatusProClient', () => {
       autoPagination: false,
     });
 
-    await client.get('/products');
+    await client.get('/orders');
 
     const [, options] = mockFetch.mock.calls[0];
     expect(options.headers.get('Authorization')).toBe('Bearer test-key');
@@ -244,7 +244,7 @@ describe('Retry with delays', () => {
       retry: { maxRetries: 3 },
     });
 
-    const responsePromise = client.get('/products');
+    const responsePromise = client.get('/orders');
 
     // Advance timers for retry delay
     await vi.advanceTimersByTimeAsync(1000);
@@ -343,12 +343,12 @@ describe('Integration Tests', () => {
   const apiKey = process.env.STATUSPRO_API_KEY;
   const runIntegration = apiKey ? it : it.skip;
 
-  runIntegration('should fetch products from real API', async () => {
+  runIntegration('should fetch orders from real API', async () => {
     const client = StatusProClient.withApiKey(apiKey!, {
       pagination: { maxItems: 5 },
     });
 
-    const response = await client.get('/products');
+    const response = await client.get('/orders');
     expect(response.ok).toBe(true);
 
     const { data } = await response.json();
@@ -363,8 +363,8 @@ describe('Integration Tests', () => {
 
     // Make multiple rapid requests to potentially trigger rate limiting
     const responses = await Promise.all([
-      client.get('/products', { limit: 1 }),
-      client.get('/variants', { limit: 1 }),
+      client.get('/orders', { per_page: 1 }),
+      client.get('/statuses'),
       client.get('/stock', { limit: 1 }),
     ]);
 

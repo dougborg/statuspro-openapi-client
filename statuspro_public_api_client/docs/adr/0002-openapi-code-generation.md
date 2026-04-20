@@ -10,8 +10,8 @@ Date: 2024-07-01 (estimated based on initial project setup)
 
 Building an API client for StatusPro Manufacturing ERP requires:
 
-- Coverage of 76+ endpoints
-- 150+ data models
+- Coverage of 7 endpoints (Orders + Statuses)
+- ~20 data models
 - Full type safety with type hints
 - Both sync and async support
 - Maintenance as API evolves
@@ -41,7 +41,7 @@ Generated code structure:
 
 ```
 statuspro_public_api_client/
-├── api/              # 248 endpoint modules (generated)
+├── api/              # 9 endpoint modules (generated)
 ├── models/           # 337 data models (generated)
 ├── client.py         # Base client classes (generated)
 ├── client_types.py   # Type definitions (generated)
@@ -66,7 +66,7 @@ Clear separation:
 1. **Both Sync and Async**: Generator creates both variants automatically
 1. **IDE Support**: Full autocomplete and type checking
 1. **Documentation**: Generated docstrings from OpenAPI descriptions
-1. **Zero Manual Boilerplate**: 248 endpoint modules + 337 models auto-created
+1. **Zero Manual Boilerplate**: 9 endpoint modules + ~20 models auto-created
 
 ### Negative Consequences
 
@@ -98,7 +98,7 @@ Write all API methods and models manually.
 
 **Cons:**
 
-- Massive manual effort (248 endpoints × 2 variants = 496 methods)
+- Massive manual effort (9 endpoints × 2 variants = 18 methods — still enough to want generation)
 - Error-prone (manual typing of 337 models)
 - Hard to keep in sync with API changes
 - No guarantee of completeness
@@ -118,7 +118,7 @@ Generate minimal base client, write wrappers for each endpoint.
 
 **Cons:**
 
-- Still requires manual wrappers for 248 endpoints
+- Still requires manual wrappers for every endpoint
 - Wrappers break on API changes
 - Duplication between generated and wrapper code
 - Maintenance burden

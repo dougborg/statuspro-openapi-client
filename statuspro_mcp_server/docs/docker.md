@@ -145,11 +145,11 @@ ensuring the tools list stays synchronized with actual implementations.
 ```json
 [
   {
-    "name": "check_inventory",
+    "name": "list_orders",
     "description": "Check stock levels for a specific product SKU."
   },
   {
-    "name": "create_purchase_order",
+    "name": "update_order_status",
     "description": "Create a purchase order with two-step confirmation."
   },
   {
@@ -205,13 +205,13 @@ version: 0.1.0
 license: MIT
 author: Doug Borg
 tags:
-  - manufacturing
+  - orders
   - erp
-  - inventory
+  - statuses
   - orders
 categories:
   - business
-  - manufacturing
+  - orders
 build_type: docker-built  # Docker will build and maintain
 ```
 

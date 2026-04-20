@@ -139,10 +139,10 @@ at the httpx transport layer — every endpoint gets it automatically.
 
 ## File Rules
 
-| Category      | Files                                        | Action          |
-| ------------- | -------------------------------------------- | --------------- |
-| **EDITABLE**  | `statuspro_client.py`, tests/, scripts/, docs/  | Can modify      |
-| **GENERATED** | `api/**/*.py`, `models/**/*.py`, `client.py` | **DO NOT EDIT** |
+| Category      | Files                                          | Action          |
+| ------------- | ---------------------------------------------- | --------------- |
+| **EDITABLE**  | `statuspro_client.py`, tests/, scripts/, docs/ | Can modify      |
+| **GENERATED** | `api/**/*.py`, `models/**/*.py`, `client.py`   | **DO NOT EDIT** |
 
 Regenerate client: `uv run poe regenerate-client` (2+ min)
 
@@ -260,7 +260,7 @@ tasks:
 | Commit standards  | [.github/agents/guides/shared/COMMIT_STANDARDS.md](.github/agents/guides/shared/COMMIT_STANDARDS.md)             |
 | File organization | [.github/agents/guides/shared/FILE_ORGANIZATION.md](.github/agents/guides/shared/FILE_ORGANIZATION.md)           |
 | Architecture      | [.github/agents/guides/shared/ARCHITECTURE_QUICK_REF.md](.github/agents/guides/shared/ARCHITECTURE_QUICK_REF.md) |
-| Client guide      | [statuspro_public_api_client/docs/guide.md](statuspro_public_api_client/docs/guide.md)                                 |
-| MCP docs          | [statuspro_mcp_server/docs/README.md](statuspro_mcp_server/docs/README.md)                                             |
-| TypeScript client | [packages/statuspro-client/README.md](packages/statuspro-client/README.md)                                             |
+| Client guide      | [statuspro_public_api_client/docs/guide.md](statuspro_public_api_client/docs/guide.md)                           |
+| MCP docs          | [statuspro_mcp_server/docs/README.md](statuspro_mcp_server/docs/README.md)                                       |
+| TypeScript client | [packages/statuspro-client/README.md](packages/statuspro-client/README.md)                                       |
 | ADRs              | [docs/adr/README.md](docs/adr/README.md)                                                                         |

@@ -151,7 +151,7 @@ uv run mcp-hmr statuspro_mcp.server:mcp
 #    - Notice a bug or want to add a feature
 
 # 3. Edit code in your editor
-#    - Modify src/statuspro_mcp/tools/inventory.py
+#    - Modify src/statuspro_mcp/tools/orders.py
 #    - Add logging, fix bugs, improve error handling
 #    - Save the file
 
@@ -185,18 +185,18 @@ uv run mcp-hmr statuspro_mcp.server:mcp
 Hot reload makes debugging much faster:
 
 ```python
-# Before (in src/statuspro_mcp/tools/inventory.py)
-async def _check_inventory_impl(request: CheckInventoryRequest, context: Context) -> StockInfo:
+# Before (in src/statuspro_mcp/tools/orders.py)
+async def _update_order_status_impl(request: UpdateOrderStatusRequest, context: Context) -> dict[str, object]:
     server_context = context.request_context.lifespan_context
     client = server_context.client
-    product = await client.inventory.check_stock(request.sku)
+    product = await client.orders.update_status(request.order_id, request.status_code)
     # ... rest of function
 
 # After (add logging - save file - test immediately!)
 import logging
 logger = logging.getLogger(__name__)
 
-async def _check_inventory_impl(request: CheckInventoryRequest, context: Context) -> StockInfo:
+async def _update_order_status_impl(request: UpdateOrderStatusRequest, context: Context) -> dict[str, object]:
     logger.debug(f"Context structure: {dir(context)}")  # See what's available
     logger.debug(f"Request context: {dir(context.request_context)}")  # Debug paths
 
@@ -204,7 +204,7 @@ async def _check_inventory_impl(request: CheckInventoryRequest, context: Context
     client = server_context.client
 
     logger.info(f"Checking stock for SKU: {request.sku}")  # Track calls
-    product = await client.inventory.check_stock(request.sku)
+    product = await client.orders.update_status(request.order_id, request.status_code)
     logger.info(f"Found product: {product.name if product else 'Not found'}")
     # ... rest of function
 ```
@@ -236,7 +236,7 @@ Save → Test in Claude Desktop → See logs immediately!
 uv run poe test
 
 # Pre-commit hooks will also run tests automatically
-git commit -m "feat(mcp): add new inventory tool"
+git commit -m "feat(mcp): add new order tool"
 ```
 
 ### Integration Testing Workflow
@@ -329,7 +329,7 @@ uv run poe check         # Full validation (lint + test + format)
 
 ```python
 # Good: Helps debug issues
-logger.info(f"Processing inventory check for SKU: {request.sku}")
+logger.info(f"Updating status for order {request.order_id}")
 logger.debug(f"Client config: base_url={client.base_url}, timeout={client.timeout}")
 logger.warning(f"SKU not found: {request.sku}, returning empty stock")
 
@@ -342,17 +342,17 @@ logger.debug("Debug message")
 
 ```python
 # Good: Separate implementation from FastMCP decorator
-async def _check_inventory_impl(request, context) -> StockInfo:
+async def _update_order_status_impl(request, context) -> dict[str, object]:
     \"\"\"Implementation with full business logic.\"\"\"
     # ... implementation
 
 @mcp.tool()
-async def check_inventory(request, context) -> StockInfo:
+async def update_order_status(request, context) -> dict[str, object]:
     \"\"\"FastMCP tool wrapper - minimal logic here.\"\"\"
-    return await _check_inventory_impl(request, context)
+    return await _update_order_status_impl(request, context)
 ```
 
-This allows testing `_check_inventory_impl` directly with mocks.
+This allows testing `_update_order_status_impl` directly with mocks.
 
 ## Additional Resources
 

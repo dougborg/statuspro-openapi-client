@@ -78,11 +78,11 @@ describe('StatusProClient', () => {
         fetch: mockFetch,
         autoPagination: false,
       });
-      await client.fetch('/products');
+      await client.fetch('/orders');
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const [url, options] = mockFetch.mock.calls[0];
-      expect(url).toBe(`${BASE_URL}/products`);
+      expect(url).toBe(`${BASE_URL}/orders`);
       expect(options.headers.get('Authorization')).toBe(`Bearer ${TEST_API_KEY}`);
     });
 
@@ -106,9 +106,9 @@ describe('StatusProClient', () => {
       mockFetch.mockResolvedValueOnce(response);
 
       const client = StatusProClient.withApiKey(TEST_API_KEY, { fetch: mockFetch });
-      await client.fetch('/products', {
+      await client.fetch('/orders', {
         method: 'POST',
-        body: JSON.stringify({ name: 'Test Product' }),
+        body: JSON.stringify({ comment: 'Test comment' }),
       });
 
       const [, options] = mockFetch.mock.calls[0];
@@ -122,10 +122,10 @@ describe('StatusProClient', () => {
       mockFetch.mockResolvedValueOnce(response);
 
       const client = StatusProClient.withApiKey(TEST_API_KEY, { fetch: mockFetch });
-      await client.get('/products');
+      await client.get('/orders');
 
       const [url, options] = mockFetch.mock.calls[0];
-      expect(url).toContain('/products');
+      expect(url).toContain('/orders');
       expect(options.method).toBe('GET');
     });
 
@@ -134,11 +134,11 @@ describe('StatusProClient', () => {
       mockFetch.mockResolvedValueOnce(response);
 
       const client = StatusProClient.withApiKey(TEST_API_KEY, { fetch: mockFetch });
-      await client.get('/products', { category: 'widgets', active: true });
+      await client.get('/orders', { status_code: 'st000002', exclude_cancelled: true });
 
       const [url] = mockFetch.mock.calls[0];
-      expect(url).toContain('category=widgets');
-      expect(url).toContain('active=true');
+      expect(url).toContain('status_code=st000002');
+      expect(url).toContain('exclude_cancelled=true');
     });
 
     it('should make POST requests', async () => {
@@ -146,11 +146,11 @@ describe('StatusProClient', () => {
       mockFetch.mockResolvedValueOnce(response);
 
       const client = StatusProClient.withApiKey(TEST_API_KEY, { fetch: mockFetch });
-      await client.post('/products', { name: 'New Product', sku: 'SKU-001' });
+      await client.post('/orders', { status_code: 'st000003', comment: 'Shipped' });
 
       const [, options] = mockFetch.mock.calls[0];
       expect(options.method).toBe('POST');
-      expect(options.body).toBe(JSON.stringify({ name: 'New Product', sku: 'SKU-001' }));
+      expect(options.body).toBe(JSON.stringify({ status_code: 'st000003', comment: 'Shipped' }));
     });
 
     it('should make PUT requests', async () => {
@@ -158,7 +158,7 @@ describe('StatusProClient', () => {
       mockFetch.mockResolvedValueOnce(response);
 
       const client = StatusProClient.withApiKey(TEST_API_KEY, { fetch: mockFetch });
-      await client.put('/products/1', { name: 'Updated Product' });
+      await client.put('/orders/6110375248088', { status_code: 'st000003' });
 
       const [, options] = mockFetch.mock.calls[0];
       expect(options.method).toBe('PUT');
@@ -169,7 +169,7 @@ describe('StatusProClient', () => {
       mockFetch.mockResolvedValueOnce(response);
 
       const client = StatusProClient.withApiKey(TEST_API_KEY, { fetch: mockFetch });
-      await client.patch('/products/1', { name: 'Patched Product' });
+      await client.patch('/orders/6110375248088', { comment: 'Patched' });
 
       const [, options] = mockFetch.mock.calls[0];
       expect(options.method).toBe('PATCH');
@@ -180,7 +180,7 @@ describe('StatusProClient', () => {
       mockFetch.mockResolvedValueOnce(response);
 
       const client = StatusProClient.withApiKey(TEST_API_KEY, { fetch: mockFetch });
-      await client.delete('/products/1');
+      await client.delete('/orders/6110375248088');
 
       const [, options] = mockFetch.mock.calls[0];
       expect(options.method).toBe('DELETE');
@@ -220,7 +220,7 @@ describe('StatusProClient', () => {
         retry: { maxRetries: 1, backoffFactor: 0.001 },
       });
 
-      const responsePromise = client.fetch('/products', { method: 'POST' });
+      const responsePromise = client.fetch('/orders', { method: 'POST' });
 
       // Advance timer to trigger retry
       await vi.advanceTimersByTimeAsync(10);
@@ -246,7 +246,7 @@ describe('StatusProClient', () => {
         fetch: mockFetch,
         autoPagination: false,
       });
-      await client.get('/products');
+      await client.get('/orders');
 
       // Should only make one request (no pagination)
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -272,7 +272,7 @@ describe('StatusProClient', () => {
         fetch: mockFetch,
         pagination: { maxPages: 2 },
       });
-      await client.get('/products');
+      await client.get('/orders');
 
       // Should stop at maxPages=2
       expect(mockFetch).toHaveBeenCalledTimes(2);

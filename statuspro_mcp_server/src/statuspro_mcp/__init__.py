@@ -1,35 +1,32 @@
-"""StatusPro Manufacturing ERP MCP Server.
+"""StatusPro MCP Server.
 
-This package provides a Model Context Protocol (MCP) server for the StatusPro
-Manufacturing ERP system. It enables natural language interactions with StatusPro
-through Claude Code and other MCP clients.
+A Model Context Protocol (MCP) server for the StatusPro API. Exposes order
+status lookup and update operations as tools for AI assistants.
 
 Key Features:
-- 12 tools covering inventory, sales orders, purchase orders, and manufacturing
-- Resource endpoints for read-only data access
-- Workflow prompts for common manufacturing scenarios
-- Built on statuspro-openapi-client with automatic retries and rate limiting
+- 9 tools across Orders and Statuses
+- Two-step confirm pattern on mutations
+- Built on statuspro-openapi-client — inherits retries, rate-limit awareness,
+  and auto-pagination for free
 
 Example:
-    Configure in Claude Code's MCP settings:
+    Configure in Claude Desktop's MCP settings:
 
     ```json
     {
       "mcpServers": {
-        "statuspro-erp": {
+        "statuspro": {
           "command": "uvx",
           "args": ["statuspro-mcp-server"],
           "env": {
-            "STATUSPRO_API_KEY": "your-api-key",
-            "STATUSPRO_BASE_URL": "https://app.orderstatuspro.com/api/v1"
+            "STATUSPRO_API_KEY": "your-api-key"
           }
         }
       }
     }
     ```
 
-For more information, see the documentation at:
-https://dougborg.github.io/statuspro-openapi-client/
+See https://github.com/dougborg/statuspro-openapi-client for docs.
 """
 
 from importlib.metadata import version

@@ -113,7 +113,7 @@ statuspro-mcp-server
 
 ```json
 {
-  "event": "inventory_check_completed",
+  "event": "order_status_updated",
   "sku": "WIDGET-001",
   "product_name": "Widget Pro",
   "available_stock": 100,
@@ -320,7 +320,7 @@ async def search_items(
 ) -> SearchItemsResponse:
     """Search for items - automatically instrumented."""
     services = get_services(context)
-    return await services.client.variants.search(request.query)
+    return await services.client.orders.list(search=request.query)
 ```
 
 ### @observe_service
