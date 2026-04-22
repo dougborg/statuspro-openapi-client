@@ -1,13 +1,13 @@
 # StatusProClient Guide
 
-The **StatusProClient** is the Python client for the [StatusPro
-API](https://app.orderstatuspro.com/api/v1). It extends
-`openapi-python-client`'s generated `AuthenticatedClient` with an httpx
-transport stack that adds automatic retries, rate-limit awareness,
-auto-pagination, and log sanitization — every endpoint inherits these for free.
+The **StatusProClient** is the Python client for the
+[StatusPro API](https://app.orderstatuspro.com/api/v1). It extends
+`openapi-python-client`'s generated `AuthenticatedClient` with an httpx transport stack
+that adds automatic retries, rate-limit awareness, auto-pagination, and log sanitization
+— every endpoint inherits these for free.
 
-The StatusPro API has seven endpoints covering order status lookup and
-update. This guide covers using the client against that surface.
+The StatusPro API has seven endpoints covering order status lookup and update. This
+guide covers using the client against that surface.
 
 ## Installation
 
@@ -37,9 +37,9 @@ async def main():
 asyncio.run(main())
 ```
 
-The helper methods on `client.orders` and `client.statuses` return hand-written
-Pydantic domain models (see `domain/`). If you want the raw attrs models
-instead, call the generated API modules directly and pass `client` through:
+The helper methods on `client.orders` and `client.statuses` return hand-written Pydantic
+domain models (see `domain/`). If you want the raw attrs models instead, call the
+generated API modules directly and pass `client` through:
 
 ```python
 from statuspro_public_api_client import StatusProClient
@@ -64,8 +64,8 @@ machine app.orderstatuspro.com
 password your-api-key-here
 ```
 
-Run `chmod 600 ~/.netrc` to keep the file private; the client warns if
-permissions are looser.
+Run `chmod 600 ~/.netrc` to keep the file private; the client warns if permissions are
+looser.
 
 ## Resilience
 
@@ -88,16 +88,16 @@ async with StatusProClient(max_retries=5) as client:
 
 ### Rate-limit awareness
 
-StatusPro documents rate limits (60/min on most endpoints, 5/min on
-`/comment` and `/bulk-status`) but doesn't currently surface them in response
-headers. The client's retry transport checks for `Retry-After` and falls
-back to exponential backoff when it's missing.
+StatusPro documents rate limits (60/min on most endpoints, 5/min on `/comment` and
+`/bulk-status`) but doesn't currently surface them in response headers. The client's
+retry transport checks for `Retry-After` and falls back to exponential backoff when it's
+missing.
 
 ### Auto-pagination
 
-`GET /orders` is paginated. With auto-pagination (on by default for GET
-requests without an explicit `page` parameter), the client walks every page
-up to `meta.last_page` and returns the combined `data` array:
+`GET /orders` is paginated. With auto-pagination (on by default for GET requests without
+an explicit `page` parameter), the client walks every page up to `meta.last_page` and
+returns the combined `data` array:
 
 ```python
 async with StatusProClient(max_pages=200) as client:
@@ -106,15 +106,14 @@ async with StatusProClient(max_pages=200) as client:
     print(f"Got {len(orders)} orders in production")
 ```
 
-To fetch a single page, pass `page=` explicitly — that disables auto-
-pagination for the call:
+To fetch a single page, pass `page=` explicitly — that disables auto- pagination for the
+call:
 
 ```python
 page_two = await client.orders.list(page=2, per_page=50)
 ```
 
-Cap the total items collected with the `max_items` extension on the raw
-httpx client:
+Cap the total items collected with the `max_items` extension on the raw httpx client:
 
 ```python
 async with StatusProClient() as client:
@@ -125,20 +124,18 @@ async with StatusProClient() as client:
     )
 ```
 
-**Raw-array endpoints** (`/statuses`, `/orders/{id}/viable-statuses`) are
-not paginated — they return a flat JSON array and the transport passes them
-through unchanged.
+**Raw-array endpoints** (`/statuses`, `/orders/{id}/viable-statuses`) are not paginated
+— they return a flat JSON array and the transport passes them through unchanged.
 
 ### Sensitive-data redaction
 
-The client scrubs Authorization headers and any field matching common secret
-patterns (`api_key`, `password`, `email`, `token`, etc.) from structured log
-output.
+The client scrubs Authorization headers and any field matching common secret patterns
+(`api_key`, `password`, `email`, `token`, etc.) from structured log output.
 
 ## Response Handling
 
-Use the helpers in `statuspro_public_api_client.utils` instead of writing
-status-code checks by hand.
+Use the helpers in `statuspro_public_api_client.utils` instead of writing status-code
+checks by hand.
 
 ```python
 from statuspro_public_api_client.utils import (
@@ -189,9 +186,9 @@ Hand-written Pydantic models live in `statuspro_public_api_client.domain`:
 - `Status` (status definitions)
 - `StatusProBaseModel` (frozen, ignores unknown fields)
 
-These are separate from the generated attrs models and are intended for
-business-logic code, validation, and ETL. Convert between them with the
-helpers in `statuspro_public_api_client.domain.converters`:
+These are separate from the generated attrs models and are intended for business-logic
+code, validation, and ETL. Convert between them with the helpers in
+`statuspro_public_api_client.domain.converters`:
 
 - `unwrap_unset(value, default)` — unwrap `UNSET` / `None` to a default.
 - `to_unset(value)` — convert `None` to `UNSET` when building a request.

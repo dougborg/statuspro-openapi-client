@@ -11,46 +11,52 @@ labels: [scope:client or scope:mcp], [p1-high, p2-medium, or p3-low], [type]
 ---
 
 ## Background
+
 [Why is this needed? What problem does it solve?]
 
 ## Current State
+
 [What exists today? What are the limitations?]
 
 ## Proposed Implementation
+
 [How should this be implemented? Include code examples.]
 
 ### Key Decisions
+
 - **Decision 1**: [Rationale]
 - **Decision 2**: [Rationale]
 
 ## Implementation Steps
+
 1. [Specific, actionable step]
 2. [Another step]
 3. ...
 
 ## Testing Strategy
+
 - **Unit Tests**: [Coverage goals]
 - **Integration Tests**: [Scenarios]
 - **Manual Testing**: [Steps]
 
 ## Success Criteria
+
 - ✅ [Measurable outcome]
 - ✅ [Another outcome]
 
 ## References
+
 - ADR-XXX: [Link]
 - Related Issue: #YYY
 - Documentation: [Link]
 
 ---
-**Phase**: [1-4]
-**Effort**: [p1-high, p2-medium, p3-low]
-**Dependencies**: [Issue numbers or "None"]
-**Package**: [client, mcp, or both]
-**Agent**: [@agent-name]
+
+**Phase**: [1-4] **Effort**: [p1-high, p2-medium, p3-low] **Dependencies**: [Issue
+numbers or "None"] **Package**: [client, mcp, or both] **Agent**: [@agent-name]
 ```
 
-______________________________________________________________________
+---
 
 ## Title Format
 
@@ -79,7 +85,7 @@ ______________________________________________________________________
 - `Fix bug` (no component)
 - `Update code` (no context)
 
-______________________________________________________________________
+---
 
 ## Complete Examples
 
@@ -97,6 +103,7 @@ Users need to create manufacturing orders from Claude to trigger production. Thi
 completes the manufacturing workflow started in Phase 1 (list/get operations).
 
 **User workflow:**
+
 1. Check inventory levels
 2. Determine production needs
 3. Create manufacturing order
@@ -109,6 +116,7 @@ completes the manufacturing workflow started in Phase 1 (list/get operations).
 - Users must use StatusPro web UI manually
 
 **Limitations:**
+
 - Breaks agent workflow requiring manual intervention
 - Cannot automate production planning
 
@@ -148,6 +156,7 @@ async def create_manufacturing_order(
             ),
         )
         ...
+```
 ````
 
 ### Key Decisions
@@ -207,7 +216,7 @@ async def create_manufacturing_order(
 - Issue #201: Manufacturing order list/get tools
 - `tools/foundation/purchase_orders.py` - Similar pattern
 
-______________________________________________________________________
+---
 
 **Phase**: 2 **Effort**: p2-medium **Dependencies**: Issue #201 **Package**: mcp
 **Agent**: @agent-dev
@@ -301,7 +310,7 @@ else:
 - Related Issue: #145 (pagination errors)
 - File: `statuspro_public_api_client/statuspro_client.py:142`
 
-______________________________________________________________________
+---
 
 **Phase**: N/A (bug fix) **Effort**: p3-low **Dependencies**: None **Package**: client
 **Agent**: @agent-dev
@@ -434,7 +443,7 @@ def create_purchase_order(quantity: int, ...):
   `products.py`, `materials.py`, `variants.py`, `stock_adjustments.py`,
   `inventory_items.py`
 
-______________________________________________________________________
+---
 
 **Phase**: 3 (Enhancement) **Effort**: p2-medium **Dependencies**: None (can run
 alongside feature work) **Package**: mcp **Agent**: @agent-dev
@@ -514,7 +523,7 @@ for title in "${titles[@]}"; do
 done
 ```
 
-______________________________________________________________________
+---
 
 ## Best Practices
 
@@ -537,7 +546,7 @@ ______________________________________________________________________
 - **Ignore dependencies** - Document blockers
 - **Leave unassigned** - Agent coordination important
 
-______________________________________________________________________
+---
 
 ## Summary
 

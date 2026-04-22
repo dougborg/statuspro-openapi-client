@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## description: 'Markdown formatting standards for documentation' applyTo: '\*\*/\*.md'
 
@@ -90,8 +90,7 @@ key: value
 ## Emphasis
 
 ```markdown
-**Bold** for strong emphasis and UI elements
-*Italic* for terminology on first use
+**Bold** for strong emphasis and UI elements _Italic_ for terminology on first use
 `Code` for code elements, commands, file paths
 ```
 
@@ -114,7 +113,7 @@ key: value
 
 ```markdown
 | Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
+| -------- | -------- | -------- |
 | Value 1  | Value 2  | Value 3  |
 | Value 4  | Value 5  | Value 6  |
 ```
@@ -144,6 +143,7 @@ from statuspro_public_api_client import StatusProClient
 async with StatusProClient() as client:
     response = await get_products.asyncio_detailed(client=client)
     print(f"Found {len(response.parsed.data)} products")
+```
 ````
 
 ````
@@ -159,7 +159,8 @@ async with StatusProClient() as client:
 
 ```markdown
 ---
-```
+
+````
 
 - Use `---` (three hyphens)
 - One blank line before and after
@@ -188,9 +189,11 @@ Date: YYYY-MM-DD
 ## Consequences
 
 ### Positive
+
 - Benefit 1
 
 ### Negative
+
 - Tradeoff 1
 
 ## Alternatives Considered
@@ -198,19 +201,22 @@ Date: YYYY-MM-DD
 ### Alternative 1: Name
 
 **Pros:**
+
 - Pro 1
 
 **Cons:**
+
 - Con 1
 
 **Why not chosen:**
+
 - Reason
 
 ## References
 
 - Link 1
 - Link 2
-```
+````
 
 ## Critical Reminders
 

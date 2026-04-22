@@ -8,8 +8,8 @@ Date: 2025-01-06
 
 ## Context
 
-As the statuspro-openapi-client project grew to include both a Python client library and an
-MCP server, we needed a way to provide specialized AI assistance for different
+As the statuspro-openapi-client project grew to include both a Python client library and
+an MCP server, we needed a way to provide specialized AI assistance for different
 development tasks. GitHub Copilot supports custom agents that can be tailored to
 specific roles and workflows, but we needed to determine the optimal structure for
 organizing these agents and their supporting materials.
@@ -59,10 +59,9 @@ Structure:
 ```yaml
 ---
 name: agent-name
-description: 'Brief description of agent role and expertise'
-tools: ['read', 'search', 'edit', 'shell']
+description: "Brief description of agent role and expertise"
+tools: ["read", "search", "edit", "shell"]
 ---
-
 # Agent Name
 
 Agent instructions and behavioral guidance...
@@ -86,10 +85,9 @@ Structure:
 
 ```yaml
 ---
-description: 'Technology or format standards'
-applyTo: '**/*.py'
+description: "Technology or format standards"
+applyTo: "**/*.py"
 ---
-
 Standards and best practices...
 ```
 

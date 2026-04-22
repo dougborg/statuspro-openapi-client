@@ -54,7 +54,7 @@ async with StatusProClient() as client:
 **📄 ADR:**
 [ADR-001: Transport-Layer Resilience](../../../statuspro_public_api_client/docs/adr/0001-transport-layer-resilience.md)
 
-______________________________________________________________________
+---
 
 ### 2. OpenAPI Code Generation
 
@@ -76,7 +76,7 @@ fixes.
 **📄 ADR:**
 [ADR-002: OpenAPI Code Generation](../../../statuspro_public_api_client/docs/adr/0002-openapi-code-generation.md)
 
-______________________________________________________________________
+---
 
 ### 3. Transparent Automatic Pagination
 
@@ -105,7 +105,7 @@ async with StatusProClient() as client:
 **📄 ADR:**
 [ADR-003: Transparent Pagination](../../../statuspro_public_api_client/docs/adr/0003-transparent-pagination.md)
 
-______________________________________________________________________
+---
 
 ### 4. Defer Observability to httpx
 
@@ -146,7 +146,7 @@ client = httpx.AsyncClient(
 **📄 ADR:**
 [ADR-004: Defer Observability to httpx](../../../statuspro_public_api_client/docs/adr/0004-defer-observability-to-httpx.md)
 
-______________________________________________________________________
+---
 
 ### 5. Sync and Async APIs
 
@@ -180,7 +180,7 @@ with StatusProClient() as client:
 **📄 ADR:**
 [ADR-005: Sync and Async APIs](../../../statuspro_public_api_client/docs/adr/0005-sync-async-apis.md)
 
-______________________________________________________________________
+---
 
 ### 6. Response Unwrapping Utilities
 
@@ -210,7 +210,7 @@ product = unwrap_or_raise(response)  # Returns parsed or raises exception
 **📄 ADR:**
 [ADR-006: Response Unwrapping](../../../statuspro_public_api_client/docs/adr/0006-response-unwrapping-utilities.md)
 
-______________________________________________________________________
+---
 
 ### 7. Domain Helper Classes
 
@@ -237,7 +237,7 @@ async with Products() as products:
 **📄 ADR:**
 [ADR-007: Domain Helper Classes](../../../statuspro_public_api_client/docs/adr/0007-domain-helper-classes.md)
 
-______________________________________________________________________
+---
 
 ### 8. Pydantic Domain Models
 
@@ -268,7 +268,7 @@ class Product(BaseModel):
 **📄 ADR:**
 [ADR-011: Pydantic Domain Models](../../../statuspro_public_api_client/docs/adr/0011-pydantic-domain-models.md)
 
-______________________________________________________________________
+---
 
 ### 9. Validation Tiers for Agent Workflows
 
@@ -286,7 +286,7 @@ ______________________________________________________________________
 **📄 ADR:**
 [ADR-012: Validation Tiers](../../../statuspro_public_api_client/docs/adr/0012-validation-tiers-for-agent-workflows.md)
 
-______________________________________________________________________
+---
 
 ### 10. StatusPro MCP Server
 
@@ -318,7 +318,7 @@ ______________________________________________________________________
 **📄 ADR:**
 [ADR-010: StatusPro MCP Server](../../../statuspro_mcp_server/docs/adr/0010-statuspro-mcp-server.md)
 
-______________________________________________________________________
+---
 
 ### 11. uv Package Manager
 
@@ -340,9 +340,10 @@ uv run pytest               # Run tests
 - Workspace support for monorepo
 - Compatible with pip/PyPI
 
-**📄 ADR:** [ADR-009: Migrate to uv](../../../docs/adr/0009-migrate-from-poetry-to-uv.md)
+**📄 ADR:**
+[ADR-009: Migrate to uv](../../../docs/adr/0009-migrate-from-poetry-to-uv.md)
 
-______________________________________________________________________
+---
 
 ### 12. Module-Local Documentation
 
@@ -377,7 +378,7 @@ statuspro-openapi-client/
 **📄 ADR:**
 [ADR-013: Module-Local Documentation](../../../docs/adr/0013-module-local-documentation.md)
 
-______________________________________________________________________
+---
 
 ## API Coverage
 
@@ -399,7 +400,7 @@ All models generated from OpenAPI specification with:
 - Serialization/deserialization
 - Nested object support
 
-______________________________________________________________________
+---
 
 ## Technology Stack
 
@@ -428,7 +429,7 @@ ______________________________________________________________________
 - **MkDocs**: Documentation site
 - **mkdocstrings**: API reference from docstrings
 
-______________________________________________________________________
+---
 
 ## Common Patterns
 
@@ -492,7 +493,7 @@ async with StatusProClient(
     pass
 ```
 
-______________________________________________________________________
+---
 
 ## ADR Index
 
@@ -519,7 +520,7 @@ ______________________________________________________________________
 
 - [ADR-010: StatusPro MCP Server](../../../statuspro_mcp_server/docs/adr/0010-statuspro-mcp-server.md)
 
-______________________________________________________________________
+---
 
 ## Quick Links
 
@@ -537,11 +538,12 @@ ______________________________________________________________________
 
 ### MCP Documentation
 
-- **[MCP Architecture](../../../statuspro_mcp_server/docs/architecture.md)** - MCP design
+- **[MCP Architecture](../../../statuspro_mcp_server/docs/architecture.md)** - MCP
+  design
 - **[Implementation Plan](../../../statuspro_mcp_server/docs/implementation-plan.md)** -
   MCP roadmap
 
-______________________________________________________________________
+---
 
 ## Summary
 

@@ -12,7 +12,7 @@ breaking the codebase.
 | 🚫 **Generated**  | **DO NOT EDIT**   | API endpoints, models, base client, type definitions |
 | 🔄 **Regenerate** | Use script        | `uv run poe regenerate-client` (2+ minutes)          |
 
-______________________________________________________________________
+---
 
 ## Generated Files (DO NOT EDIT)
 
@@ -119,7 +119,7 @@ statuspro_public_api_client/py.typed
 
 PEP 561 type marker for mypy compatibility.
 
-______________________________________________________________________
+---
 
 ## Editable Files (Can Modify)
 
@@ -199,7 +199,7 @@ uv.lock                  # Dependency lockfile
 .github/**               # GitHub workflows, Copilot agents
 ```
 
-______________________________________________________________________
+---
 
 ## Package Structure
 
@@ -250,7 +250,7 @@ statuspro-openapi-client/                    # Monorepo root
     └── copilot/                          # Copilot agent definitions
 ```
 
-______________________________________________________________________
+---
 
 ## Client Regeneration Process
 
@@ -295,7 +295,7 @@ uv run poe test          # Run tests
 uv run poe check         # Full validation
 ```
 
-______________________________________________________________________
+---
 
 ## Import Path Conventions
 
@@ -341,7 +341,7 @@ from statuspro_public_api_client.types import Response
 from statuspro_public_api_client.client import AuthenticatedClient
 ```
 
-______________________________________________________________________
+---
 
 ## Common Pitfalls
 
@@ -355,8 +355,8 @@ def get_all_products(client, limit=100):  # Manual change
     # ... modified code ...
 ```
 
-**Solution:** Extend functionality in `statuspro_client.py` or create wrapper functions in
-editable files.
+**Solution:** Extend functionality in `statuspro_client.py` or create wrapper functions
+in editable files.
 
 ### 2. Forgetting Regeneration Overwrites ❌
 
@@ -396,7 +396,7 @@ from statuspro_public_api_client.client_types import Response  # Correct
 
 **Solution:** Always regenerate client after updating code generation dependencies.
 
-______________________________________________________________________
+---
 
 ## Architecture: Transport-Layer Resilience
 
@@ -430,7 +430,7 @@ See
 [ADR-001: Transport-Layer Resilience](../../../docs/adr/0001-transport-layer-resilience.md)
 for details.
 
-______________________________________________________________________
+---
 
 ## Summary
 

@@ -1,19 +1,18 @@
 # StatusPro — API Client Ecosystem
 
 Multi-language client ecosystem for the
-[StatusPro API](https://app.orderstatuspro.com/api/v1), a small REST API for
-**reading and updating the status of orders**. The StatusPro API is used by
-merchants to expose production progress to their customers (order received →
-in production → shipped, etc.) and to update that status from their own
-systems.
+[StatusPro API](https://app.orderstatuspro.com/api/v1), a small REST API for **reading
+and updating the status of orders**. The StatusPro API is used by merchants to expose
+production progress to their customers (order received → in production → shipped, etc.)
+and to update that status from their own systems.
 
 This monorepo ships:
 
-- A production-grade Python client with transport-layer retries, rate-limit
-  awareness, and auto-pagination across all list endpoints.
+- A production-grade Python client with transport-layer retries, rate-limit awareness,
+  and auto-pagination across all list endpoints.
 - A TypeScript client generated from the same OpenAPI spec.
-- An MCP server exposing StatusPro operations as tools to AI assistants like
-  Claude Desktop.
+- An MCP server exposing StatusPro operations as tools to AI assistants like Claude
+  Desktop.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue.svg)](https://www.typescriptlang.org/)
@@ -67,10 +66,10 @@ npm install statuspro-client
 ```
 
 ```typescript
-import { StatusProClient } from 'statuspro-client';
+import { StatusProClient } from "statuspro-client";
 
 const client = await StatusProClient.create();
-const response = await client.get('/orders');
+const response = await client.get("/orders");
 const { data, meta } = await response.json();
 console.log(`Found ${meta.total} orders (page ${meta.current_page}/${meta.last_page})`);
 ```
@@ -115,8 +114,8 @@ STATUSPRO_BASE_URL=https://app.orderstatuspro.com/api/v1  # optional override
 
 ## API Coverage
 
-The StatusPro API is intentionally small and focused on order status. All 7
-endpoints are covered:
+The StatusPro API is intentionally small and focused on order status. All 7 endpoints
+are covered:
 
 | Tag      | Method | Path                           | Purpose                                                        |
 | -------- | ------ | ------------------------------ | -------------------------------------------------------------- |
@@ -133,17 +132,18 @@ endpoints are covered:
 **Conventions:**
 
 - Bearer token auth on every endpoint (`Authorization: Bearer <STATUSPRO_API_KEY>`).
-- `GET /orders` returns `{"data": [...], "meta": {current_page, last_page, per_page, total, from, to}}`.
+- `GET /orders` returns
+  `{"data": [...], "meta": {current_page, last_page, per_page, total, from, to}}`.
 - `GET /statuses` and `GET /orders/{id}/viable-statuses` return raw JSON arrays.
 - Pagination uses `page` + `per_page` query params (`per_page` max 100).
-- Rate limits are documented per-endpoint (60/min on most, 5/min on
-  `/comment` and `/bulk-status`) but not surfaced in response headers.
+- Rate limits are documented per-endpoint (60/min on most, 5/min on `/comment` and
+  `/bulk-status`) but not surfaced in response headers.
 
 ## MCP Tools
 
-The `statuspro-mcp-server` package maps each endpoint to a tool. Mutations use
-a two-step confirm pattern: call with `confirm=false` for a preview, then
-`confirm=true` to apply (the client elicits explicit user approval).
+The `statuspro-mcp-server` package maps each endpoint to a tool. Mutations use a
+two-step confirm pattern: call with `confirm=false` for a preview, then `confirm=true`
+to apply (the client elicits explicit user approval).
 
 | Tool                       | Mutation? | Description                               |
 | -------------------------- | --------- | ----------------------------------------- |
@@ -164,19 +164,18 @@ Plus two resources:
 
 ## Resilience (Python client)
 
-Every endpoint inherits these transport-layer behaviors automatically — no
-decorators or wrappers needed:
+Every endpoint inherits these transport-layer behaviors automatically — no decorators or
+wrappers needed:
 
-- **Retries**: `httpx-retries` retries idempotent methods on 502/503/504 and
-  any method on 429. Configurable via `max_retries`.
-- **Rate-limit awareness**: `Retry-After` headers are honored when present;
-  otherwise exponential backoff.
-- **Auto-pagination**: `GET /orders` is walked to completion using
-  `meta.last_page` as the stop condition, up to `max_pages` (default 100) or
-  an explicit `max_items` override. Raw-array endpoints (`/statuses`,
-  `/viable-statuses`) are never paginated.
-- **Sensitive-data redaction**: Authorization headers and common secret field
-  names (`api_key`, `password`, `email`, etc.) are scrubbed from log output.
+- **Retries**: `httpx-retries` retries idempotent methods on 502/503/504 and any method
+  on 429. Configurable via `max_retries`.
+- **Rate-limit awareness**: `Retry-After` headers are honored when present; otherwise
+  exponential backoff.
+- **Auto-pagination**: `GET /orders` is walked to completion using `meta.last_page` as
+  the stop condition, up to `max_pages` (default 100) or an explicit `max_items`
+  override. Raw-array endpoints (`/statuses`, `/viable-statuses`) are never paginated.
+- **Sensitive-data redaction**: Authorization headers and common secret field names
+  (`api_key`, `password`, `email`, etc.) are scrubbed from log output.
 
 ## Project Structure
 
@@ -253,8 +252,7 @@ git commit -m "docs: update quick-start"
 
 Use `!` for breaking changes: `feat(client)!: drop Python 3.11 support`.
 
-See [MONOREPO_SEMANTIC_RELEASE.md](docs/MONOREPO_SEMANTIC_RELEASE.md) for
-details.
+See [MONOREPO_SEMANTIC_RELEASE.md](docs/MONOREPO_SEMANTIC_RELEASE.md) for details.
 
 ## License
 
@@ -262,5 +260,4 @@ MIT License — see [LICENSE](LICENSE).
 
 ## Contributing
 
-Contributions welcome. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for
-guidelines.
+Contributions welcome. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.

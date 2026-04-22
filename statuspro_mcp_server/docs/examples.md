@@ -1,10 +1,10 @@
 # StatusPro MCP Server — Workflow Examples
 
-Typical natural-language flows you can try with Claude Desktop once the
-server is connected. Each example shows the underlying tool sequence.
+Typical natural-language flows you can try with Claude Desktop once the server is
+connected. Each example shows the underlying tool sequence.
 
-> **Tip**: the `statuspro://help` resource surfaces the same information
-> from inside the MCP client.
+> **Tip**: the `statuspro://help` resource surfaces the same information from inside the
+> MCP client.
 
 ## Looking up an order
 
@@ -112,8 +112,8 @@ Model:
      "note": "Bulk updates are queued and processed asynchronously."}
 ```
 
-`/bulk-status` returns **202 Accepted** — the updates are queued and applied
-in the background. It's also rate-limited to **5 requests/minute**.
+`/bulk-status` returns **202 Accepted** — the updates are queued and applied in the
+background. It's also rate-limited to **5 requests/minute**.
 
 ## Listing all statuses
 

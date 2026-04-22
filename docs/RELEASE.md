@@ -41,7 +41,6 @@ When a PR is merged to `main`, the `.github/workflows/release.yml` workflow runs
 independent semantic-release jobs**:
 
 1. **Client Release** (`release-client` job):
-
    - Checks for commits with `feat(client):`, `fix(client):`, or no scope
    - Calculates next version based on conventional commits
    - Creates tag: `client-v{version}` (e.g., `client-v0.24.0`)
@@ -50,7 +49,6 @@ independent semantic-release jobs**:
    - Builds and publishes to PyPI as `statuspro-openapi-client`
 
 1. **MCP Server Release** (`release-mcp` job):
-
    - Checks for commits with `feat(mcp):` or `fix(mcp):`
    - Calculates next version based on conventional commits
    - Creates tag: `mcp-v{version}` (e.g., `mcp-v0.1.0`)
@@ -179,7 +177,8 @@ For each package being released:
 
 ## Current Versions
 
-- **statuspro-openapi-client**: See [PyPI](https://pypi.org/project/statuspro-openapi-client/)
+- **statuspro-openapi-client**: See
+  [PyPI](https://pypi.org/project/statuspro-openapi-client/)
 - **statuspro-mcp-server**: See [PyPI](https://pypi.org/project/statuspro-mcp-server/)
 
 ## Tag Format

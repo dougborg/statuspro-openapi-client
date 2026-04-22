@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## description: 'Generate comprehensive tests for a component following project testing standards'
 
@@ -9,13 +9,11 @@ Generate complete test coverage for a component following pytest and project sta
 ## Instructions
 
 1. **Identify the component** to test:
-
    - Module path (e.g., `statuspro_public_api_client/helpers/inventory.py`)
    - Functions/classes to test
    - Dependencies to mock
 
 1. **Create test file** following naming convention:
-
    - For `module.py` → create `tests/test_module.py`
    - For `path/to/module.py` → create `tests/path/to/test_module.py`
 
@@ -99,7 +97,6 @@ Generate complete test coverage for a component following pytest and project sta
    ```
 
 1. **Achieve coverage goals**:
-
    - Core logic: 87%+ (required)
    - Helper functions: 90%+
    - Critical paths: 95%+

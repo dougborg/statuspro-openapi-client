@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## description: 'Generate a new Architecture Decision Record (ADR) for documenting architectural choices'
 
@@ -24,7 +24,6 @@ template and standards.
    ```
 
 1. **Fill out the ADR** with:
-
    - **Status**: Proposed (or Accepted if already decided)
    - **Date**: Today's date (YYYY-MM-DD)
    - **Context**: Problem description and forces at play
@@ -34,7 +33,6 @@ template and standards.
    - **References**: Related ADRs, documentation, code examples
 
 1. **Update the ADR index**:
-
    - Edit `docs/adr/README.md`
    - Add entry to the index with title and brief description
 
@@ -62,12 +60,15 @@ Date: YYYY-MM-DD
 ### Forces at Play
 
 **Technological:**
+
 - [Technical constraint or opportunity]
 
 **User Experience:**
+
 - [UX consideration]
 
 **Project Goals:**
+
 - [Project objective]
 
 ## Decision
@@ -81,14 +82,17 @@ Date: YYYY-MM-DD
 ## Consequences
 
 ### Positive
+
 - [Benefit 1]
 - [Benefit 2]
 
 ### Negative
+
 - [Tradeoff 1]
 - [Tradeoff 2]
 
 ### Neutral
+
 - [Implication 1]
 
 ## Alternatives Considered
@@ -96,12 +100,15 @@ Date: YYYY-MM-DD
 ### Alternative 1: [Name]
 
 **Pros:**
+
 - [Pro 1]
 
 **Cons:**
+
 - [Con 1]
 
 **Why not chosen:**
+
 - [Reason]
 
 ## References

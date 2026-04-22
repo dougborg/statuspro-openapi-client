@@ -7,7 +7,8 @@ package.
 
 ### User Guides
 
-- **[Client Guide](guide.md)** - Comprehensive guide to using the StatusPro OpenAPI Client
+- **[Client Guide](guide.md)** - Comprehensive guide to using the StatusPro OpenAPI
+  Client
 - **[Cookbook](cookbook.md)** - Common usage patterns and recipes
 - **[Testing Guide](testing.md)** - Testing strategy and test coverage
 
@@ -20,8 +21,8 @@ package.
 
 - **[Main Repository README](../../README.md)** - Project overview
 - **[Contributing Guide](../../docs/CONTRIBUTING.md)** - How to contribute
-- **[API Documentation](https://dougborg.github.io/statuspro-openapi-client/)** - Live docs
-  site
+- **[API Documentation](https://dougborg.github.io/statuspro-openapi-client/)** - Live
+  docs site
 
 ## Related Packages
 

@@ -596,7 +596,7 @@ The three-tier architecture provides:
 **Result**: Comprehensive agent guidance in a well-organized, maintainable structure
 that scales indefinitely.
 
-______________________________________________________________________
+---
 
 **Document**: `.github/agents/guides/COPILOT_ARCHITECTURE.md` **Created**: 2025-01-06
 **Purpose**: Document three-tier architecture for GitHub Copilot agent customizations

@@ -1,7 +1,7 @@
 # StatusPro MCP Server Documentation
 
-This directory contains all documentation specific to the
-`statuspro-mcp-server` package.
+This directory contains all documentation specific to the `statuspro-mcp-server`
+package.
 
 ## Documentation Index
 

@@ -1,12 +1,12 @@
 # OpenAPI Documentation
 
-This page contains the complete OpenAPI specification for the StatusPro Manufacturing ERP
-API, rendered with Swagger UI for interactive exploration.
+This page contains the complete OpenAPI specification for the StatusPro Manufacturing
+ERP API, rendered with Swagger UI for interactive exploration.
 
 ## About the StatusPro API
 
-The StatusPro API provides programmatic access to your StatusPro Manufacturing ERP system,
-allowing you to:
+The StatusPro API provides programmatic access to your StatusPro Manufacturing ERP
+system, allowing you to:
 
 - **Manage Products**: Create, read, update, and delete products and variants
 - **Inventory Control**: Track inventory levels, movements, and locations
@@ -32,10 +32,10 @@ Use the interactive API explorer below to:
 3. Your API key can be found in your StatusPro account settings
 ```
 
-!!! info "Base URLs" - **Production**: `https://app.orderstatuspro.com/api/v1` - **Demo/Testing**:
-Use your specific StatusPro instance URL
+!!! info "Base URLs" - **Production**: `https://app.orderstatuspro.com/api/v1` -
+**Demo/Testing**: Use your specific StatusPro instance URL
 
-______________________________________________________________________
+---
 
 <swagger-ui src="statuspro-openapi.yaml"/>
 

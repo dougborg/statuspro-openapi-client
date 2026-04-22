@@ -29,7 +29,7 @@ stage to balance speed and thoroughness.
 
 **Skip if:** You're just exploring code or reading files.
 
-______________________________________________________________________
+---
 
 ### Tier 2: Agent Check (~8-12 seconds)
 
@@ -47,7 +47,7 @@ type safety.
 
 **Required for:** All commits (enforced by pre-commit hooks in some configurations).
 
-______________________________________________________________________
+---
 
 ### Tier 3: Full Check (~30 seconds)
 
@@ -65,7 +65,7 @@ PR.**
 
 **Critical:** Tests run in parallel with 4 workers (~16s). NEVER cancel early.
 
-______________________________________________________________________
+---
 
 ### Tier 4: Full Check with Docs (~40 seconds)
 
@@ -82,7 +82,7 @@ ______________________________________________________________________
 
 **Note:** This is the most thorough check. Use when you want absolute confidence.
 
-______________________________________________________________________
+---
 
 ## Individual Commands
 
@@ -134,7 +134,7 @@ uv run poe regenerate-client          # Regenerate client (2+ min, NEVER CANCEL)
 uv run poe validate-openapi-redocly   # Validate with Redocly
 ```
 
-______________________________________________________________________
+---
 
 ## Command Timeouts (CRITICAL)
 
@@ -153,7 +153,7 @@ ______________________________________________________________________
 These commands may appear to hang but are actually processing. Generous timeouts prevent
 false failures.
 
-______________________________________________________________________
+---
 
 ## Pre-Commit Hooks
 
@@ -179,7 +179,7 @@ ln -sf .pre-commit-config.yaml .git/hooks/pre-commit
 ln -sf .pre-commit-config-full.yaml .git/hooks/pre-commit
 ```
 
-______________________________________________________________________
+---
 
 ## Workflow Recommendations
 
@@ -204,7 +204,7 @@ The CI pipeline runs Tier 3+ validation on all PRs:
 **Important:** Don't rely solely on CI. Run `uv run poe check` locally before pushing to
 catch issues early.
 
-______________________________________________________________________
+---
 
 ## Troubleshooting
 
@@ -226,7 +226,7 @@ ______________________________________________________________________
 - Run commands manually if hooks fail: `uv run poe agent-check`
 - Consider switching to lite pre-commit config
 
-______________________________________________________________________
+---
 
 ## Summary
 

@@ -4,10 +4,9 @@ This directory contains Architecture Decision Records (ADRs) specific to the
 `statuspro-mcp-server` package.
 
 > **Inherited from the parent project.** This repository was forked from
-> `katana-openapi-client`. The decisions captured here still apply; some
-> examples may still reference the original project's domain objects while
-> this repository is new enough that new ADR write-ups haven't yet replaced
-> them.
+> `katana-openapi-client`. The decisions captured here still apply; some examples may
+> still reference the original project's domain objects while this repository is new
+> enough that new ADR write-ups haven't yet replaced them.
 
 ## Format
 

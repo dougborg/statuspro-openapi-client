@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## description: 'Break down a feature request into actionable implementation plan with phases and dependencies'
 
@@ -10,14 +10,12 @@ effort estimates and dependencies.
 ## Instructions
 
 1. **Understand the feature request**:
-
    - Read the issue description carefully
    - Identify the core requirements
    - Check for existing related work
    - Review relevant ADRs for architectural patterns
 
 1. **Research existing patterns**:
-
    - Search codebase for similar implementations
    - Review `docs/adr/` for architectural guidance
    - Check existing tools/helpers for reusable patterns
@@ -26,48 +24,41 @@ effort estimates and dependencies.
 1. **Create 4-phase breakdown**:
 
    **Phase 1: Foundation** (Infrastructure & Setup)
-
    - Core infrastructure changes
    - Configuration updates
    - Database/API schema changes
    - ADR documentation if architectural
 
    **Phase 2: Core Implementation** (Primary Functionality)
-
    - Main feature functionality
    - Essential API endpoints or tools
    - Core business logic
    - Integration with existing systems
 
    **Phase 3: Enhancements** (Secondary Features)
-
    - Additional features
    - Helper utilities
    - Performance optimizations
    - Extended integrations
 
    **Phase 4: Documentation** (User-Facing Docs)
-
    - User documentation
    - Code examples
    - Cookbook recipes
    - README updates
 
 1. **Estimate effort** using priority labels:
-
    - **p1-high**: 1-2 days (complex features, architectural changes)
    - **p2-medium**: 4-8 hours (standard features, integrations)
    - **p3-low**: 1-3 hours (small improvements, doc updates)
 
 1. **Map dependencies**:
-
    - Identify blocking relationships between phases
    - Document required tools and prerequisites
    - Note cross-package dependencies
    - Flag breaking changes
 
 1. **Assess risks**:
-
    - Technical risks (compatibility, performance, security)
    - Integration risks (API changes, breaking changes)
    - Timeline risks (complexity, unknowns)
@@ -81,6 +72,7 @@ effort estimates and dependencies.
    **Description**: Set up infrastructure for X feature
 
    **Tasks**:
+
    - [ ] Create domain models in `domain/`
    - [ ] Add API client methods
    - [ ] Write ADR-NNNN for architectural decision
@@ -90,13 +82,13 @@ effort estimates and dependencies.
    **Effort**: p2-medium (4-8 hours)
 
    **Acceptance Criteria**:
+
    - [ ] Domain models created with Pydantic
    - [ ] API methods generated/added
    - [ ] ADR documented and reviewed
    ```
 
 1. **Assign specialist agents**:
-
    - `@python-developer` - Implementation
    - `@tdd-specialist` - Testing
    - `@documentation-writer` - Documentation
@@ -121,9 +113,11 @@ effort estimates and dependencies.
 ## Architecture Review
 
 **Relevant ADRs**:
+
 - [Relevant ADRs from docs/adr/]
 
 **Patterns to Follow**:
+
 - [Pattern name from ADR]
 
 ## Phase Breakdown
@@ -131,6 +125,7 @@ effort estimates and dependencies.
 ### Phase 1: Foundation (p2-medium, 4-8 hours)
 
 **Tasks**:
+
 1. Create Pydantic models
 2. Add API integration
 3. Document architecture decision
@@ -142,6 +137,7 @@ effort estimates and dependencies.
 ### Phase 2: Core Implementation (p1-high, 1-2 days)
 
 **Tasks**:
+
 1. Implement main functionality
 2. Add error handling
 3. Write comprehensive tests
@@ -153,6 +149,7 @@ effort estimates and dependencies.
 ### Phase 3: Enhancements (p2-medium, 4-8 hours)
 
 **Tasks**:
+
 1. Add helper utilities
 2. Performance optimization
 3. Additional test coverage
@@ -164,6 +161,7 @@ effort estimates and dependencies.
 ### Phase 4: Documentation (p3-low, 1-3 hours)
 
 **Tasks**:
+
 1. Update README
 2. Add cookbook examples
 3. Update API documentation

@@ -27,7 +27,7 @@ uv lock --upgrade
 uv sync --all-extras
 ```
 
-______________________________________________________________________
+---
 
 ## Dependency Management with uv
 
@@ -85,7 +85,7 @@ uv sync --all-extras
 uv run poe check  # Verify nothing broke
 ```
 
-______________________________________________________________________
+---
 
 ## Monorepo Dependency Structure
 
@@ -116,7 +116,7 @@ dependencies = [
 ]
 ```
 
-______________________________________________________________________
+---
 
 ## Common Tasks
 
@@ -185,7 +185,7 @@ uv sync --all-extras
 uv run poe check
 ```
 
-______________________________________________________________________
+---
 
 ## Dependabot Configuration
 
@@ -232,7 +232,7 @@ gh pr review <dependabot-pr> --approve
 gh pr merge <dependabot-pr> --squash
 ```
 
-______________________________________________________________________
+---
 
 ## Version Pinning Strategy
 
@@ -268,7 +268,7 @@ Only pin when:
 - Critical stability requirement
 - Temporary workaround
 
-______________________________________________________________________
+---
 
 ## Testing Dependency Updates
 
@@ -317,7 +317,7 @@ uv sync --all-extras
 uv run poe check
 ```
 
-______________________________________________________________________
+---
 
 ## CI Integration
 
@@ -341,7 +341,7 @@ ______________________________________________________________________
   uses: actions/dependency-review-action@v4
 ```
 
-______________________________________________________________________
+---
 
 ## Common Issues
 
@@ -397,7 +397,7 @@ git add uv.lock
 git commit -m "build: update lock file"
 ```
 
-______________________________________________________________________
+---
 
 ## Best Practices
 
@@ -418,7 +418,7 @@ ______________________________________________________________________
 - **Don't commit broken lock files**
 - **Don't skip CI checks**
 
-______________________________________________________________________
+---
 
 ## Summary
 

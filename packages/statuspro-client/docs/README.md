@@ -27,8 +27,8 @@ This monorepo also contains:
 
 - **[statuspro-openapi-client (Python)](../../../statuspro_public_api_client/docs/README.md)**
   \- Python client with the same features
-- **[statuspro-mcp-server](../../../statuspro_mcp_server/docs/README.md)** - MCP server for
-  Claude Code integration
+- **[statuspro-mcp-server](../../../statuspro_mcp_server/docs/README.md)** - MCP server
+  for Claude Code integration
 
 ## Feature Comparison
 

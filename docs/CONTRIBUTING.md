@@ -1,7 +1,7 @@
 # Contributing to StatusPro OpenAPI Client
 
-Thank you for your interest in contributing to the StatusPro OpenAPI Client! This document
-provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to the StatusPro OpenAPI Client! This
+document provides guidelines and instructions for contributing.
 
 ## Development Setup
 
@@ -212,7 +212,8 @@ When adding features:
 
 ### Test Environment
 
-Integration tests require valid StatusPro API credentials. Set these in your `.env` file:
+Integration tests require valid StatusPro API credentials. Set these in your `.env`
+file:
 
 ```bash
 STATUSPRO_API_KEY=your_api_key_here

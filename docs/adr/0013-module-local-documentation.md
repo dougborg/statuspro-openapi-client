@@ -15,30 +15,25 @@ best practices.
 ### Problems with Previous Structure
 
 1. **Documentation scattered across multiple locations**:
-
    - Client docs at root `docs/` (8 guides + 8 ADRs)
    - MCP docs split between `docs/mcp-server/` (5 files) and `statuspro_mcp_server/` (2
      files)
    - No clear module boundaries
 
 1. **ADRs mixed by scope**:
-
    - Root `docs/adr/` contained client ADRs (001-008, 011-012), MCP ADR (010), and
      shared ADR (009)
    - Made it unclear which ADRs applied to which package
 
 1. **Examples not organized by module**:
-
    - All examples in flat `examples/` directory
    - No separation between client and MCP examples
 
 1. **Difficult to extract packages**:
-
    - Package-specific docs didn't travel with the package
    - Would need extensive refactoring to split packages into separate repos
 
 1. **Questions about organization**:
-
    - "Where are the client docs?" → Unclear (some in root docs/, some might be
      elsewhere)
    - "Where are the MCP docs?" → Very unclear (split across 3 locations)
@@ -96,7 +91,8 @@ statuspro-openapi-client/
 
 ### Implementation
 
-1. Created `statuspro_public_api_client/docs/` and `statuspro_mcp_server/docs/` directories
+1. Created `statuspro_public_api_client/docs/` and `statuspro_mcp_server/docs/`
+   directories
 1. Moved client docs and ADRs to client package
 1. Moved MCP docs and ADRs to MCP package
 1. Reorganized examples by module

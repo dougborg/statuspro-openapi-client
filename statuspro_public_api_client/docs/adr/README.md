@@ -4,10 +4,10 @@ This directory contains Architecture Decision Records (ADRs) specific to the
 `statuspro-openapi-client` package.
 
 > **Inherited from the parent project.** This repository was forked from
-> `katana-openapi-client`. The decisions captured here still apply to
-> StatusPro (transport-layer resilience, OpenAPI codegen, response
-> unwrapping, Pydantic domain models); some examples may still reference
-> the original project's domain objects until the ADRs are rewritten.
+> `katana-openapi-client`. The decisions captured here still apply to StatusPro
+> (transport-layer resilience, OpenAPI codegen, response unwrapping, Pydantic domain
+> models); some examples may still reference the original project's domain objects until
+> the ADRs are rewritten.
 
 ## Format
 

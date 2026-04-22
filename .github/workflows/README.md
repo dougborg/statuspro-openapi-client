@@ -151,17 +151,17 @@ graph TD
     H -->|Client changes| I[Create Client Release]
     H -->|MCP changes| J[Create MCP Release]
     H -->|No changes| K[Skip]
-    
+
     I --> L[Publish Client to PyPI]
     I --> M[Trigger Update MCP Dependency]
-    
+
     J --> N[Publish MCP to PyPI]
     J --> O[Publish MCP to GHCR]
-    
+
     M --> P{Dependency outdated?}
     P -->|Yes| Q[Create PR: feat mcp: update client]
     P -->|No| R[Skip]
-    
+
     Q --> S[Merge PR]
     S --> T[Trigger MCP Release]
 

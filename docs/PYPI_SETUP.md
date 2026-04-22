@@ -79,7 +79,6 @@ For production releases:
    ```
 
 1. GitHub Actions will automatically:
-
    - Run tests
    - Build the package
    - Publish to PyPI

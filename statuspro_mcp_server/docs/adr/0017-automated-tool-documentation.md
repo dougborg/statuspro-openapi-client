@@ -285,8 +285,8 @@ Require templates for all tool responses.
 
 **Deferred**:
 
-- Layer 5 (response templates): not yet required — StatusPro tool responses
-  are small and the default JSON surface is adequate.
+- Layer 5 (response templates): not yet required — StatusPro tool responses are small
+  and the default JSON surface is adequate.
 
 **Documentation Coverage**:
 
@@ -323,10 +323,11 @@ Require templates for all tool responses.
 - [scripts/generate_tools_json.py](../../../scripts/generate_tools_json.py) - Metadata
   generator
 - [statuspro_mcp/templates/](../../src/statuspro_mcp/templates/) - Response templates
-- [statuspro_mcp/logging.py](../../src/statuspro_mcp/logging.py) - Observability decorators
-- [Google Style Docstrings](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)
-- [PR #167](https://github.com/dougborg/statuspro-openapi-client/pull/167) - Observability
+- [statuspro_mcp/logging.py](../../src/statuspro_mcp/logging.py) - Observability
   decorators
+- [Google Style Docstrings](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)
+- [PR #167](https://github.com/dougborg/statuspro-openapi-client/pull/167) -
+  Observability decorators
 - [PR #169](https://github.com/dougborg/statuspro-openapi-client/pull/169) - Template
   externalization
 - [PR #170](https://github.com/dougborg/statuspro-openapi-client/pull/170) - Tools.json

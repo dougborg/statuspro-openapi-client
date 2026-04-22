@@ -83,9 +83,9 @@ criticisms.
 Verify these for every review (see CLAUDE.md for details on each):
 
 - [ ] Generated files not manually edited; pydantic models regenerated if the OpenAPI
-  client was regenerated
+      client was regenerated
 - [ ] Resilience at transport layer, not wrapping API methods
-  ([ADR-001](statuspro_public_api_client/docs/adr/0001-transport-layer-resilience.md))
+      ([ADR-001](statuspro_public_api_client/docs/adr/0001-transport-layer-resilience.md))
 - [ ] Full type annotations; UNSET/response handling per CLAUDE.md patterns
 - [ ] New functionality has tests (success + error paths, 87%+ coverage)
 - [ ] Public APIs have docstrings; ADR created for architectural decisions

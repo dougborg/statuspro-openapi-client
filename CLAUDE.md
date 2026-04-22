@@ -83,11 +83,12 @@ Common mistakes to avoid:
   `{"data": [...], "meta": {...}}` (page/per_page pagination), but `GET /statuses` and
   `GET /orders/{id}/viable-statuses` return raw arrays. Use `unwrap_data()` for wrapped
   responses and `unwrap()` for raw arrays.
-- **Pagination: page + per_page (not page + limit)** — StatusPro uses `per_page` (max 100),
-  not `limit`. The transport's auto-paginator uses `meta.last_page` as the stop signal.
-- **Help resource drift** — `statuspro_mcp_server/.../resources/help.py` contains hardcoded
-  tool documentation. When adding or modifying tool parameters, also update the help
-  resource content to stay in sync.
+- **Pagination: page + per_page (not page + limit)** — StatusPro uses `per_page` (max
+  100), not `limit`. The transport's auto-paginator uses `meta.last_page` as the stop
+  signal.
+- **Help resource drift** — `statuspro_mcp_server/.../resources/help.py` contains
+  hardcoded tool documentation. When adding or modifying tool parameters, also update
+  the help resource content to stay in sync.
 - **None-to-UNSET conversion** — When building attrs API request models from optional
   fields, use `to_unset(value)` from `statuspro_public_api_client.domain.converters`
   instead of `value if value is not None else UNSET`.
@@ -114,13 +115,13 @@ questions** — they are faster, more accurate, and cross-reference the real typ
 
 ### LSP known limitations
 
-- `workspaceSymbol` returns nothing in this tooling — pyright only indexes *open* files,
+- `workspaceSymbol` returns nothing in this tooling — pyright only indexes _open_ files,
   and the LSP tool doesn't expose the query parameter. Use `Grep` for project-wide
   symbol search instead (e.g., `Grep "def format_md_table"`).
 - `goToImplementation` is not implemented by pyright — use `goToDefinition` instead.
 - `goToDefinition` on external-library imports returns "no definition found" — use
   `hover` instead, which gives you the class signature + docstring.
-- If `hover` returns `Unknown` for a *project-external* import (e.g., pydantic,
+- If `hover` returns `Unknown` for a _project-external_ import (e.g., pydantic,
   fastmcp), the langserver is stale — flag to the user that Claude Code needs a restart
   to re-read `pyrightconfig.json`. All project-internal imports should always resolve.
 
@@ -134,8 +135,8 @@ questions** — they are faster, more accurate, and cross-reference the real typ
 
 **API scope:** 7 endpoints, 18 schemas, 2 tags (Orders, Statuses). Bearer auth.
 
-**Key pattern:** Resilience (retries, rate-limit awareness, auto-pagination) lives
-at the httpx transport layer — every endpoint gets it automatically.
+**Key pattern:** Resilience (retries, rate-limit awareness, auto-pagination) lives at
+the httpx transport layer — every endpoint gets it automatically.
 
 ## File Rules
 
@@ -158,8 +159,8 @@ Use `!` for breaking changes: `feat(client)!: breaking change`
 
 ## API Response Handling Best Practices
 
-Use the helper utilities in `statuspro_public_api_client/utils.py` for consistent response
-handling:
+Use the helper utilities in `statuspro_public_api_client/utils.py` for consistent
+response handling:
 
 ### Response Unwrapping
 

@@ -48,13 +48,11 @@ StatusPro OpenAPI Client and MCP Server project.
 ### Using VS Code
 
 1. **Open in Container**:
-
    - Open this repository in VS Code
    - Click the green button in the lower-left corner
    - Select "Reopen in Container"
 
 1. **Wait for Setup**:
-
    - The container will build and run `setup.sh`
    - This installs uv, syncs dependencies, and sets up pre-commit hooks
    - First build takes ~2-5 minutes

@@ -25,7 +25,7 @@ information in these instructions is incomplete or found to be in error.**
 **Complete workflow documentation:** See [AGENT_WORKFLOW.md](../AGENT_WORKFLOW.md) for
 detailed step-by-step instructions.
 
-______________________________________________________________________
+---
 
 ## Project Setup
 
@@ -74,7 +74,7 @@ uv run poe quick-check
 
 **Always use: `uv run poe <task>`** to ensure commands run in the correct environment.
 
-______________________________________________________________________
+---
 
 ## Validation Tiers (CRITICAL)
 
@@ -105,7 +105,7 @@ Everything including docs build **Use for:** Final validation before review
 **NEVER CANCEL** any validation command before timeout. Set generous timeouts (30-60+
 minutes).
 
-______________________________________________________________________
+---
 
 ## Development Workflow
 
@@ -180,7 +180,7 @@ gh pr create
 - ❌ Type checking errors exist
 - ❌ Code is not formatted
 
-______________________________________________________________________
+---
 
 ## Available poe Tasks
 
@@ -239,7 +239,7 @@ uv run poe help            # List all available tasks
 uv run poe --help          # Show poe command options
 ```
 
-______________________________________________________________________
+---
 
 ## Pre-commit Hooks
 
@@ -259,7 +259,7 @@ checking + basic linting only **Install:**
 **Network Issues:** Pre-commit installation may fail in restricted environments. This is
 expected and can be skipped.
 
-______________________________________________________________________
+---
 
 ## Architecture Overview
 
@@ -310,7 +310,7 @@ async with StatusProClient() as client:
 - `scripts/`
 - `docs/`
 
-______________________________________________________________________
+---
 
 ## Conventional Commits (CRITICAL)
 
@@ -349,7 +349,7 @@ git commit -m "feat(mcp): add inventory management tools"
 git commit -m "docs: update README"
 ```
 
-______________________________________________________________________
+---
 
 ## Common Pitfalls
 
@@ -359,12 +359,12 @@ ______________________________________________________________________
 1. **Integration tests need credentials** - Set `STATUSPRO_API_KEY` in `.env`
 1. **Conventional commits matter** - Wrong types trigger unwanted releases
 1. **PR must pass `check` before opening** - This is non-negotiable
-1. **Use correct import paths** - Direct imports from `statuspro_public_api_client.api` (no
-   `.generated`)
+1. **Use correct import paths** - Direct imports from `statuspro_public_api_client.api`
+   (no `.generated`)
 1. **Client types import** - Use `from statuspro_public_api_client.client_types import`
    instead of `types`
 
-______________________________________________________________________
+---
 
 ## Command Timeout Reference (CRITICAL)
 
@@ -386,7 +386,7 @@ ______________________________________________________________________
 **Remember**: Always set generous timeouts. Network delays and package compilation can
 extend these times significantly.
 
-______________________________________________________________________
+---
 
 ## Additional Resources
 
@@ -397,7 +397,7 @@ ______________________________________________________________________
 - **[TESTING_GUIDE.md](docs/TESTING_GUIDE.md)** - Testing strategy and coverage
 - **[docs/adr/](docs/adr/)** - Architecture Decision Records
 
-______________________________________________________________________
+---
 
 **Final Reminder**: These instructions are based on exhaustive testing of every command.
 Follow them exactly and **NEVER CANCEL** long-running operations. Use the appropriate

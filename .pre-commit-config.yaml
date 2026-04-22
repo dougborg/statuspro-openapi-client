@@ -25,10 +25,10 @@ repos:
         types: [python]
         pass_filenames: true
 
-      # Markdown formatting (via uv)
-      - id: mdformat
-        name: mdformat
-        entry: uv run mdformat --wrap=88
+      # Markdown formatting (prettier via pnpm)
+      - id: prettier-markdown
+        name: prettier (markdown)
+        entry: pnpm exec prettier --write
         language: system
         types: [markdown]
         exclude: |

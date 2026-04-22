@@ -23,11 +23,9 @@ capabilities.
 Configure logging behavior with these environment variables:
 
 - **`STATUSPRO_MCP_LOG_LEVEL`** - Log level (default: `INFO`)
-
   - Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`
 
 - **`STATUSPRO_MCP_LOG_FORMAT`** - Output format (default: `json`)
-
   - Options: `json`, `text`
 
 ### Examples
@@ -226,15 +224,15 @@ Example with metrics:
   "threshold": 10,
   "total_count": 25,
   "returned_count": 25,
-  "duration_ms": 678.90,
+  "duration_ms": 678.9,
   "level": "info"
 }
 ```
 
 ## Observability Decorators
 
-The StatusPro MCP Server provides convenience decorators to automatically instrument tools
-and service methods with logging, timing, and error tracking.
+The StatusPro MCP Server provides convenience decorators to automatically instrument
+tools and service methods with logging, timing, and error tracking.
 
 ### @observe_tool
 
@@ -344,7 +342,7 @@ class MyService:
     async def get(self, item_id: int) -> Item:
         """Fetch item by ID."""
         return await self._fetch(item_id)
-    
+
     @observe_service("create_item")
     async def create(self, data: dict) -> Item:
         """Create new item."""
@@ -360,7 +358,7 @@ Operation started (DEBUG level):
   "event": "service_operation_started",
   "service": "MyService",
   "operation": "get_item",
-  "params": {"item_id": 123},
+  "params": { "item_id": 123 },
   "timestamp": "2025-01-05T17:08:40.123456Z",
   "level": "debug"
 }

@@ -1,27 +1,26 @@
 # StatusPro MCP Server
 
-Model Context Protocol (MCP) server for the [StatusPro
-API](https://app.orderstatuspro.com/api/v1). Exposes the API as tools so AI
-assistants (Claude Desktop, Claude.ai, Cursor, etc.) can read and update
-order status through natural language.
+Model Context Protocol (MCP) server for the
+[StatusPro API](https://app.orderstatuspro.com/api/v1). Exposes the API as tools so AI
+assistants (Claude Desktop, Claude.ai, Cursor, etc.) can read and update order status
+through natural language.
 
-The StatusPro API is intentionally small — seven endpoints for listing and
-looking up orders and applying status/comment/due-date changes. This server
-maps them to nine tools and adds a two-step confirm pattern on every
-mutation.
+The StatusPro API is intentionally small — seven endpoints for listing and looking up
+orders and applying status/comment/due-date changes. This server maps them to nine tools
+and adds a two-step confirm pattern on every mutation.
 
 ## Features
 
 - **9 tools** across Orders and Statuses — see the table below.
-- **Two-step confirmation**: mutations require `confirm=true` and elicit
-  explicit user approval via `ctx.elicit`.
-- **Built-in resilience**: automatic retries, 429 rate-limit handling with
-  exponential backoff, and auto-pagination inherited from the
-  `statuspro-openapi-client` transport layer.
-- **Environment-based authentication**: bearer token via `STATUSPRO_API_KEY`
-  (env var, `.env`, or `~/.netrc`).
-- **Response caching** for read-only tools (30s TTL) via the FastMCP response
-  caching middleware.
+- **Two-step confirmation**: mutations require `confirm=true` and elicit explicit user
+  approval via `ctx.elicit`.
+- **Built-in resilience**: automatic retries, 429 rate-limit handling with exponential
+  backoff, and auto-pagination inherited from the `statuspro-openapi-client` transport
+  layer.
+- **Environment-based authentication**: bearer token via `STATUSPRO_API_KEY` (env var,
+  `.env`, or `~/.netrc`).
+- **Response caching** for read-only tools (30s TTL) via the FastMCP response caching
+  middleware.
 - **Structured logging** with sensitive-data redaction.
 
 ## Installation
@@ -80,8 +79,8 @@ Restart Claude Desktop and the StatusPro tools will appear.
 
 ### 5. Use with Claude.ai (streamable-http)
 
-Claude.ai requires **HTTPS** and a **publicly reachable URL**. For local
-development, use a tunnel like [ngrok](https://ngrok.com):
+Claude.ai requires **HTTPS** and a **publicly reachable URL**. For local development,
+use a tunnel like [ngrok](https://ngrok.com):
 
 ```bash
 # Terminal 1: Start the MCP server with hot-reload
@@ -115,8 +114,8 @@ statuspro-mcp-server
 
 ## Tools
 
-Mutations use a two-step confirm pattern: call with `confirm=false` first to
-get a preview, then `confirm=true` to execute.
+Mutations use a two-step confirm pattern: call with `confirm=false` first to get a
+preview, then `confirm=true` to execute.
 
 | Tool                       | Mutation? | Endpoint                           | Purpose                                       |
 | -------------------------- | --------- | ---------------------------------- | --------------------------------------------- |
@@ -146,8 +145,8 @@ update_order_status(order_id=6110375248088, status_code="st000003", confirm=Fals
 
 ## Resources
 
-Resources expose stable, read-only reference data so AI agents can orient
-themselves without mutating tools.
+Resources expose stable, read-only reference data so AI agents can orient themselves
+without mutating tools.
 
 - `statuspro://statuses` — full status catalog (JSON).
 - `statuspro://help` — tool reference and recommended workflows (Markdown).
@@ -159,10 +158,9 @@ For transactional data (orders, status history), use the tools.
 ### Environment variables
 
 - `STATUSPRO_API_KEY` (required) — your bearer token.
-- `STATUSPRO_BASE_URL` (optional) — defaults to
-  `https://app.orderstatuspro.com/api/v1`.
-- `STATUSPRO_MCP_LOG_LEVEL` (optional) — `DEBUG` / `INFO` / `WARNING` /
-  `ERROR` (default `INFO`).
+- `STATUSPRO_BASE_URL` (optional) — defaults to `https://app.orderstatuspro.com/api/v1`.
+- `STATUSPRO_MCP_LOG_LEVEL` (optional) — `DEBUG` / `INFO` / `WARNING` / `ERROR` (default
+  `INFO`).
 - `STATUSPRO_MCP_LOG_FORMAT` (optional) — `json` or `text` (default `json`).
 
 ### Endpoint authentication (HTTP transport)
@@ -176,8 +174,8 @@ When running over `http`, `sse`, or `streamable-http`, the MCP endpoint is
 export MCP_AUTH_TOKEN=your-secret-token
 ```
 
-Clients must send `Authorization: Bearer your-secret-token`. In Claude.ai,
-enter the token in the connector's Advanced Settings.
+Clients must send `Authorization: Bearer your-secret-token`. In Claude.ai, enter the
+token in the connector's Advanced Settings.
 
 **GitHub OAuth** (production):
 
@@ -187,8 +185,8 @@ export MCP_GITHUB_CLIENT_SECRET=your-github-client-secret
 export MCP_BASE_URL=https://your-public-url.ngrok-free.app
 ```
 
-Create a GitHub OAuth App at https://github.com/settings/developers with the
-callback URL set to `<MCP_BASE_URL>/auth/callback`.
+Create a GitHub OAuth App at https://github.com/settings/developers with the callback
+URL set to `<MCP_BASE_URL>/auth/callback`.
 
 Auth is **not required** for stdio transport (local only).
 
@@ -218,8 +216,7 @@ export STATUSPRO_API_KEY=your-api-key-here
 
 ### 401 Unauthorized
 
-Your API key is invalid or expired. Rotate it in your StatusPro account
-settings.
+Your API key is invalid or expired. Rotate it in your StatusPro account settings.
 
 ### Tools not showing in Claude Desktop
 
@@ -230,9 +227,9 @@ settings.
 
 ### Persistent 429 rate limiting
 
-The client retries 429s with exponential backoff automatically. If you see
-persistent rate limits, reduce your request frequency — especially around
-`add_order_comment` and `bulk_update_order_status` (5/min each).
+The client retries 429s with exponential backoff automatically. If you see persistent
+rate limits, reduce your request frequency — especially around `add_order_comment` and
+`bulk_update_order_status` (5/min each).
 
 ## Development
 
