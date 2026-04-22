@@ -102,7 +102,7 @@ scope. But prefer this ordering when sections are present.
 
 ### Markdown Formatting
 
-**Always use mdformat for consistency:**
+**Always use Prettier for consistency:**
 
 ```bash
 uv run poe format  # Formats all markdown files
@@ -485,7 +485,7 @@ Before considering documentation complete:
 
 - [ ] All code examples tested and working
 - [ ] Links verified (internal and external)
-- [ ] Formatting consistent with mdformat
+- [ ] Formatting consistent with Prettier
 - [ ] Spelling and grammar checked
 - [ ] Screenshots updated (if UI changes)
 - [ ] Version numbers current
@@ -506,7 +506,7 @@ Documentation should improve every time it's touched:
 ## Critical Reminders
 
 1. **Test all examples** - Don't document code that doesn't work
-1. **Format with mdformat** - Consistency is critical
+1. **Format with Prettier** - Consistency is critical
 1. **Update indexes** - Keep navigation current
 1. **Link validation** - Broken links frustrate users
 1. **Build verification** - Always build docs locally first

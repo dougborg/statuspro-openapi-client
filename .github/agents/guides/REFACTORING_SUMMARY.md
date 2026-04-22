@@ -196,7 +196,7 @@ Created 4 shared guides eliminating duplication across all agents:
    - Standards: AAA pattern, fixtures, mocking, coverage goals
 1. **markdown.instructions.md** (224 lines)
    - Auto-applies to: `**/*.md`
-   - Standards: mdformat, line length, headers, code blocks
+   - Standards: Prettier, line length, headers, code blocks
 
 **Created 5 reusable prompt files:**
 

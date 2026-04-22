@@ -6,14 +6,14 @@
 
 ## Formatting Tool
 
-- **Always use mdformat** for consistency
+- **Always use Prettier** for consistency
 - Run `uv run poe format` to format all markdown files
 - Run `uv run poe format-check` to verify formatting
 
 ## Line Length
 
 - **88 characters maximum** (matches ruff for code)
-- mdformat handles wrapping automatically
+- Prettier handles wrapping automatically (`proseWrap: always`)
 
 ## Headers
 
@@ -54,8 +54,8 @@
 3. Step 3
 ```
 
-- Use `1.` numbering (mdformat handles sequential)
-- Don't manually number (mdformat fixes)
+- Use `1.` numbering (Prettier handles sequential)
+- Don't manually number (Prettier fixes)
 
 ### Task Lists
 
@@ -118,7 +118,7 @@ key: value
 | Value 4  | Value 5  | Value 6  |
 ```
 
-- Use mdformat to align columns automatically
+- Use Prettier to align columns automatically
 - Include header separator row
 
 ## Images
@@ -220,7 +220,7 @@ Date: YYYY-MM-DD
 
 ## Critical Reminders
 
-1. **Always format with mdformat** - Run before committing
+1. **Always format with Prettier** - Run before committing
 1. **Test code examples** - Ensure they actually work
 1. **Verify links** - Broken links frustrate users
 1. **Specify code block language** - Required for syntax highlighting

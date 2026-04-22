@@ -23,7 +23,7 @@ organizing these agents and their supporting materials.
 - YAML frontmatter must follow specific format with `name`, `description`, `tools`
   properties
 - Progressive disclosure is critical - agents should load minimal context initially
-- Markdown formatters (mdformat) can break YAML frontmatter if not configured properly
+- Markdown formatters (Prettier) can break YAML frontmatter if not configured properly
 
 **Project-Specific:**
 
@@ -124,7 +124,7 @@ Agents use the `read` tool to load these guides only when needed.
 ### Configuration Details
 
 - **File extension**: `.agent.md` (distinguishes from regular markdown)
-- **mdformat exclusion**: Agent files excluded from mdformat to preserve YAML
+- **Prettier exclusion**: Agent files listed in `.prettierignore` to preserve YAML
   frontmatter
 - **CODEOWNERS**: `.github/CODEOWNERS` assigns ownership of Copilot configuration
 - **Validation**: Pre-commit hooks validate YAML syntax with yamllint
@@ -144,7 +144,7 @@ Agents use the `read` tool to load these guides only when needed.
 1. **Maintainability**: Clear separation of concerns makes updates easier
 1. **Discoverability**: Developers can invoke agents by role (@python-developer,
    @tdd-specialist, etc.)
-1. **Context preservation**: mdformat exclusion prevents YAML frontmatter corruption
+1. **Context preservation**: Prettier exclusion prevents YAML frontmatter corruption
 
 ### Negative Consequences
 

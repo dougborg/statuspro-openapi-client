@@ -125,4 +125,4 @@ Date: YYYY-MM-DD
 - [ ] Consequences are realistic
 - [ ] Alternatives are documented
 - [ ] Index is updated
-- [ ] Files are formatted with mdformat
+- [ ] Files are formatted with Prettier

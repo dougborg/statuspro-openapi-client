@@ -187,7 +187,7 @@ gh pr create
 ### Code Quality
 
 ```bash
-uv run poe format          # Format code (ruff + mdformat)
+uv run poe format          # Format code (ruff + prettier)
 uv run poe format-check    # Check formatting without changes
 uv run poe lint            # Run all linting (ruff + mypy + yamllint)
 uv run poe fix             # Auto-fix formatting and linting issues
