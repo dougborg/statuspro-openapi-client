@@ -33,9 +33,7 @@ repos:
         types: [markdown]
         exclude: |
           (?x)(
-            CHANGELOG\.md|
-            docs/CHANGELOG\.md|
-            statuspro_public_api_client/docs/CHANGELOG\.md|
+            (^|.+/)CHANGELOG\.md$|
             \.agent\.md$|
             statuspro_mcp_server/src/statuspro_mcp/templates/.*\.md$|
             \.claude/skills/.*\.md$
