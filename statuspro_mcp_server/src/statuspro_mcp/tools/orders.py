@@ -320,19 +320,24 @@ def register_tools(mcp: FastMCP) -> None:
         if not confirm:
             # Preview branch: fetch the order + catalog so the UI can show
             # the current status side-by-side with the proposed new one.
+            # Single catalog fetch services both the color map and the
+            # new-status-name lookup (``list_statuses`` is cached, but pulling
+            # the local list avoids round-tripping the cache twice).
             order = await services.client.orders.get(order_id)
-            catalog = await _status_color_catalog(services)
+            statuses_list = await services.client.statuses.list()
+            catalog: dict[str, str | None] = {}
+            new_name: str | None = None
+            for s in statuses_list:
+                code = getattr(s, "code", None)
+                if not code:
+                    continue
+                catalog[code] = getattr(s, "color", None)
+                if code == status_code:
+                    new_name = getattr(s, "name", None)
+
             current = getattr(order, "status", None)
             current_code = getattr(current, "code", None) if current else None
             current_name = getattr(current, "name", None) if current else None
-
-            # Resolve new-status name from the catalog (None if unknown code).
-            new_name: str | None = None
-            statuses = await services.client.statuses.list()
-            for s in statuses:
-                if getattr(s, "code", None) == status_code:
-                    new_name = getattr(s, "name", None)
-                    break
 
             preview = StatusChangePreview(
                 order_id=order_id,
@@ -376,7 +381,10 @@ def register_tools(mcp: FastMCP) -> None:
                 recipients=recipients_text,
             )
 
-        # Confirm branch: elicit approval, then execute.
+        # Confirm branch: elicit approval, then execute. Renders the
+        # (markdown-only) status_change_result template — this branch doesn't
+        # emit a PrefabApp since the confirmation surface already lives in
+        # the elicit prompt.
         result = await require_confirmation(
             context,
             f"Change order {order_id} status to {status_code}?",
@@ -391,14 +399,12 @@ def register_tools(mcp: FastMCP) -> None:
             )
             return make_tool_result(
                 declined,
-                template_name="status_change_preview",
+                template_name="status_change_result",
                 order_id=order_id,
-                current_status_code="—",
-                current_status_name="—",
                 new_status_code=status_code,
-                new_status_name="—",
-                comment_block=f"_{result.value}_",
-                recipients="—",
+                outcome=result.value,
+                http_status=0,
+                message_line=f"\n- **Message:** User {result.value}",
             )
 
         body = UpdateOrderStatusRequest(
@@ -419,18 +425,12 @@ def register_tools(mcp: FastMCP) -> None:
         )
         return make_tool_result(
             outcome,
-            template_name="status_change_preview",
+            template_name="status_change_result",
             order_id=order_id,
-            current_status_code="—",
-            current_status_name="—",
             new_status_code=status_code,
-            new_status_name="—",
-            comment_block=(
-                f"_Applied (HTTP {response.status_code})_"
-                if outcome.success
-                else f"_Failed (HTTP {response.status_code})_"
-            ),
-            recipients="—",
+            outcome="applied" if outcome.success else "failed",
+            http_status=response.status_code,
+            message_line="",
         )
 
     @mcp.tool(
