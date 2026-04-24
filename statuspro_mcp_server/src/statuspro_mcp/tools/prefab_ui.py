@@ -46,6 +46,8 @@ from prefab_ui.components import (
 )
 from prefab_ui.components.control_flow import ForEach
 
+from statuspro_mcp.tools.schemas import StatusChangePreview
+
 BadgeVariant = Literal[
     "default",
     "secondary",
@@ -282,15 +284,9 @@ def build_status_change_preview_ui(
     order_id = preview.get("order_id")
     comment = preview.get("comment")
     public = bool(preview.get("public"))
-    email_customer = bool(preview.get("email_customer"))
-    email_additional = bool(preview.get("email_additional"))
-
-    recipients: list[str] = []
-    if email_customer:
-        recipients.append("customer")
-    if email_additional:
-        recipients.append("additional contacts")
-    recipients_text = ", ".join(recipients) or "nobody"
+    # Re-hydrate as the schema so its ``recipients_text`` is the single source
+    # of truth for both the UI and the markdown fallback rendered by orders.py.
+    recipients_text = StatusChangePreview.model_validate(preview).recipients_text()
 
     with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
         with CardHeader(), Row(gap=2):

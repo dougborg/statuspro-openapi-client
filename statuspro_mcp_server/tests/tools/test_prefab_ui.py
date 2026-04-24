@@ -4,9 +4,16 @@ Each builder must return a ``PrefabApp`` whose ``.to_json()`` produces a dict
 with a ``"view"`` key — that's the contract FastMCP's ``_prefab_to_json``
 relies on to turn the app into the MCP-Apps wire envelope. Pin it so a future
 Prefab version can't silently change the shape under us.
+
+Where a builder ships behavior the user actually sees — the Confirm button's
+follow-up message, the get_order drill-down tool name — assert against the
+serialized envelope so a regression in the action wiring surfaces here rather
+than in Claude Desktop.
 """
 
 from __future__ import annotations
+
+import json
 
 from prefab_ui.app import PrefabApp
 from statuspro_mcp.tools.prefab_ui import (
@@ -17,13 +24,18 @@ from statuspro_mcp.tools.prefab_ui import (
 )
 
 
-def _assert_renders(app: PrefabApp) -> None:
+def _envelope(app: PrefabApp) -> dict:
     envelope = app.to_json()
     assert isinstance(envelope, dict)
     assert "view" in envelope
+    return envelope
 
 
-def test_build_orders_table_ui_renders():
+def _assert_renders(app: PrefabApp) -> None:
+    _envelope(app)
+
+
+def test_build_orders_table_ui_renders_with_drill_down_action():
     app = build_orders_table_ui(
         [
             {
@@ -37,7 +49,10 @@ def test_build_orders_table_ui_renders():
         total=1,
         filters_line="status=In Production",
     )
-    _assert_renders(app)
+    # Row click must wire CallTool("get_order"); without it, the drill-down
+    # half of the find/view/decide/mutate loop silently breaks in Claude Desktop.
+    serialized = json.dumps(_envelope(app))
+    assert "get_order" in serialized
 
 
 def test_build_order_detail_ui_renders_with_history():
@@ -94,7 +109,7 @@ def test_build_viable_statuses_ui_renders_empty():
     _assert_renders(app)
 
 
-def test_build_status_change_preview_ui_renders():
+def test_build_status_change_preview_ui_renders_with_confirm_action():
     app = build_status_change_preview_ui(
         {
             "order_id": 1,
@@ -110,4 +125,9 @@ def test_build_status_change_preview_ui_renders():
         current_color="pink",
         new_color="green",
     )
-    _assert_renders(app)
+    # The Confirm button's SendMessage payload drives the second half of the
+    # two-step mutation flow; if the literal "confirm=true" disappears, the
+    # user can preview but never apply, with no test catching the regression.
+    serialized = json.dumps(_envelope(app))
+    assert "confirm=true" in serialized
+    assert "st000003" in serialized

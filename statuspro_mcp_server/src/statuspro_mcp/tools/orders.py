@@ -11,6 +11,7 @@ a Prefab UI for MCP-Apps clients (Claude Desktop) via ``make_tool_result`` and
 
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated, Any
 
 from fastmcp import Context, FastMCP
@@ -36,6 +37,7 @@ from statuspro_mcp.tools.schemas import (
 from statuspro_mcp.tools.tool_result_utils import (
     UI_META,
     format_md_table,
+    iso_or_none,
     make_tool_result,
 )
 from statuspro_public_api_client.api.orders import (
@@ -61,7 +63,6 @@ def _to_summary(order: Any) -> OrderSummary:
     """Convert a domain Order or attrs model to an OrderSummary."""
     customer = getattr(order, "customer", None)
     status = getattr(order, "status", None)
-    due_date = getattr(order, "due_date", None)
     return OrderSummary(
         id=order.id,
         name=getattr(order, "name", None),
@@ -70,21 +71,20 @@ def _to_summary(order: Any) -> OrderSummary:
         customer_email=getattr(customer, "email", None) if customer else None,
         status_code=getattr(status, "code", None) if status else None,
         status_name=getattr(status, "name", None) if status else None,
-        due_date=str(due_date) if due_date else None,
+        due_date=iso_or_none(getattr(order, "due_date", None)),
     )
 
 
 def _history_entry(item: Any) -> HistoryEntry:
     """Convert an attrs ``HistoryItem`` into a UI-friendly ``HistoryEntry``."""
     status = getattr(item, "status", None)
-    created_at = getattr(item, "created_at", None)
     return HistoryEntry(
         event=getattr(item, "event", None) or None,
         status_code=getattr(status, "code", None) if status else None,
         status_name=getattr(status, "name", None) if status else None,
         comment=getattr(item, "comment", None) or None,
         comment_is_public=getattr(item, "comment_is_public", None),
-        created_at=created_at.isoformat() if created_at else None,
+        created_at=iso_or_none(getattr(item, "created_at", None)),
     )
 
 
@@ -92,10 +92,9 @@ def _to_detail(order: Any) -> OrderDetail:
     """Convert a domain Order into a full ``OrderDetail`` including history."""
     summary = _to_summary(order)
     history_items = getattr(order, "history", None) or []
-    due_date_to = getattr(order, "due_date_to", None)
     return OrderDetail(
         **summary.model_dump(),
-        due_date_to=str(due_date_to) if due_date_to else None,
+        due_date_to=iso_or_none(getattr(order, "due_date_to", None)),
         history=[_history_entry(h) for h in history_items],
     )
 
@@ -106,15 +105,16 @@ async def _status_color_catalog(services: Any) -> dict[str, str | None]:
     The ``Status`` model on an order has no color field — only
     ``StatusDefinition`` (returned by ``statuses.list()``) does. Callers that
     want to color-chip an order's status must look up by code against this
-    catalog. StatusPro's catalog is small (O(20)) and ``list_statuses`` is
-    cached by ``ResponseCachingMiddleware``, so the extra call is cheap.
+    catalog. The call adds one HTTP round-trip per tool invocation; the
+    StatusPro catalog is small (O(20)) so the response is cheap.
     """
     statuses = await services.client.statuses.list()
-    return {
-        getattr(s, "code", None): getattr(s, "color", None)
-        for s in statuses
-        if getattr(s, "code", None)
-    }
+    catalog: dict[str, str | None] = {}
+    for s in statuses:
+        code = getattr(s, "code", None)
+        if code:
+            catalog[code] = getattr(s, "color", None)
+    return catalog
 
 
 def register_tools(mcp: FastMCP) -> None:
@@ -170,6 +170,7 @@ def register_tools(mcp: FastMCP) -> None:
             per_page=per_page,
         )
         summaries = [_to_summary(o) for o in orders]
+        summary_dicts = [s.model_dump() for s in summaries]
         filters: dict[str, Any] = {
             k: v
             for k, v in {
@@ -191,7 +192,7 @@ def register_tools(mcp: FastMCP) -> None:
 
         response = OrderList(orders=summaries, total=len(summaries), filters=filters)
         app = build_orders_table_ui(
-            [s.model_dump() for s in summaries],
+            summary_dicts,
             total=len(summaries),
             filters_line=filters_line or None,
         )
@@ -200,12 +201,12 @@ def register_tools(mcp: FastMCP) -> None:
                 headers=["Order #", "Customer", "Status", "Due"],
                 rows=[
                     [
-                        s.order_number or "—",
-                        s.customer_name or "—",
-                        s.status_name or "—",
-                        s.due_date or "—",
+                        d.get("order_number") or "—",
+                        d.get("customer_name") or "—",
+                        d.get("status_name") or "—",
+                        d.get("due_date") or "—",
                     ]
-                    for s in summaries
+                    for d in summary_dicts
                 ],
             )
             or "_(no orders)_"
@@ -230,8 +231,10 @@ def register_tools(mcp: FastMCP) -> None:
         order_id: Annotated[int, Field(description="StatusPro order id")],
     ) -> ToolResult:
         services = get_services(context)
-        order = await services.client.orders.get(order_id)
-        catalog = await _status_color_catalog(services)
+        order, catalog = await asyncio.gather(
+            services.client.orders.get(order_id),
+            _status_color_catalog(services),
+        )
 
         detail = _to_detail(order)
         status_color = catalog.get(detail.status_code) if detail.status_code else None
@@ -356,12 +359,7 @@ def register_tools(mcp: FastMCP) -> None:
                 new_color=catalog.get(status_code),
             )
 
-            recipients = []
-            if email_customer:
-                recipients.append("customer")
-            if email_additional:
-                recipients.append("additional contacts")
-            recipients_text = ", ".join(recipients) or "nobody"
+            recipients_text = preview.recipients_text()
             comment_block = (
                 f"**Comment** ({'public' if public else 'private'}): {comment}"
                 if comment

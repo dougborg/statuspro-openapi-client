@@ -137,6 +137,15 @@ class StatusChangePreview(BaseModel):
     email_customer: bool
     email_additional: bool
 
+    def recipients_text(self) -> str:
+        """Human-readable list of who will receive notification emails."""
+        recipients: list[str] = []
+        if self.email_customer:
+            recipients.append("customer")
+        if self.email_additional:
+            recipients.append("additional contacts")
+        return ", ".join(recipients) or "nobody"
+
 
 class StatusChangeResult(BaseModel):
     """Execution result returned when ``update_order_status`` is called with
