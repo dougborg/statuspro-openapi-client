@@ -1,7 +1,7 @@
 # Docker MCP Server Guide
 
-This guide covers building, testing, and submitting the StatusPro MCP Server to the Docker
-MCP Catalog.
+This guide covers building, testing, and submitting the StatusPro MCP Server to the
+Docker MCP Catalog.
 
 ## Pre-built Images
 
@@ -212,7 +212,7 @@ tags:
 categories:
   - business
   - orders
-build_type: docker-built  # Docker will build and maintain
+build_type: docker-built # Docker will build and maintain
 ```
 
 ## Configuration Examples
@@ -224,10 +224,16 @@ build_type: docker-built  # Docker will build and maintain
   "mcpServers": {
     "statuspro": {
       "command": "docker",
-      "args": ["run", "-i", "--rm",
-               "-e", "STATUSPRO_API_KEY=your-key-here",
-               "mcp/statuspro-mcp-server:latest",
-               "--transport", "stdio"]
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "STATUSPRO_API_KEY=your-key-here",
+        "mcp/statuspro-mcp-server:latest",
+        "--transport",
+        "stdio"
+      ]
     }
   }
 }
@@ -265,7 +271,7 @@ ngrok http 8765
 - **Review**: Docker team reviews (typically 1-2 days)
 - **Approval**: Available within 24 hours of approval
 - **Availability**:
-  - Docker MCP Catalog *(link pending official catalog launch)*
+  - Docker MCP Catalog _(link pending official catalog launch)_
   - Docker Desktop MCP Toolkit
   - One-click connection in Claude Desktop
 
@@ -273,4 +279,4 @@ ngrok http 8765
 
 - [MCP Registry GitHub](https://github.com/docker/mcp-registry)
 - [Docker MCP Documentation](https://docs.docker.com/ai/mcp-catalog-and-toolkit/)
-- Docker MCP Catalog *(URL will be provided when officially available)*
+- Docker MCP Catalog _(URL will be provided when officially available)_

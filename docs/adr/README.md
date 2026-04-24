@@ -52,7 +52,6 @@ We use the format proposed by Michael Nygard in his article
 1. Update the number (NNNN) to be the next sequential number
 
 1. Fill in the sections:
-
    - Title
    - Status (start with "Proposed")
    - Context (why is this decision needed?)
@@ -70,7 +69,8 @@ ensure ordering.
 
 ## Related Documentation
 
-- [Client ADRs](../../statuspro_public_api_client/docs/adr/README.md) - Client package ADRs
+- [Client ADRs](../../statuspro_public_api_client/docs/adr/README.md) - Client package
+  ADRs
 - [MCP Server ADRs](../../statuspro_mcp_server/docs/adr/README.md) - MCP server package
   ADRs
 - [Contributing Guide](../CONTRIBUTING.md) - Contribution guidelines

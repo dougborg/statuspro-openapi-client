@@ -1,7 +1,7 @@
 # StatusProClient Cookbook
 
-Focused recipes for common StatusPro workflows. See the [guide](guide.md) for
-the conceptual overview.
+Focused recipes for common StatusPro workflows. See the [guide](guide.md) for the
+conceptual overview.
 
 ## List orders due in the next 7 days
 
@@ -71,8 +71,8 @@ async with StatusProClient() as client:
 
 ## Change an order's status safely
 
-Call `/viable-statuses` first to confirm the target status is a valid
-transition from the current state.
+Call `/viable-statuses` first to confirm the target status is a valid transition from
+the current state.
 
 ```python
 from statuspro_public_api_client import StatusProClient

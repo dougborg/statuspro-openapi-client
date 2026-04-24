@@ -109,16 +109,15 @@ User Request
 Each wrapper follows this pattern:
 
 ```typescript
-type FetchWrapper = (
-  baseFetch: typeof fetch,
-  options: WrapperOptions
-) => typeof fetch;
+type FetchWrapper = (baseFetch: typeof fetch, options: WrapperOptions) => typeof fetch;
 ```
 
 ### Example: Retry Wrapper
 
 ```typescript
-export function createResilientFetch(options: ResilientFetchOptions = {}): typeof fetch {
+export function createResilientFetch(
+  options: ResilientFetchOptions = {},
+): typeof fetch {
   const config = { ...DEFAULT_RETRY_CONFIG, ...options.retry };
   const baseFetch = options.baseFetch ?? globalThis.fetch;
 
@@ -135,7 +134,7 @@ export function createResilientFetch(options: ResilientFetchOptions = {}): typeo
         await sleep(calculateRetryDelay(attempt, config));
       }
     }
-    throw new Error('Max retries exceeded');
+    throw new Error("Max retries exceeded");
   };
 }
 ```

@@ -17,7 +17,7 @@ uv run poe check
 
 **NEVER CANCEL** `regenerate-client` - it takes 2+ minutes but must complete!
 
-______________________________________________________________________
+---
 
 ## When to Regenerate
 
@@ -45,7 +45,7 @@ git log --oneline docs/statuspro-openapi.yaml
 ls -l statuspro_public_api_client/api/
 ```
 
-______________________________________________________________________
+---
 
 ## Regeneration Process
 
@@ -156,7 +156,7 @@ git commit -m "chore(client): regenerate client after spec fixes"
 git commit -m "build(client): regenerate with updated generator"
 ```
 
-______________________________________________________________________
+---
 
 ## What Gets Regenerated
 
@@ -212,7 +212,7 @@ tests/**/*.py  ✅ Preserved
 docs/**/*.md  ✅ Preserved
 ```
 
-______________________________________________________________________
+---
 
 ## Auto-Fix Process
 
@@ -259,7 +259,7 @@ issues**:
 - No manual intervention
 - Reliable, repeatable
 
-______________________________________________________________________
+---
 
 ## Common Issues
 
@@ -355,7 +355,7 @@ ImportError: cannot import name 'OldModel'
 1. Update imports in tests
 1. Commit fixes
 
-______________________________________________________________________
+---
 
 ## OpenAPI Spec Management
 
@@ -374,12 +374,12 @@ paths:
       operationId: get_new_endpoint
       summary: Get new resource
       responses:
-        '200':
+        "200":
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NewResource'
+                $ref: "#/components/schemas/NewResource"
 ```
 
 **Add new model:**
@@ -433,7 +433,7 @@ error: Required field 'responses' missing
 
 Fix: Add missing required field
 
-______________________________________________________________________
+---
 
 ## Generator Configuration
 
@@ -459,7 +459,7 @@ Most customization is **not needed** - the generator produces good defaults.
 1. Document reason for customization
 1. Test thoroughly after changes
 
-______________________________________________________________________
+---
 
 ## Integration with CI/CD
 
@@ -492,7 +492,7 @@ CI validates everything
 Merge
 ```
 
-______________________________________________________________________
+---
 
 ## Performance Considerations
 
@@ -528,7 +528,7 @@ ______________________________________________________________________
 - Run unnecessarily (only when spec changes)
 - Skip validation (causes failures)
 
-______________________________________________________________________
+---
 
 ## Best Practices
 
@@ -549,7 +549,7 @@ ______________________________________________________________________
 - **Don't regenerate without reason**
 - **Don't commit without testing**
 
-______________________________________________________________________
+---
 
 ## Emergency Rollback
 
@@ -569,7 +569,7 @@ uv run poe check
 # Investigate issue before retrying
 ```
 
-______________________________________________________________________
+---
 
 ## Summary
 

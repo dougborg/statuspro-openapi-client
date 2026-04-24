@@ -62,9 +62,22 @@ jobs:
           cache-dependency-glob: "uv.lock"
           python-version: ${{ matrix.python-version }}
 
+      - name: Install pnpm
+        if: needs.changes.outputs.code == 'true'
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node.js
+        if: needs.changes.outputs.code == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
       - name: Install dependencies
         if: needs.changes.outputs.code == 'true'
-        run: uv sync --all-extras
+        run: |
+          uv sync --all-extras
+          pnpm install --frozen-lockfile
 
       - name: Check code formatting
         if: needs.changes.outputs.code == 'true'

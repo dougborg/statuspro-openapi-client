@@ -82,11 +82,6 @@ dev = [
   # OpenAPI validation
   "pyyaml>=6.0.0",
   "openapi-spec-validator>=0.7.0",
-  # Markdown formatting
-  "mdformat>=0.7.21",
-  "mdformat-gfm>=0.4.1",
-  "mdformat-tables>=1.0.0",
-  "mdformat-toc>=0.3.0",
   # Type stubs
   "types-python-dateutil>=2.9.0",
   "types-PyYAML>=6.0.0",
@@ -281,17 +276,6 @@ combine-as-imports = true
 force-wrap-aliases = true
 split-on-trailing-comma = true
 
-[tool.mdformat]
-# Basic formatting options
-wrap = 88
-number = false
-# Enable useful plugins
-extensions = [
-  "gfm",    # GitHub Flavored Markdown
-  "tables", # Table formatting
-  "toc",    # Table of contents
-]
-
 # =============================================================================
 # Markdownlint Configuration
 # =============================================================================
@@ -394,7 +378,7 @@ upload_to_repository = false
 remove_dist = false
 commit_author = "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
 commit_message = "chore(release): client v{version}"
-build_command = "pip install mdformat mdformat-gfm mdformat-tables mdformat-toc && mdformat docs/CHANGELOG.md --wrap 88"
+build_command = "pnpm exec prettier --write docs/CHANGELOG.md"
 major_on_zero = false
 allow_zero_version = true
 tag_format = "client-v{version}"
@@ -446,8 +430,8 @@ upload_to_vcs_release = true
 format-python = "ruff format ."
 format-python-check = "ruff format --check ."
 
-format-markdown = "mdformat README.md docs/*.md --wrap 88"
-format-markdown-check = "mdformat --check README.md docs/*.md"
+format-markdown = { shell = "pnpm exec prettier --write '**/*.md'" }
+format-markdown-check = { shell = "pnpm exec prettier --check '**/*.md'" }
 
 format = ["format-python", "format-markdown"]
 format-check = ["format-python-check", "format-markdown-check"]

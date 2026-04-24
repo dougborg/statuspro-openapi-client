@@ -16,8 +16,8 @@ skill lacks.
 - SKIP: `statuspro_public_api_client/api/**/*.py`
 - SKIP: `statuspro_public_api_client/models/**/*.py`
 - SKIP: `statuspro_public_api_client/client.py`
-- SCAN: `statuspro_public_api_client/` (excluding above), `statuspro_mcp_server/`, `tests/`,
-  `scripts/`
+- SCAN: `statuspro_public_api_client/` (excluding above), `statuspro_mcp_server/`,
+  `tests/`, `scripts/`
 
 ## Detection Rules
 

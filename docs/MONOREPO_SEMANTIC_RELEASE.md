@@ -80,13 +80,11 @@ The `.github/workflows/release.yml` workflow runs on every push to `main` and pe
 **two independent semantic-release checks**:
 
 1. **Client Release** (`release-client` job):
-
    - Checks for commits with `feat(client):`, `fix(client):`, or no scope
    - Creates tag: `client-v{version}`
    - Builds and publishes to PyPI as `statuspro-openapi-client`
 
 1. **MCP Server Release** (`release-mcp` job):
-
    - Checks for commits with `feat(mcp):`, `fix(mcp):`
    - Creates tag: `mcp-v{version}`
    - Builds and publishes to PyPI as `statuspro-mcp-server`

@@ -16,6 +16,12 @@ uv --version
 echo "📚 Syncing project dependencies (will be cached)..."
 uv sync --all-extras
 
+# Install Node dependencies (needed for prettier — used by markdown
+# format hook and `uv run poe format-markdown`).
+echo "🟢 Enabling corepack and installing Node dependencies..."
+corepack enable
+pnpm install --frozen-lockfile
+
 # Install pre-commit hooks
 echo "🪝 Installing pre-commit hooks..."
 uv run pre-commit install

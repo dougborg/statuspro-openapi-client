@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## description: 'Python development standards for statuspro-openapi-client project' applyTo: '\*\*/\*.py'
 

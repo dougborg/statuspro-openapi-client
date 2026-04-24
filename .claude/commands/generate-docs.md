@@ -80,7 +80,9 @@ For new usage patterns, add to `docs/COOKBOOK.md`:
 **When to use**: [Scenario description]
 
 \`\`\`python
+
 # Working, tested code example
+
 \`\`\`
 
 **Notes**: [Gotchas, alternatives, related recipes]

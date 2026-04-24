@@ -106,7 +106,8 @@ The server will be available at `http://127.0.0.1:8765/mcp`.
 The server requires the following environment variables:
 
 - `STATUSPRO_API_KEY` (required): Your StatusPro API key
-- `STATUSPRO_BASE_URL` (optional): API base URL (default: `https://app.orderstatuspro.com/api/v1`)
+- `STATUSPRO_BASE_URL` (optional): API base URL (default:
+  `https://app.orderstatuspro.com/api/v1`)
 
 Set them in your `.env` file or export them:
 

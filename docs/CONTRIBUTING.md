@@ -1,7 +1,7 @@
 # Contributing to StatusPro OpenAPI Client
 
-Thank you for your interest in contributing to the StatusPro OpenAPI Client! This document
-provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to the StatusPro OpenAPI Client! This
+document provides guidelines and instructions for contributing.
 
 ## Development Setup
 
@@ -72,7 +72,7 @@ uv run poe test-integration
 - We use [Ruff](https://docs.astral.sh/ruff/) for code formatting and linting
 - [ty](https://astral.sh/blog/ty) for type checking (Astral's fast Rust-based type
   checker)
-- [mdformat](https://mdformat.readthedocs.io/) for Markdown formatting
+- [Prettier](https://prettier.io/) for Markdown formatting
 
 All formatting is automated via `uv run poe format`.
 
@@ -212,7 +212,8 @@ When adding features:
 
 ### Test Environment
 
-Integration tests require valid StatusPro API credentials. Set these in your `.env` file:
+Integration tests require valid StatusPro API credentials. Set these in your `.env`
+file:
 
 ```bash
 STATUSPRO_API_KEY=your_api_key_here

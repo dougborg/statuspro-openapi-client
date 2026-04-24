@@ -123,6 +123,6 @@ When updating agent capabilities:
 1. Keep this README.md index up to date
 1. Ensure cross-references remain accurate
 
-______________________________________________________________________
+---
 
-*Based on Anthropic's progressive disclosure pattern for agent skills*
+_Based on Anthropic's progressive disclosure pattern for agent skills_

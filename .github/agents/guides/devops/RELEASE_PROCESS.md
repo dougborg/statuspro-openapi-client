@@ -16,7 +16,7 @@ Guide for managing releases with semantic-release in this monorepo.
 
 - `docs:`, `chore:`, `test:`, `ci:`, `refactor:` → No release
 
-______________________________________________________________________
+---
 
 ## Semantic Versioning
 
@@ -49,7 +49,7 @@ git commit -m "fix(client): handle null pagination cursor"
 
 Effect: 0.30.0 → 0.30.1
 
-______________________________________________________________________
+---
 
 ## Release Workflow
 
@@ -82,7 +82,7 @@ git log --oneline --grep="^feat" --grep="^fix" --all-match
 git log --oneline | grep -E "(feat|fix)\((client|mcp)\):"
 ```
 
-______________________________________________________________________
+---
 
 ## Commit Scopes for Releases
 
@@ -128,7 +128,7 @@ git commit -m "feat(client): add retry mechanism"
 # Both release client package
 ```
 
-______________________________________________________________________
+---
 
 ## Non-Release Commits
 
@@ -163,7 +163,7 @@ perf: optimize pagination
 build: update uv configuration
 ```
 
-______________________________________________________________________
+---
 
 ## Release Scenarios
 
@@ -233,7 +233,7 @@ See MIGRATION.md for details.
 - Prominent changelog entry
 - Migration guide recommended
 
-______________________________________________________________________
+---
 
 ## Version Tags
 
@@ -271,7 +271,7 @@ git tag -l "mcp-v*"
 git show client-v0.31.0
 ```
 
-______________________________________________________________________
+---
 
 ## Changelog Generation
 
@@ -291,15 +291,18 @@ ______________________________________________________________________
 
 ### Features
 
-* **client:** add batch operations helper ([abc1234](https://github.com/user/repo/commit/abc1234))
-* **client:** add domain helper classes ([def5678](https://github.com/user/repo/commit/def5678))
+- **client:** add batch operations helper
+  ([abc1234](https://github.com/user/repo/commit/abc1234))
+- **client:** add domain helper classes
+  ([def5678](https://github.com/user/repo/commit/def5678))
 
 ### Bug Fixes
 
-* **client:** handle null pagination cursor ([ghi9012](https://github.com/user/repo/commit/ghi9012))
+- **client:** handle null pagination cursor
+  ([ghi9012](https://github.com/user/repo/commit/ghi9012))
 ```
 
-______________________________________________________________________
+---
 
 ## Release Monitoring
 
@@ -329,7 +332,7 @@ gh run view <run-id>
 gh run view <run-id> --log
 ```
 
-______________________________________________________________________
+---
 
 ## Manual Release (Emergency)
 
@@ -363,7 +366,7 @@ gh release create client-v0.31.0 \
 **Note:** Only do this if semantic-release is broken. Otherwise, let automation handle
 it.
 
-______________________________________________________________________
+---
 
 ## Release Checklist
 
@@ -383,7 +386,7 @@ ______________________________________________________________________
 - [ ] CHANGELOG.md updated
 - [ ] No errors in release workflow
 
-______________________________________________________________________
+---
 
 ## Troubleshooting
 
@@ -429,7 +432,7 @@ feat(mcp): add related feature
 
 Results in two releases (client + MCP).
 
-______________________________________________________________________
+---
 
 ## Best Practices
 
@@ -450,7 +453,7 @@ ______________________________________________________________________
 - **Don't force push to main**
 - **Don't skip CI checks**
 
-______________________________________________________________________
+---
 
 ## Related Documentation
 
@@ -459,7 +462,7 @@ ______________________________________________________________________
   Complete guide
 - [Semantic Versioning](https://semver.org/) - Version specification
 
-______________________________________________________________________
+---
 
 ## Summary
 

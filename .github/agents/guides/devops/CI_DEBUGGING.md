@@ -21,7 +21,7 @@ gh run view <run-id> --log
 gh run rerun <run-id> --failed
 ```
 
-______________________________________________________________________
+---
 
 ## CI Workflow Overview
 
@@ -49,7 +49,7 @@ ______________________________________________________________________
 - MkDocs build validation
 - Runs on: PRs affecting docs/, pushes to main
 
-______________________________________________________________________
+---
 
 ## Common Failure Patterns
 
@@ -115,7 +115,7 @@ git commit -am "fix: correct type annotations"
 git push
 ```
 
-______________________________________________________________________
+---
 
 ### 2. Test Failures
 
@@ -192,7 +192,7 @@ git commit -m "build: add missing test dependency"
 git push
 ```
 
-______________________________________________________________________
+---
 
 ### 3. Build Failures
 
@@ -244,7 +244,7 @@ git commit -m "build: regenerate lock file"
 git push
 ```
 
-______________________________________________________________________
+---
 
 ### 4. Documentation Build Failures
 
@@ -282,7 +282,7 @@ WARNING - Could not find 'statuspro_mcp.tools.inventory' in docstrings
 - Check mkdocstrings configuration
 - Verify import paths are correct
 
-______________________________________________________________________
+---
 
 ### 5. Security Scan Failures
 
@@ -323,7 +323,7 @@ Dependency review detected 3 new dependencies with security concerns
 - Update to secure versions
 - If false positive, document rationale
 
-______________________________________________________________________
+---
 
 ## Debugging Workflow
 
@@ -385,7 +385,7 @@ git push
 gh pr checks <pr-number> --watch
 ```
 
-______________________________________________________________________
+---
 
 ## CI Configuration Files
 
@@ -434,10 +434,10 @@ test:
 # Update matrix
 strategy:
   matrix:
-    python-version: ["3.11", "3.12", "3.13", "3.14"]  # Add 3.14
+    python-version: ["3.11", "3.12", "3.13", "3.14"] # Add 3.14
 ```
 
-______________________________________________________________________
+---
 
 ## Performance Optimization
 
@@ -447,14 +447,14 @@ ______________________________________________________________________
 # Already configured in workflows
 - uses: astral-sh/setup-uv@v4
   with:
-    enable-cache: true  # Caches uv dependencies
+    enable-cache: true # Caches uv dependencies
 ```
 
 ### Parallel Test Execution
 
 ```yaml
 # Tests already run in parallel via pytest-xdist
-- run: uv run poe test  # Uses -n auto (4 workers)
+- run: uv run poe test # Uses -n auto (4 workers)
 ```
 
 ### Skip Unnecessary Runs
@@ -465,12 +465,12 @@ ______________________________________________________________________
 on:
   pull_request:
     paths-ignore:
-      - 'docs/**'
-      - '**.md'
-      - '.github/copilot/**'
+      - "docs/**"
+      - "**.md"
+      - ".github/copilot/**"
 ```
 
-______________________________________________________________________
+---
 
 ## Emergency Procedures
 
@@ -514,7 +514,7 @@ uv lock --upgrade
 uv add "problematic-package>=1.0,<1.5"
 ```
 
-______________________________________________________________________
+---
 
 ## Best Practices
 
@@ -535,7 +535,7 @@ ______________________________________________________________________
 - **Don't ignore flaky tests**
 - **Don't commit lock file changes without testing**
 
-______________________________________________________________________
+---
 
 ## Summary
 

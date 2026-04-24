@@ -1,0 +1,18 @@
+# Release-managed changelogs
+CHANGELOG.md
+**/CHANGELOG.md
+
+# Agent definitions
+**/*.agent.md
+
+# Generated template markdown
+statuspro_mcp_server/src/statuspro_mcp/templates/**/*.md
+
+# Skill definitions (out of scope)
+.claude/skills/**/*.md
+
+# Build / vendored
+.venv/
+dist/
+site/
+node_modules/

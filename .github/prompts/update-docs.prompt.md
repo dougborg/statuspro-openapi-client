@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## description: 'Update documentation after code changes following project standards'
 
@@ -10,7 +10,6 @@ implementation.
 ## Instructions
 
 1. **Identify documentation needs** based on changes:
-
    - **User-facing changes**: README, guides, cookbook
    - **Developer changes**: CONTRIBUTING, CLAUDE.md, AGENT_WORKFLOW.md
    - **Architectural changes**: New ADR or update existing
@@ -20,26 +19,22 @@ implementation.
 1. **Update affected documentation**:
 
    **For new features**:
-
    - Add docstrings to all public functions/classes
    - Update README if user-facing
    - Add cookbook example
    - Update relevant guides
 
    **For API changes**:
-
    - Update docstrings
    - Regenerate API docs if needed
    - Update examples in guides
 
    **For architectural decisions**:
-
    - Create new ADR using `create-adr.prompt.md`
    - Update related ADRs if superseded
    - Update `docs/adr/README.md` index
 
    **For breaking changes**:
-
    - Document in CHANGELOG
    - Create migration guide
    - Add deprecation warnings
@@ -65,21 +60,18 @@ implementation.
    ```
 
 1. **Test all code examples**:
-
    - Copy examples to test file
    - Run in project environment
    - Verify output matches docs
    - Test error cases if documented
 
 1. **Verify all links work**:
-
    - Internal links to other docs
    - Links to code files
    - External links (API docs, GitHub)
    - Anchor links within documents
 
 1. **Update navigation** if needed:
-
    - `mkdocs.yml` for new pages
    - README links for major docs
    - `docs/adr/README.md` for new ADRs
@@ -165,6 +157,7 @@ async with StatusProClient() as client:
         products = response.parsed.data
         for product in products:
             print(f"{product.name}: {product.price}")
+```
 ````
 
 ### Expected Output
@@ -173,6 +166,7 @@ async with StatusProClient() as client:
 Product 1: $99.99
 Product 2: $149.99
 ...
+
 ```
 
 ### Common Variations
@@ -195,4 +189,7 @@ Product 2: $149.99
 - [ ] Migration guide for breaking changes
 - [ ] Screenshots updated if UI changed
 - [ ] Version numbers current
+
+```
+
 ```

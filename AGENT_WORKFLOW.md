@@ -1,8 +1,8 @@
 # Agent Workflow Guide
 
 This guide provides step-by-step instructions for AI agents working on the
-statuspro-openapi-client project. Follow these guidelines to work efficiently and safely in
-parallel with other agents.
+statuspro-openapi-client project. Follow these guidelines to work efficiently and safely
+in parallel with other agents.
 
 ## Quick Reference
 
@@ -13,7 +13,7 @@ See CLAUDE.md "Essential Commands" for the full command table with timings.
 - `.pre-commit-config-lite.yaml` - Fast iteration
 - `.pre-commit-config.yaml` - Full validation
 
-______________________________________________________________________
+---
 
 ## Using Custom GitHub Copilot Agents
 
@@ -25,35 +25,30 @@ Each agent has domain-specific knowledge and follows project patterns.
 #### Specialist Agents
 
 - **`@agent-dev`** - Development agent for feature implementation and bug fixes
-
   - Implements new features following established patterns
   - Fixes bugs with proper error handling and logging
   - Refactors code for consistency
   - References ADRs for architectural decisions
 
 - **`@agent-plan`** - Planning agent for breaking down complex tasks
-
   - Creates detailed implementation plans with phases
   - Identifies dependencies and blockers
   - Estimates effort (p1-high, p2-medium, p3-low)
   - Writes comprehensive issues following templates
 
 - **`@agent-docs`** - Documentation agent for maintaining docs
-
   - Creates and updates documentation
   - Writes Architecture Decision Records (ADRs)
   - Keeps guides current with code changes
   - Ensures consistent markdown formatting
 
 - **`@agent-test`** - Testing agent for comprehensive test coverage
-
   - Writes unit and integration tests
   - Debugs test failures
   - Maintains 87%+ coverage on core logic
   - Implements reusable test fixtures
 
 - **`@agent-review`** - Review agent for thorough code reviews
-
   - Checks adherence to project patterns
   - Verifies type safety and error handling
   - Identifies potential bugs and edge cases
@@ -62,7 +57,6 @@ Each agent has domain-specific knowledge and follows project patterns.
 #### Coordinator Agent
 
 - **`@agent-coordinator`** - Orchestrates multi-agent work and project management
-
   - Monitors all open PRs and their status
   - Routes tasks to appropriate specialist agents
   - Ensures PRs meet merge criteria
@@ -254,7 +248,7 @@ Here's how multiple agents work together on a feature:
 
 This coordinated workflow ensures high-quality, well-tested, documented features.
 
-______________________________________________________________________
+---
 
 ## Step-by-Step Workflow
 
@@ -306,7 +300,7 @@ Comment on the issue to claim it:
 gh issue comment <issue-number> --body "🤖 Starting work on this issue"
 ```
 
-______________________________________________________________________
+---
 
 ### 2. Development Workflow
 
@@ -391,7 +385,7 @@ git commit -m "docs: update AGENT_WORKFLOW.md"
 git commit -m "test: add coverage for edge cases"
 ```
 
-______________________________________________________________________
+---
 
 ### 3. Before Opening a Pull Request
 
@@ -438,7 +432,7 @@ git push -u origin feature/88-agent-workflow-doc
 git push --force-with-lease
 ```
 
-______________________________________________________________________
+---
 
 ### 4. Opening the Pull Request
 
@@ -490,7 +484,7 @@ gh pr edit --add-label "documentation"
 gh pr ready
 ```
 
-______________________________________________________________________
+---
 
 ### 5. Handling Review Feedback
 
@@ -520,7 +514,7 @@ gh pr comment <pr-number> --body "✅ Updated per your feedback"
 # Resolve conversations (on GitHub web UI)
 ```
 
-______________________________________________________________________
+---
 
 ### 6. Before Merge
 
@@ -564,7 +558,7 @@ gh pr merge --merge
 gh pr merge --rebase
 ```
 
-______________________________________________________________________
+---
 
 ## Validation Tiers Reference
 
@@ -595,7 +589,7 @@ excluding docs). **This is the standard for "PR ready."**
 
 Runs everything in `check` plus documentation build. **This is the gold standard.**
 
-______________________________________________________________________
+---
 
 ## Conflict Resolution
 
@@ -659,18 +653,16 @@ If you encounter complex conflicts:
    ```
 
 1. **Check with other agent (if parallel work):**
-
    - Review the other PR
    - Determine which changes take precedence
    - Coordinate in issue comments
 
 1. **If blocked:**
-
    - Comment on issue explaining blockage
    - Provide details on conflict
    - Wait for guidance or coordinate with other agent
 
-______________________________________________________________________
+---
 
 ## Common Pitfalls & Solutions
 
@@ -684,7 +676,7 @@ ______________________________________________________________________
 - Only full validation required before PR
 - Fast iteration OK during development
 
-______________________________________________________________________
+---
 
 ### ❌ Pitfall: Committing with Failures
 
@@ -696,7 +688,7 @@ ______________________________________________________________________
 - Fix issues, don't skip them
 - If blocked, ask for help in issue comments
 
-______________________________________________________________________
+---
 
 ### ❌ Pitfall: Adding Test/Lint Skips
 
@@ -708,7 +700,7 @@ ______________________________________________________________________
 - Only skip if absolutely necessary AND document why in PR
 - Create follow-up issue to remove skip
 
-______________________________________________________________________
+---
 
 ### ❌ Pitfall: Force Pushing Without Care
 
@@ -720,7 +712,7 @@ ______________________________________________________________________
 - Check if anyone else is on your branch
 - Communicate before force pushing shared branches
 
-______________________________________________________________________
+---
 
 ### ❌ Pitfall: Not Updating Branch
 
@@ -737,7 +729,7 @@ git rebase origin/main
 git merge origin/main
 ```
 
-______________________________________________________________________
+---
 
 ### ❌ Pitfall: Unclear Commit Messages
 
@@ -749,7 +741,7 @@ ______________________________________________________________________
 - Be specific: "fix(client): handle empty viable-statuses response"
 - Include context: "refactor: extract helper for order status mapping"
 
-______________________________________________________________________
+---
 
 ## Pre-commit Hook Usage
 
@@ -773,7 +765,7 @@ pre-commit install --config .pre-commit-config-lite.yaml
 - Fast feedback loop
 - Experimenting
 
-______________________________________________________________________
+---
 
 ### Full Config (Complete Validation)
 
@@ -798,7 +790,7 @@ pre-commit install
 **Note:** With pytest-xdist (parallel tests), this is now ~12-15 seconds instead of ~27
 seconds.
 
-______________________________________________________________________
+---
 
 ## Working with Multiple Agents
 
@@ -1015,7 +1007,7 @@ gh issue comment <tracking-issue> --body "⚠️ PR #<number> will rename functi
 gh issue create --title "Coordination: Breaking change in PR #<number>" --body "..."
 ```
 
-______________________________________________________________________
+---
 
 ## Troubleshooting
 
@@ -1092,7 +1084,7 @@ open htmlcov/index.html
 uv run pytest --cov=statuspro_public_api_client --cov-report=term-missing
 ```
 
-______________________________________________________________________
+---
 
 ## Additional Resources
 
@@ -1104,7 +1096,7 @@ ______________________________________________________________________
 - **[GitHub Project](https://github.com/users/dougborg/projects/4)** - Automation &
   Agent Infrastructure roadmap
 
-______________________________________________________________________
+---
 
 ## Using Git Worktrees for Parallel Sessions
 
@@ -1139,7 +1131,7 @@ git worktree remove ../statuspro-feature-123
 - Clean up worktrees when done: `git worktree list` to see all, `git worktree prune` to
   remove stale entries
 
-______________________________________________________________________
+---
 
 ## Summary: The Golden Rules
 

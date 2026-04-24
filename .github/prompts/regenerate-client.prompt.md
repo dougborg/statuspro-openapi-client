@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## description: 'Regenerate the OpenAPI client from the specification'
 
@@ -29,7 +29,6 @@ Regenerate the Python client code from the StatusPro OpenAPI specification.
    ```
 
    This script automatically:
-
    - Validates the spec with openapi-spec-validator
    - Validates with Redocly
    - Generates client using openapi-python-client

@@ -13,7 +13,7 @@ actionable implementation plans.
 1. [Risk Assessment](#6-risk-assessment) (§6)
 1. [Agent Coordination](#7-coordination-with-other-agents) (§7)
 
-______________________________________________________________________
+---
 
 ## 1. Understand the Request
 
@@ -62,7 +62,7 @@ gh pr view 456
 - Are there breaking changes?
 - What's the urgency/priority?
 
-______________________________________________________________________
+---
 
 ## 2. Create Phased Implementation Plan
 
@@ -147,21 +147,25 @@ Break work into logical, sequential phases that build on each other.
 
 ```markdown
 Phase 1: Foundation (p2-medium)
+
 - Create tool file following existing pattern
 - Add basic list operation
 - Setup test structure
 
 Phase 2: Core Operations (p2-medium)
+
 - Implement create/update tools
 - Add preview/confirm pattern
 - Comprehensive error handling
 
 Phase 3: Advanced Features (p3-low)
+
 - Workflow helpers
 - Bulk operations
 - Optimization
 
 Phase 4: Documentation (p3-low)
+
 - Cookbook examples
 - README updates
 - Tutorial
@@ -171,29 +175,33 @@ Phase 4: Documentation (p3-low)
 
 ```markdown
 Phase 1: Foundation & ADR (p2-medium)
+
 - Create ADR documenting decision
 - Outline migration strategy
 - Identify all breaking changes
 - Plan deprecation timeline
 
 Phase 2: Incremental Migration (p1-high)
+
 - Migrate module 1 with backward compat
 - Migrate module 2 with backward compat
 - Migrate remaining modules
 - Add migration guide
 
 Phase 3: Testing & Validation (p2-medium)
+
 - End-to-end integration tests
 - Performance benchmarks
 - Edge case validation
 
 Phase 4: Documentation & Release (p3-low)
+
 - Update migration guide
 - Create release notes
 - Coordinate major version release
 ```
 
-______________________________________________________________________
+---
 
 ## 3. Estimate Effort
 
@@ -273,7 +281,7 @@ Use consistent effort labels based on time and complexity.
 - **Break into smaller pieces** if > 2 days
 - **Factor in unknowns** - add buffer for research/learning
 
-______________________________________________________________________
+---
 
 ## 4. Identify Dependencies
 
@@ -284,23 +292,20 @@ Map relationships between tasks to determine sequencing.
 **Blocking Dependencies (Must Complete First):**
 
 ```markdown
-Issue #123: Create base infrastructure
-└─> Issue #124: Build feature on infrastructure  [BLOCKED]
-    └─> Issue #125: Add convenience methods     [BLOCKED]
+Issue #123: Create base infrastructure └─> Issue #124: Build feature on infrastructure
+[BLOCKED] └─> Issue #125: Add convenience methods [BLOCKED]
 ```
 
 **Related Work (Should Be Aware Of):**
 
 ```markdown
-Issue #123: Add product search
-Issue #124: Add order search  [RELATED - similar pattern]
+Issue #123: Add product search Issue #124: Add order search [RELATED - similar pattern]
 ```
 
 **Future Work (Can Build On Later):**
 
 ```markdown
-Issue #123: Basic MCP tools
-Issue #456: Advanced workflows  [FUTURE - builds on #123]
+Issue #123: Basic MCP tools Issue #456: Advanced workflows [FUTURE - builds on #123]
 ```
 
 ### Dependency Mapping Process
@@ -316,18 +321,14 @@ Issue #456: Advanced workflows  [FUTURE - builds on #123]
 **Step 3: Draw Dependency Graph**
 
 ```markdown
-Phase 1
-  ├─ #101: Foundation
+Phase 1 ├─ #101: Foundation
 
-Phase 2 (depends on #101)
-  ├─ #102: Core Feature A
-  └─ #103: Core Feature B   [can run parallel with #102]
+Phase 2 (depends on #101) ├─ #102: Core Feature A └─ #103: Core Feature B [can run
+parallel with #102]
 
-Phase 3 (depends on #102, #103)
-  └─ #104: Enhancements
+Phase 3 (depends on #102, #103) └─ #104: Enhancements
 
-Phase 4 (depends on #104)
-  └─ #105: Documentation
+Phase 4 (depends on #104) └─ #105: Documentation
 ```
 
 **Step 4: Identify Parallelization Opportunities**
@@ -344,19 +345,22 @@ In each issue, include:
 ## Dependencies
 
 **Blocks:**
+
 - Issue #124 - Feature requires this infrastructure
 - Issue #125 - Enhancement depends on core feature
 
 **Depends On:**
+
 - Issue #101 - Needs base infrastructure first
 - PR #202 - Requires merged changes
 
 **Related:**
+
 - Issue #98 - Similar pattern, reference for consistency
 - ADR-007 - Architectural guidance
 ```
 
-______________________________________________________________________
+---
 
 ## 5. Create Issues
 
@@ -414,7 +418,7 @@ gh project item-add <project-id> --url <issue-url>
 gh project item-list <project-id>
 ```
 
-______________________________________________________________________
+---
 
 ## 6. Risk Assessment
 
@@ -478,6 +482,7 @@ Identify and mitigate potential risks in your plan.
 
 ```markdown
 Mitigation:
+
 - Create deprecation warnings first
 - Maintain backward compatibility layer
 - Provide migration guide
@@ -488,6 +493,7 @@ Mitigation:
 
 ```markdown
 Mitigation:
+
 - Break into smaller, deliverable phases
 - Set intermediate milestones
 - Enable incremental releases
@@ -498,6 +504,7 @@ Mitigation:
 
 ```markdown
 Mitigation:
+
 - Add performance benchmarks
 - Set SLO targets
 - Monitor in production
@@ -508,6 +515,7 @@ Mitigation:
 
 ```markdown
 Mitigation:
+
 - Clearly document all dependencies
 - Parallel work where possible
 - Regular sync-ups between agents
@@ -522,22 +530,24 @@ Include in plan summary:
 ## Risks and Mitigation
 
 ### High Risk: Breaking API Changes
-**Risk:** Existing users' code will break
-**Mitigation:**
+
+**Risk:** Existing users' code will break **Mitigation:**
+
 - Implement backward compatibility layer
 - 3-month deprecation period
 - Comprehensive migration guide
 - Major version bump (v2.0.0)
 
 ### Medium Risk: Performance Impact
-**Risk:** New retry logic may slow requests
-**Mitigation:**
+
+**Risk:** New retry logic may slow requests **Mitigation:**
+
 - Benchmark before/after
 - Make retries configurable
 - Document performance characteristics
 ```
 
-______________________________________________________________________
+---
 
 ## 7. Coordination with Other Agents
 
@@ -593,25 +603,30 @@ Plan which agents will execute each phase of work.
 
 ```markdown
 Phase 1: Foundation (p2-medium) → @agent-dev
+
 - Create tool structure
 - Basic implementation
 - Initial tests
 
 Phase 2: Core Features (p2-medium) → @agent-dev
+
 - Complete tool implementation
 - Comprehensive error handling
 
 Phase 3: Testing (p3-low) → @agent-test
+
 - Expand test coverage
 - Integration testing
 - Edge cases
 
 Phase 4: Documentation (p3-low) → @agent-docs
+
 - User guide
 - Cookbook examples
 - API reference
 
 Final Review → @agent-review
+
 - Code quality check
 - Architecture review
 ```
@@ -621,24 +636,22 @@ Final Review → @agent-review
 **Sequential Handoff:**
 
 ```markdown
-@agent-dev implements → @agent-test validates → @agent-docs documents → @agent-review approves
+@agent-dev implements → @agent-test validates → @agent-docs documents → @agent-review
+approves
 ```
 
 **Parallel Work:**
 
 ```markdown
-@agent-dev: Core feature A
-@agent-dev: Core feature B  (parallel)
-Both complete → @agent-test validates both
+@agent-dev: Core feature A @agent-dev: Core feature B (parallel) Both complete →
+@agent-test validates both
 ```
 
 **Iterative:**
 
 ```markdown
-@agent-dev: Initial implementation
-@agent-review: Feedback
-@agent-dev: Address feedback  (repeat)
-@agent-test: Final validation
+@agent-dev: Initial implementation @agent-review: Feedback @agent-dev: Address feedback
+(repeat) @agent-test: Final validation
 ```
 
 ### Coordination in Issue Body
@@ -646,18 +659,18 @@ Both complete → @agent-test validates both
 ```markdown
 ## Agent Assignment
 
-**Primary:** @agent-dev
-**Testing:** @agent-test (after core implementation)
-**Review:** @agent-review (final quality check)
+**Primary:** @agent-dev **Testing:** @agent-test (after core implementation) **Review:**
+@agent-review (final quality check)
 
 **Coordination Notes:**
+
 - @agent-dev: Complete implementation and open PR
 - @agent-test: Run comprehensive test suite
 - @agent-review: Perform architecture review
 - All: Use #xyz channel for questions
 ```
 
-______________________________________________________________________
+---
 
 ## Complete Planning Workflow
 
@@ -676,21 +689,25 @@ ______________________________________________________________________
 
 ```markdown
 Phase 1: Foundation (p2-medium, 4-6h)
+
 - Create inventory_tools.py following pattern
 - Add search_inventory_items tool
 - Setup test structure
 
 Phase 2: Core Operations (p2-medium, 4-6h)
+
 - Add get_stock_level tool
 - Add adjust_stock tool with preview
 - Comprehensive error handling
 
 Phase 3: Advanced Features (p3-low, 2-3h)
+
 - Add batch_stock_check tool
 - Optimize for common queries
 - Workflow helpers
 
 Phase 4: Documentation (p3-low, 2-3h)
+
 - Cookbook examples
 - README updates
 - Tutorial for inventory workflows
@@ -706,9 +723,11 @@ Phase 4: Documentation (p3-low, 2-3h)
 
 ```markdown
 Dependencies:
+
 - None (builds on existing MCP infrastructure)
 
 Related:
+
 - purchase_orders.py - similar pattern
 - ADR-010 - architecture guidance
 ```
@@ -724,9 +743,9 @@ Related:
 
 ```markdown
 Risks:
+
 - Low risk: well-established pattern
-- Medium risk: inventory API complexity
-  Mitigation: Start with simple operations
+- Medium risk: inventory API complexity Mitigation: Start with simple operations
 
 No blocking concerns.
 ```
@@ -735,6 +754,7 @@ No blocking concerns.
 
 ```markdown
 Agent Assignments:
+
 - #201, #202, #203 → @agent-dev
 - #204 → @agent-docs
 - Final review → @agent-review
@@ -744,7 +764,7 @@ Timeline: ~2-3 days
 
 **Total Planning Time:** ~3 hours for comprehensive plan
 
-______________________________________________________________________
+---
 
 ## Best Practices
 
@@ -770,7 +790,7 @@ ______________________________________________________________________
 - **Leave unassigned** - Clear ownership matters
 - **Plan and forget** - Monitor execution
 
-______________________________________________________________________
+---
 
 ## Summary
 

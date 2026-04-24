@@ -306,7 +306,7 @@ If agent needs more detail:
 When agent creates markdown file:
 
 - `markdown.instructions.md` auto-loads (for `**/*.md`)
-  - mdformat standards (88-char line length)
+  - Prettier standards (88-char line length)
   - ATX-style headers
   - Code block language specification
 
@@ -318,7 +318,7 @@ Agent follows `create-adr.prompt.md`:
 1. Copy template from `docs/adr/0000-template.md`
 1. Fill out ADR structure
 1. Update `docs/adr/README.md` index
-1. Format with mdformat
+1. Format with Prettier
 1. Validate links
 
 #### Step 4: Result
@@ -596,7 +596,7 @@ The three-tier architecture provides:
 **Result**: Comprehensive agent guidance in a well-organized, maintainable structure
 that scales indefinitely.
 
-______________________________________________________________________
+---
 
 **Document**: `.github/agents/guides/COPILOT_ARCHITECTURE.md` **Created**: 2025-01-06
 **Purpose**: Document three-tier architecture for GitHub Copilot agent customizations

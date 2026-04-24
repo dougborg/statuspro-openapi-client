@@ -182,7 +182,8 @@ orders = client.orders
 result = await orders.list(status_code="st000002")
 ```
 
-**Considered**: Essentially what the thin `client.orders` / `client.statuses` helpers do — see the `helpers/` package in the client.
+**Considered**: Essentially what the thin `client.orders` / `client.statuses` helpers do
+— see the `helpers/` package in the client.
 
 ## What We Do Instead
 

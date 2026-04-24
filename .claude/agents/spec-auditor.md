@@ -19,16 +19,16 @@ an upstream URL, update this file with the URL and switch to full drift-detectio
 - Local spec lives at `docs/statuspro-openapi.yaml`
 - Generated files (`api/**/*.py`, `models/**/*.py`, `client.py`) are derived from the
   spec via `uv run poe regenerate-client` followed by `uv run poe generate-pydantic`
-- Pydantic models inherit from `StatusProPydanticBase`, which uses `extra="forbid"`;
-  the attrs models tolerate unknown fields via `additional_properties`
+- Pydantic models inherit from `StatusProPydanticBase`, which uses `extra="forbid"`; the
+  attrs models tolerate unknown fields via `additional_properties`
 - Most list endpoints wrap data in `{"data": [...], "meta": {...}}` (page/per_page
   pagination). Two endpoints return raw arrays: `GET /statuses` and
   `GET /orders/{id}/viable-statuses`
 
 ## Audit Process
 
-1. **If an upstream URL is known**, fetch it and diff paths + schemas. Otherwise,
-   skip this step and audit internal consistency only.
+1. **If an upstream URL is known**, fetch it and diff paths + schemas. Otherwise, skip
+   this step and audit internal consistency only.
 1. **Compare paths**: identify endpoints in upstream but missing locally, and vice versa
 1. **Compare schemas**: for shared endpoints, diff request/response schemas for field
    additions, removals, type changes, and nullable mismatches

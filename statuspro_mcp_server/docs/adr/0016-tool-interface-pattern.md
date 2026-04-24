@@ -4,13 +4,13 @@
 
 Accepted
 
-Date: 2025-01-11 (updated 2026-04-17 for StatusPro fork — examples replaced,
-core decision unchanged)
+Date: 2025-01-11 (updated 2026-04-17 for StatusPro fork — examples replaced, core
+decision unchanged)
 
 ## Context
 
-MCP tools need consistent, type-safe interfaces for requests and responses.
-We needed to decide:
+MCP tools need consistent, type-safe interfaces for requests and responses. We needed to
+decide:
 
 - How to structure tool parameters (flat vs nested)
 - How to handle validation
@@ -21,11 +21,10 @@ We needed to decide:
 ## Decision
 
 We adopt the **Pydantic parameter annotations** pattern combined with **FastMCP
-Elicitation** for destructive operations. StatusPro's tools are small enough
-that we use Pydantic `Field()` on each parameter directly rather than a
-nested request model + `Unpack()` decorator; the Katana parent project used
-the Unpack pattern for its larger request bodies and we kept the decorator
-infrastructure (`unpack.py`) as an option.
+Elicitation** for destructive operations. StatusPro's tools are small enough that we use
+Pydantic `Field()` on each parameter directly rather than a nested request model +
+`Unpack()` decorator; the Katana parent project used the Unpack pattern for its larger
+request bodies and we kept the decorator infrastructure (`unpack.py`) as an option.
 
 ### Pattern components
 
@@ -53,9 +52,8 @@ async def update_order_status(
 
 #### 2. Request model + Unpack decorator (for complex bodies)
 
-When a request has many fields or nested structure, wrap it in a Pydantic
-model and use the `@unpack_pydantic_params` decorator (still available via
-`statuspro_mcp/unpack.py`):
+When a request has many fields or nested structure, wrap it in a Pydantic model and use
+the `@unpack_pydantic_params` decorator (still available via `statuspro_mcp/unpack.py`):
 
 ```python
 class BulkStatusUpdateRequest(BaseModel):
@@ -93,8 +91,7 @@ Non-mutation tools return typed Pydantic responses (e.g. `list[OrderSummary]`,
 
 #### 4. Elicitation pattern (safety-critical operations)
 
-For destructive operations, we use FastMCP's elicitation to request user
-confirmation:
+For destructive operations, we use FastMCP's elicitation to request user confirmation:
 
 ```python
 # Preview mode (confirm=false) — show what would happen
@@ -116,8 +113,8 @@ return {"confirmed": True, "success": is_success(response), ...}
 
 #### 5. Shared schemas
 
-Common schemas live in `statuspro_mcp/tools/schemas.py` so every mutation
-tool reuses the same confirmation flow:
+Common schemas live in `statuspro_mcp/tools/schemas.py` so every mutation tool reuses
+the same confirmation flow:
 
 ```python
 # statuspro_mcp/tools/schemas.py
@@ -176,8 +173,8 @@ async def update_order_status(
     ...
 ```
 
-**Why rejected**: No validation, tool schemas lose field descriptions the
-model sees, harder to keep tools consistent.
+**Why rejected**: No validation, tool schemas lose field descriptions the model sees,
+harder to keep tools consistent.
 
 ### Alternative 2: Dictionary-based
 
@@ -200,8 +197,8 @@ async def update_order_status(...) -> dict:
     # Otherwise apply
 ```
 
-**Why rejected**: Two round trips, harder to use, no built-in UI integration
-for preview/confirm in Claude Desktop.
+**Why rejected**: Two round trips, harder to use, no built-in UI integration for
+preview/confirm in Claude Desktop.
 
 ## Implementation examples
 

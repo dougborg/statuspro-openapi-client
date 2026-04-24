@@ -46,14 +46,14 @@ Use **@hey-api/openapi-ts** for code generation.
 ```typescript
 // openapi-ts.config.ts
 export default {
-  client: '@hey-api/client-fetch',
-  input: '../../docs/statuspro-openapi.yaml',
-  output: 'src/generated',
+  client: "@hey-api/client-fetch",
+  input: "../../docs/statuspro-openapi.yaml",
+  output: "src/generated",
   services: {
     asClass: false,
   },
   types: {
-    enums: 'javascript',
+    enums: "javascript",
   },
 };
 ```
@@ -72,19 +72,19 @@ src/generated/
 ### Integration Pattern
 
 ```typescript
-import { createClient, createConfig } from './generated/client/index.js';
-import type { Client } from './generated/client/types.gen.js';
+import { createClient, createConfig } from "./generated/client/index.js";
+import type { Client } from "./generated/client/types.gen.js";
 
 // Create client with our resilient fetch
 const client = createClient(
   createConfig({
-    baseUrl: 'https://app.orderstatuspro.com/api/v1',
+    baseUrl: "https://app.orderstatuspro.com/api/v1",
     fetch: authenticatedFetch, // Our custom fetch with retry/pagination
-  })
+  }),
 );
 
 // Use with generated SDK functions
-import { getAllProducts } from './generated/sdk.gen.js';
+import { getAllProducts } from "./generated/sdk.gen.js";
 const { data, error } = await getAllProducts({ client });
 ```
 
@@ -123,8 +123,8 @@ Generated SDK functions are re-exported from the main package:
 
 ```typescript
 // src/index.ts
-export * from './generated/sdk.gen.js';
-export * from './generated/types.gen.js';
+export * from "./generated/sdk.gen.js";
+export * from "./generated/types.gen.js";
 ```
 
 ### Version Update Process

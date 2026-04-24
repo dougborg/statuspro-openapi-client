@@ -11,7 +11,7 @@ three-tier priority system.
 | **p2-medium** | 4-8 hours | Moderate   | New tools, moderate features, standard bugs   |
 | **p3-low**    | 1-3 hours | Low        | Small utilities, docs, simple fixes           |
 
-______________________________________________________________________
+---
 
 ## p1-high (1-2 Days)
 
@@ -61,6 +61,7 @@ ______________________________________________________________________
 feat(client): implement domain helper classes
 
 Scope:
+
 - Base domain class pattern
 - Products domain (5 methods)
 - Orders domain (7 methods)
@@ -77,6 +78,7 @@ Estimate: p1-high (12-16 hours)
 feat(client)!: migrate from attrs to Pydantic
 
 Scope:
+
 - Convert 15+ model classes
 - Update all imports
 - Maintain backward compatibility
@@ -93,6 +95,7 @@ Estimate: p1-high (16+ hours, split into phases)
 refactor(mcp): restructure tool organization
 
 Scope:
+
 - Move 10 tools to new structure
 - Update all imports
 - Refactor tests
@@ -118,7 +121,7 @@ Estimate: p1-high (10-12 hours)
 - 🟢 Similar work done before (-15%)
 - 🟢 Well-documented area (-10%)
 
-______________________________________________________________________
+---
 
 ## p2-medium (4-8 Hours)
 
@@ -167,6 +170,7 @@ ______________________________________________________________________
 feat(mcp): add sales order creation tool
 
 Scope:
+
 - 1 new tool with preview/confirm
 - Input validation
 - Error handling
@@ -182,6 +186,7 @@ Estimate: p2-medium (5-6 hours)
 fix(client): handle network timeout errors
 
 Scope:
+
 - Add timeout handling
 - Retry logic for timeouts
 - Test timeout scenarios
@@ -196,6 +201,7 @@ Estimate: p2-medium (4-5 hours)
 feat(client): add batch operations helper
 
 Scope:
+
 - BatchOperations class
 - 3-4 helper methods
 - Error aggregation
@@ -219,7 +225,7 @@ Estimate: p2-medium (6-8 hours)
 - 🟢 Simple CRUD operation (-20%)
 - 🟢 Well-tested area (-15%)
 
-______________________________________________________________________
+---
 
 ## p3-low (1-3 Hours)
 
@@ -267,6 +273,7 @@ ______________________________________________________________________
 docs(mcp): add inventory tool cookbook entry
 
 Scope:
+
 - 1 new cookbook entry
 - 2-3 usage examples
 - Update table of contents
@@ -281,6 +288,7 @@ Estimate: p3-low (2 hours)
 feat(client): add is_success() helper
 
 Scope:
+
 - 1 small utility function
 - 2-3 unit tests
 - Docstring
@@ -295,6 +303,7 @@ Estimate: p3-low (1-2 hours)
 fix(mcp): typo in error message
 
 Scope:
+
 - Fix typo in 1 error message
 - Update corresponding test
 - Verify error still raised correctly
@@ -314,7 +323,7 @@ Estimate: p3-low (30 min)
 - 🟢 Trivial change (-50%)
 - 🟢 Copy-paste with tweaks (-40%)
 
-______________________________________________________________________
+---
 
 ## Estimation Process
 
@@ -333,21 +342,25 @@ List all activities:
 
 ```markdown
 Implementation:
+
 - Write core logic (2h)
 - Add error handling (1h)
 - Input validation (30m)
 
 Testing:
+
 - Unit tests (1h)
 - Integration test (1h)
 - Manual testing (30m)
 
 Documentation:
+
 - Docstrings (30m)
 - README update (30m)
 - Examples (30m)
 
 Review & Iteration:
+
 - Address feedback (1h)
 - Polish and cleanup (30m)
 
@@ -358,10 +371,11 @@ Total: ~8 hours → p2-medium
 
 ```markdown
 Base estimate: 8 hours
-+ Unfamiliar pattern: +1.5h
-+ Cross-package changes: +1h
-- Clear examples exist: -1h
-= Final: 9.5 hours → p1-high (bump up)
+
+- Unfamiliar pattern: +1.5h
+- Cross-package changes: +1h
+
+* Clear examples exist: -1h = Final: 9.5 hours → p1-high (bump up)
 ```
 
 ### Step 4: Add Buffer
@@ -376,13 +390,10 @@ General rule: Add 20-30% buffer for unknowns
 ### Step 5: Round to Label
 
 ```markdown
-Calculated: 9.5 hours
-Buffer (25%): +2.4 hours
-Total: ~12 hours
-→ p1-high (1-2 days)
+Calculated: 9.5 hours Buffer (25%): +2.4 hours Total: ~12 hours → p1-high (1-2 days)
 ```
 
-______________________________________________________________________
+---
 
 ## Common Estimation Mistakes
 
@@ -391,20 +402,17 @@ ______________________________________________________________________
 **Mistake:**
 
 ```markdown
-Implementation: 4h
-Testing: 30m  ← Too low!
-Total: 4.5h → p2-medium
+Implementation: 4h Testing: 30m ← Too low! Total: 4.5h → p2-medium
 ```
 
 **Reality:**
 
 ```markdown
-Implementation: 4h
-Testing:
+Implementation: 4h Testing:
+
 - Write tests: 1.5h
 - Debug failures: 1h
-- Edge cases: 1h
-Total: 7.5h → still p2-medium but more accurate
+- Edge cases: 1h Total: 7.5h → still p2-medium but more accurate
 ```
 
 **Rule:** Testing usually takes 30-50% of implementation time.
@@ -414,22 +422,17 @@ Total: 7.5h → still p2-medium but more accurate
 **Mistake:**
 
 ```markdown
-Code: 6h
-Tests: 2h
-Total: 8h → p2-medium
-(Forgot docs!)
+Code: 6h Tests: 2h Total: 8h → p2-medium (Forgot docs!)
 ```
 
 **Reality:**
 
 ```markdown
-Code: 6h
-Tests: 2h
-Docs:
+Code: 6h Tests: 2h Docs:
+
 - Docstrings: 30m
 - README: 30m
-- Examples: 1h
-Total: 10h → p1-high
+- Examples: 1h Total: 10h → p1-high
 ```
 
 **Rule:** Always include documentation time.
@@ -439,20 +442,14 @@ Total: 10h → p1-high
 **Mistake:**
 
 ```markdown
-First-pass implementation: 8h
-→ p2-medium
-(Assumes perfect first try!)
+First-pass implementation: 8h → p2-medium (Assumes perfect first try!)
 ```
 
 **Reality:**
 
 ```markdown
-Implementation: 8h
-First review: feedback
-Address feedback: 2h
-Second review: minor changes
-Polish: 1h
-Total: 11h → p1-high
+Implementation: 8h First review: feedback Address feedback: 2h Second review: minor
+changes Polish: 1h Total: 11h → p1-high
 ```
 
 **Rule:** Add 20-30% for review and iteration.
@@ -462,24 +459,19 @@ Total: 11h → p1-high
 **Mistake:**
 
 ```markdown
-Pure coding time: 4h
-→ p2-medium
+Pure coding time: 4h → p2-medium
 ```
 
 **Reality:**
 
 ```markdown
-Set up environment: 30m
-Understand existing code: 1h
-Actual coding: 4h
-Debug issues: 1h
-Final validation: 30m
-Total: 7h → p2-medium (but fuller estimate)
+Set up environment: 30m Understand existing code: 1h Actual coding: 4h Debug issues: 1h
+Final validation: 30m Total: 7h → p2-medium (but fuller estimate)
 ```
 
 **Rule:** Include ramp-up and validation time.
 
-______________________________________________________________________
+---
 
 ## Calibration Examples
 
@@ -500,7 +492,7 @@ ______________________________________________________________________
 
 **Actual:** 5h → Good estimate!
 
-______________________________________________________________________
+---
 
 ### Example 2: Refactoring
 
@@ -523,7 +515,7 @@ ______________________________________________________________________
 
 **Actual:** 8h → Accurate!
 
-______________________________________________________________________
+---
 
 ### Example 3: Breaking Change
 
@@ -542,12 +534,11 @@ ______________________________________________________________________
 **Better approach:**
 
 ```markdown
-Issue #1: Foundation + ADR (p2-medium, 6h)
-Issue #2: Implementation (p1-high, 8h)
-Issue #3: Migration + docs (p2-medium, 4h)
+Issue #1: Foundation + ADR (p2-medium, 6h) Issue #2: Implementation (p1-high, 8h) Issue
+#3: Migration + docs (p2-medium, 4h)
 ```
 
-______________________________________________________________________
+---
 
 ## Estimation Checklist
 
@@ -563,7 +554,7 @@ Before finalizing estimate, check:
 - [ ] Rounded to appropriate label?
 - [ ] Considered splitting if > 2 days?
 
-______________________________________________________________________
+---
 
 ## When to Split
 
@@ -575,6 +566,7 @@ ______________________________________________________________________
 Original: p1-high (24h) - TOO BIG!
 
 Split:
+
 - Phase 1: Foundation (p1-high, 8h)
 - Phase 2: Core (p1-high, 10h)
 - Phase 3: Polish (p2-medium, 6h)
@@ -586,6 +578,7 @@ Split:
 Original: Implement 5 new tools (p1-high, 30h) - TOO BIG!
 
 Split:
+
 - Tool 1 + 2 (p1-high, 12h)
 - Tool 3 + 4 (p1-high, 12h)
 - Tool 5 + docs (p2-medium, 6h)
@@ -599,7 +592,7 @@ Split:
 
 If exceeds max → Split into multiple issues.
 
-______________________________________________________________________
+---
 
 ## Summary
 

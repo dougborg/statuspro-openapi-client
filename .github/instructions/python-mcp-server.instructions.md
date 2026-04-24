@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## description: 'Instructions for building Model Context Protocol (MCP) servers using the Python SDK with FastMCP' applyTo: '**/statuspro_mcp_server/**/\*.py'
 

@@ -16,8 +16,8 @@ Traditional approaches include:
 1. **Middleware Pattern**: Intercept requests/responses at application layer
 1. **Transport-Layer Pattern**: Implement resilience at the HTTP transport layer
 
-The generated API client has every endpoint generated with both sync and async variants. Any
-solution needs to:
+The generated API client has every endpoint generated with both sync and async variants.
+Any solution needs to:
 
 - Work with both sync and async code
 - Not require modifying every generated file
@@ -40,7 +40,8 @@ Specifically:
 - All API calls through `StatusProClient` automatically get resilience without any code
   changes
 
-Implementation in [statuspro_client.py](../../statuspro_public_api_client/statuspro_client.py):
+Implementation in
+[statuspro_client.py](../../statuspro_public_api_client/statuspro_client.py):
 
 ```python
 class ResilientAsyncTransport:

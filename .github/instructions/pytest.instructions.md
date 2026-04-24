@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 ## description: 'Testing standards using pytest for statuspro-openapi-client project' applyTo: \['**/test\_\*.py', '**/\*\_test.py', '\*\*/conftest.py'\]
 

@@ -35,8 +35,19 @@ jobs:
           cache-dependency-glob: "uv.lock"
           python-version: "3.14"
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: |
+          uv sync --all-extras
+          pnpm install --frozen-lockfile
 
       - name: Run full CI pipeline
         run: uv run poe ci

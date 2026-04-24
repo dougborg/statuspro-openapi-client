@@ -1,7 +1,7 @@
 # MCP Server Development Guide
 
-This guide explains how to set up a fast, productive development workflow for the StatusPro
-MCP Server using hot-reload capabilities.
+This guide explains how to set up a fast, productive development workflow for the
+StatusPro MCP Server using hot-reload capabilities.
 
 ## Prerequisites
 
@@ -80,12 +80,12 @@ pipx install --force dist/statuspro_mcp_server-*.whl
 
 ## Development Modes
 
-| Command             | Transport       | Hot Reload | Use Case                    |
-| ------------------- | --------------- | ---------- | --------------------------- |
-| `poe dev`           | streamable-http | Yes        | Claude.ai co-work, HTTP     |
-| `poe dev-stdio`     | stdio           | Yes        | Claude Desktop, Claude Code |
-| `poe dev-inspect`   | Inspector UI    | Yes        | Visual tool debugging       |
-| `mcp-hmr`           | stdio           | Yes (fast) | Fine-grained module reload  |
+| Command                | Transport       | Hot Reload | Use Case                    |
+| ---------------------- | --------------- | ---------- | --------------------------- |
+| `poe dev`              | streamable-http | Yes        | Claude.ai co-work, HTTP     |
+| `poe dev-stdio`        | stdio           | Yes        | Claude Desktop, Claude Code |
+| `poe dev-inspect`      | Inspector UI    | Yes        | Visual tool debugging       |
+| `mcp-hmr`              | stdio           | Yes (fast) | Fine-grained module reload  |
 | `statuspro-mcp-server` | stdio (default) | No         | Production                  |
 
 ## Claude Desktop Configuration
@@ -370,7 +370,7 @@ This allows testing `_update_order_status_impl` directly with mocks.
 - **Discussions**: https://github.com/dougborg/statuspro-openapi-client/discussions
 - **MCP Community**: https://discord.gg/modelcontextprotocol
 
-______________________________________________________________________
+---
 
 **Happy coding! 🚀** The hot-reload workflow will dramatically speed up your development
 iteration time.

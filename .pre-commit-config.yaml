@@ -25,17 +25,15 @@ repos:
         types: [python]
         pass_filenames: true
 
-      # Markdown formatting (via uv)
-      - id: mdformat
-        name: mdformat
-        entry: uv run mdformat --wrap=88
+      # Markdown formatting (prettier via pnpm)
+      - id: prettier-markdown
+        name: prettier (markdown)
+        entry: pnpm exec prettier --write
         language: system
         types: [markdown]
         exclude: |
           (?x)(
-            CHANGELOG\.md|
-            docs/CHANGELOG\.md|
-            statuspro_public_api_client/docs/CHANGELOG\.md|
+            (^|.+/)CHANGELOG\.md$|
             \.agent\.md$|
             statuspro_mcp_server/src/statuspro_mcp/templates/.*\.md$|
             \.claude/skills/.*\.md$

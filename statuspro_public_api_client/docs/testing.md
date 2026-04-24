@@ -1,7 +1,7 @@
 # Testing Guide
 
-This guide explains the testing architecture and approach for the StatusPro OpenAPI Client
-project.
+This guide explains the testing architecture and approach for the StatusPro OpenAPI
+Client project.
 
 ## Testing Philosophy
 
@@ -194,13 +194,13 @@ Overall Coverage: 23.1%
 
 ### Core Logic Coverage Breakdown
 
-| File               | Coverage | Status       | Priority                  |
-| ------------------ | -------- | ------------ | ------------------------- |
-| `utils.py`         | 98.1%    | ✅ Excellent | Maintain                  |
+| File                  | Coverage | Status       | Priority                  |
+| --------------------- | -------- | ------------ | ------------------------- |
+| `utils.py`            | 98.1%    | ✅ Excellent | Maintain                  |
 | `statuspro_client.py` | 85.3%    | ✅ Good      | Maintain, improve to 90%+ |
-| `__init__.py`      | 100.0%   | ✅ Perfect   | Maintain                  |
-| `client.py`        | 51.3%    | ⚠️ Moderate  | Improve to 70%+           |
-| `log_setup.py`     | 0.0%     | ❌ None      | Add basic tests           |
+| `__init__.py`         | 100.0%   | ✅ Perfect   | Maintain                  |
+| `client.py`           | 51.3%    | ⚠️ Moderate  | Improve to 70%+           |
+| `log_setup.py`        | 0.0%     | ❌ None      | Add basic tests           |
 
 ### Running Coverage Analysis
 
@@ -233,7 +233,8 @@ detailed improvement plan targeting:
 
 ## External Dependencies
 
-- **Official StatusPro documentation**: Tests validate against `developer.orderstatuspro.com`
-  content
+- **Official StatusPro documentation**: Tests validate against
+  `developer.orderstatuspro.com` content
 - **Generated client validation**: Ensures openapi-python-client generates valid code
-- **Real API integration**: Optional tests with actual StatusPro API (credentials required)
+- **Real API integration**: Optional tests with actual StatusPro API (credentials
+  required)

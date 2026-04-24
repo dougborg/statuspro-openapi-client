@@ -22,7 +22,8 @@ Options for building the client:
 1. **Generated client**: Auto-generate from OpenAPI specification
 1. **Hybrid approach**: Generate base, hand-write wrappers
 
-The StatusPro API provides an OpenAPI 3.1.0 specification with complete endpoint coverage.
+The StatusPro API provides an OpenAPI 3.1.0 specification with complete endpoint
+coverage.
 
 ## Decision
 
@@ -98,7 +99,8 @@ Write all API methods and models manually.
 
 **Cons:**
 
-- Massive manual effort (9 endpoints × 2 variants = 18 methods — still enough to want generation)
+- Massive manual effort (9 endpoints × 2 variants = 18 methods — still enough to want
+  generation)
 - Error-prone (manual typing of 337 models)
 - Hard to keep in sync with API changes
 - No guarantee of completeness
