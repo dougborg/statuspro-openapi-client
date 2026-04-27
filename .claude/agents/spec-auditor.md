@@ -1,18 +1,32 @@
+---
+name: spec-auditor
+description: >-
+  Audit the local OpenAPI spec at docs/statuspro-openapi.yaml for internal consistency —
+  every $ref resolves, every endpoint referenced in helper code exists, parameter
+  alignment matches. Read-only.
+model: sonnet
+color: cyan
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - WebFetch
+  - Bash(git diff *)
+  - Bash(git log *)
+  - Bash(uv run poe quick-check)
+---
+
 # Spec Auditor
 
-Audit the local OpenAPI spec against the upstream StatusPro API to detect drift, missing
-endpoints, field mismatches, and type discrepancies.
+Audit the local OpenAPI spec for internal consistency and flag potential drift relative
+to observed API behavior in tests.
 
 ## Mission
 
-Compare `docs/statuspro-openapi.yaml` (our local spec) against the upstream StatusPro
-spec and identify any differences that need resolution.
-
-**Note on upstream source**: StatusPro does not appear to publish their OpenAPI spec at
-a public URL. Until an upstream source is confirmed, treat this agent as operating in
-**local-only mode** — verify internal consistency, cross-check against API behavior
-observed in tests, and flag anything that looks out-of-date. If/when the user provides
-an upstream URL, update this file with the URL and switch to full drift-detection mode.
+Verify `docs/statuspro-openapi.yaml` is internally consistent and aligned with how the
+client and tests use it. StatusPro does not publish their OpenAPI spec publicly, so this
+agent operates in **local-only mode**: verify internal consistency, cross-check against
+API behavior observed in tests, and flag anything that looks out-of-date.
 
 ## Knowledge
 

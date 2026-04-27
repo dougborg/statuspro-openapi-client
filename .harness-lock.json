@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "sources": {
+    "harness-kit": {
+      "version": "0.4.0",
+      "installed": "2026-04-27"
+    }
+  },
+  "files": {
+    ".claude/skills/code-reviewer/SKILL.md": { "source": "harness-kit", "modified": true },
+    ".claude/skills/commit/SKILL.md": { "source": "harness-kit", "modified": true },
+    ".claude/skills/feature-spec/SKILL.md": { "source": "harness-kit", "modified": true },
+    ".claude/skills/skill-writer/SKILL.md": { "source": "harness-kit", "modified": true },
+    ".claude/skills/open-pr/SKILL.md": { "source": "harness-kit", "modified": true },
+    ".claude/skills/open-pr/ensure-feature-branch.sh": { "source": "harness-kit", "modified": false },
+    ".claude/skills/open-pr/poll-ci.sh": { "source": "harness-kit", "modified": false },
+    ".claude/skills/open-pr/poll-review.sh": { "source": "harness-kit", "modified": false },
+    ".claude/skills/pr-comments/SKILL.md": { "source": "harness-kit", "modified": true },
+    ".claude/skills/pr-comments/reply-to-comment.sh": { "source": "harness-kit", "modified": false },
+    ".claude/skills/shared/discover-verification-cmd.sh": { "source": "harness-kit", "modified": true },
+    ".claude/skills/shared/fetch-pr-context.sh": { "source": "harness-kit", "modified": true },
+    ".claude/skills/shared/is-branch-shared.sh": { "source": "harness-kit", "modified": false },
+    ".claude/skills/shared/markdownlint-fix.sh": { "source": "harness-kit", "modified": false },
+    ".claude/skills/shared/resolve-all-threads.sh": { "source": "harness-kit", "modified": false },
+    ".claude/skills/shared/resolve-github-context.sh": { "source": "harness-kit", "modified": false },
+    ".claude/skills/shared/resolve-thread.sh": { "source": "harness-kit", "modified": false },
+    ".claude/skills/shared/validate-hooks-schema.sh": { "source": "harness-kit", "modified": false },
+    ".claude/agents/code-reviewer.md": { "source": "harness-kit", "modified": true },
+    ".claude/agents/verifier.md": { "source": "harness-kit", "modified": true },
+    ".claude/skills/code-review/SKILL.md": { "source": "local" },
+    ".claude/skills/techdebt-scan/SKILL.md": { "source": "local" },
+    ".claude/skills/verify/SKILL.md": { "source": "local" },
+    ".claude/skills/write-tests/SKILL.md": { "source": "local" },
+    ".claude/skills/generate-docs/SKILL.md": { "source": "local" },
+    ".claude/agents/domain-advisor.md": { "source": "local" },
+    ".claude/agents/test-writer.md": { "source": "local" },
+    ".claude/agents/code-modernizer.md": { "source": "local" },
+    ".claude/agents/pr-preparer.md": { "source": "local" },
+    ".claude/agents/spec-auditor.md": { "source": "local" },
+    ".claude/settings.json": { "source": "local" }
+  },
+  "notes": {
+    "modified-flag-rationale": "Files marked modified=true diverge from harness-kit 0.4.0 in ways /harness update should warn before overwriting. Reasons: (1) ${CLAUDE_PLUGIN_ROOT}/skills/... paths rewritten to .claude/skills/... so scripts resolve from the project root; (2) malformed code-fence closes (```text instead of ```) and 4-backtick fence openers fixed across upstream skill docs; (3) /review-pr cross-references replaced with /pr-comments (the upstream skill we actually installed); (4) discover-verification-cmd.sh reordered so pyproject.toml+poe takes precedence over package.json on Python-primary monorepos, and the pyproject branch now emits 'uv run poe check' rather than 'poe test'; (5) fetch-pr-context.sh GraphQL fix to join is_resolved across every comment in a thread (not just the first), and python3 fallback when jq is missing; (6) open-pr commit example uses project scope (client/mcp) and reconciles the 'simplify is mandatory' rule with the 'phase 3 is optional' description.",
+    "hoist-candidates": "Lift these fixes back upstream via /harness hoist: malformed-fence cleanup across SKILL.md files, GraphQL all-comments-per-thread join in fetch-pr-context.sh, jq-missing python3 fallback, discover-verification-cmd.sh precedence (pyproject.toml+poe before package.json) + pyproject branch emitting 'uv run poe check', and refresh of /review-pr cross-references. Also worth hoisting: autosquash fixup flow, gh pr view --json baseRefName auto-detect, gh pr checks --watch --fail-fast polling — all from the prior project review-pr/open-pr."
+  }
+}

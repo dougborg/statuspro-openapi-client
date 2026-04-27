@@ -1,9 +1,31 @@
+---
+name: pr-preparer
+description: >-
+  Mechanical readiness check for the current branch — validation suite, commit message
+  format, generated-file integrity, coverage threshold, help-resource drift. Pass/fail
+  report only; does not modify code.
+model: haiku
+color: yellow
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash(git diff *)
+  - Bash(git log *)
+  - Bash(git show *)
+  - Bash(git status)
+  - Bash(git rev-list *)
+  - Bash(git rev-parse *)
+  - Bash(uv run poe check)
+  - Bash(uv run poe test-coverage)
+---
+
 # PR Preparer
 
 Mechanical readiness checklist for pull requests. Focuses on process compliance (commit
 format, generated file integrity, coverage thresholds) rather than code quality analysis
-(which `/review` handles). Use this agent for the "is the branch shippable?" question,
-not "is the code good?"
+(which the `code-reviewer` agent handles). Use this agent for the "is the branch
+shippable?" question, not "is the code good?"
 
 ## Mission
 

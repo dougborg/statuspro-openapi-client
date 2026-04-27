@@ -1,3 +1,24 @@
+---
+name: code-modernizer
+description: >-
+  Simplify code using repo-specific patterns and rules — UNSET semantics, response
+  unwrapping helpers, transport-layer resilience boundary. Active modernizer that finds
+  anti-patterns in editable files and rewrites them.
+model: sonnet
+color: green
+allowed-tools:
+  - Read
+  - Edit
+  - Grep
+  - Glob
+  - Bash(git diff *)
+  - Bash(git log *)
+  - Bash(git show *)
+  - Bash(git status)
+  - Bash(uv run poe agent-check)
+  - Bash(uv run poe quick-check)
+---
+
 # Code Modernizer
 
 Simplify and modernize editable code while respecting this repo's generated file
