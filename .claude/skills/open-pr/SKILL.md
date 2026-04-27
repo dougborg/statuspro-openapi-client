@@ -1,147 +1,152 @@
 ---
 name: open-pr
 description: >-
-  Open a PR for the current feature branch — self-review the diff, organize
-  commits, push, create the PR, wait for CI and review, then address feedback.
-  Use when implementation is complete and ready for review.
+  Open a PR for the current feature branch — validate, self-review, simplify,
+  organize commits, push, create the PR, wait for CI and review, then address
+  feedback. Use when implementation is complete and ready for review.
 argument-hint: "[base branch]"
-allowed-tools:
-  - Bash(gh pr *)
-  - Bash(gh api *)
-  - Bash(git status)
-  - Bash(git diff *)
-  - Bash(git log *)
-  - Bash(git add *)
-  - Bash(git commit *)
-  - Bash(git push *)
-  - Bash(git branch *)
-  - Bash(git stash *)
-  - Bash(uv run poe check)
-  - Bash(uv run poe fix)
+allowed-tools: Bash(gh pr *), Bash(gh api *), Bash(gh run *), Bash(git status), Bash(git diff *), Bash(git log *), Bash(git add *), Bash(git commit *), Bash(git push *), Bash(git branch *), Bash(git stash *), Bash(git checkout *), Bash(git reset *), Bash(git rev-list *), Bash(git rev-parse *), Bash(.claude/skills/open-pr/*), Bash(.claude/skills/shared/discover-verification-cmd.sh*), Bash(.claude/skills/shared/resolve-github-context.sh*), Read
 ---
 
-# Open PR Workflow
+# /open-pr — Open a Pull Request
 
-Take the current feature branch from "implementation done" to "PR open, CI green,
-first-round review addressed."
+Take the current feature branch from "implementation done" to "PR open, CI green, first-round review addressed."
 
-## Phase 1: Pre-flight checks
+## PURPOSE
 
-1. **Verify feature branch** — confirm we're not on `main`:
+Ship a feature branch end-to-end: validate, self-review, push, create PR, wait for CI, address the first round of review.
+
+## CRITICAL
+
+- **Validate before opening** — the project's verification command must pass before `gh pr create`. Don't push broken code.
+- **Self-review the full diff** — read every change before opening; never skip this and rely on reviewers.
+- **Stage specific files** — never `git add -A` or `git add .`. Intentional staging prevents accidentally committing secrets, scratch files, or unrelated changes.
+- **Use polling scripts for CI and review state** — never check review comments with `gh pr view --json`. That endpoint only returns top-level PR comments, not inline review comments attached to code lines. Use `poll-review.sh` which calls the correct API (`gh api repos/.../pulls/.../comments`).
+- **Never merge with unaddressed review comments** — every comment gets fixed, deferred with a tracked issue, or discussed. CI green does not override review feedback.
+- **No `--no-verify`** — never bypass commit hooks, type checkers, or linters. If a check fails, fix the cause.
+
+## STANDARD PATH
+
+The skill runs nine phases. Each phase is short; phase headings below are the navigation index.
+
+1. **Pre-flight** — ensure feature branch, run validation, check for existing PR
+2. **Self-review** — read the full diff, check for bugs/secrets/debug code
+3. **Simplify (optional)** — reuse, dead code, duplication
+4. **Organize commits** — logical commits with conventional format + HEREDOC
+5. **Push and create PR** — `gh pr create` with HEREDOC body
+6. **Wait for CI** — `poll-ci.sh`; fix in place if anything fails
+7. **Wait for review** — `poll-review.sh`; never skip with `gh pr view`
+8. **Address review comments** — delegate to `/pr-comments`
+9. **Summary** — report PR URL, CI status, comments addressed
+
+## Phase 1: Pre-flight
+
+1. **Ensure feature branch** — auto-create if on `main`:
 
    ```bash
-   git branch --show-current
+   branch=$(.claude/skills/open-pr/ensure-feature-branch.sh)
    ```
 
-   If on `main`, stop and tell the user to create a feature branch first.
+   The script handles three scenarios automatically:
+   - **Unpushed commits on main** → infers branch name from commit, creates branch, resets main
+   - **Staged/unstaged changes** → stashes, creates branch, pops
+   - **Clean state** → exits 1 ("No changes to create a PR from.")
 
-1. **Determine base branch** — use `$ARGUMENTS` if provided and non-empty, otherwise
-   default to `main`.
+2. **Determine base branch** — use `$ARGUMENTS` if provided, otherwise `main`.
 
-1. **Run validation**:
+3. **Discover and run validation:**
 
    ```bash
-   uv run poe check
+   cmd=$(.claude/skills/shared/discover-verification-cmd.sh)
+   eval "$cmd"
    ```
 
-   This runs format + lint + type-check + tests. **ALL must pass.** If validation fails:
+   **ALL must pass.** Fix any failures before proceeding.
 
-   - Run `uv run poe fix` for auto-fixable lint/format issues
-   - Fix remaining issues manually
-   - Re-run `uv run poe check` until clean
-
-1. **Check for existing PR** on this branch:
+4. **Check for existing PR**:
 
    ```bash
    gh pr view --json number,url,state
    ```
 
-   If a PR already exists and is open, tell the user and stop — use `/review-pr`
-   instead.
+   If a PR already exists and is open, auto-delegate to `/pr-comments` — do not stop and tell the user.
 
 ## Phase 2: Self-review
 
-Review **every change** that will be in the PR. Get the full diff:
+Review **every change** in the diff:
 
 ```bash
 git diff <base>...HEAD
-```
-
-Also check uncommitted changes:
-
-```bash
 git diff
 git diff --cached
 ```
 
-Review every change for:
+Check for:
 
-- **Bugs, logic errors, edge cases** — incorrect conditions, off-by-one, missing null
-  checks
-- **Generated file edits** — ensure no manual changes to `api/**/*.py`,
-  `models/**/*.py`, `client.py`
-- **Anti-patterns from CLAUDE.md** — UNSET misuse, manual status checks, retry wrapping
-- **Missing error handling** — unhandled exceptions, missing fallbacks
-- **Code quality / style** — naming, structure, consistency with codebase patterns
-- **Security concerns** — secrets in code, injection vulnerabilities
-- **Missing or inadequate tests** — new code paths without test coverage
-- **Leftover debug code** — `print()`, `TODO`/`FIXME` without issue refs, commented-out
-  code
+- Bugs, logic errors, edge cases, missing null checks
+- Missing error handling
+- Security concerns (secrets, injection, unsafe deserialization)
+- Missing or inadequate tests
+- Leftover debug code (`print()`, `console.log`, `TODO`/`FIXME` without issue refs)
+- Code quality and naming consistency
 
-Fix any issues found. After fixes, re-run validation:
+Fix any issues found, then re-run validation.
 
-```bash
-uv run poe check
-```
+## Phase 3: Simplify (Optional)
 
-## Phase 3: Organize commits
+Review for opportunities to simplify:
 
-1. **Review current state**:
+- Reuse opportunities (existing utilities that could replace new code)
+- Dead code or unnecessary complexity
+- Duplication within the changeset
+
+If improvements are found, apply them and re-run validation.
+
+Note: This phase is optional and relies on manual review or the `/simplify` skill if available in your Claude Code environment.
+
+## Phase 4: Organize commits
+
+1. Review current state:
 
    ```bash
    git log <base>..HEAD --oneline
    git status
-   git diff
    ```
 
-1. **Decide on commit organization**:
+1. Organize changes into logical commits:
+   - If all uncommitted: group into meaningful commits (separate feature from tests, refactoring from new functionality)
+   - If commits exist and are well-organized: just commit remaining changes
+   - If messy (WIP, fixup): clean up
 
-   - If all changes are uncommitted: group into logical commits (e.g., separate feature
-     code from tests, separate refactoring from new functionality)
-   - If commits already exist and are well-organized: just commit any remaining
-     uncommitted changes
-   - If commits exist but are messy (fixup commits, WIP): consider interactive cleanup
+2. **Stage specific files** — never use `git add -A` or `git add .`
 
-1. **Stage specific files per commit** — never use `git add -A` or `git add .`
-
-1. **Commit format** — use conventional commits with scope and trailer:
+3. Use conventional commit format with HEREDOC:
 
    ```bash
    git commit -m "$(cat <<'EOF'
    feat(client): short description
 
-   Optional longer explanation of the change.
+   Optional longer explanation.
 
-   Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+   Co-Authored-By: Claude <noreply@anthropic.com>
    EOF
    )"
    ```
 
-   Valid scopes: `client`, `mcp`, or no scope for cross-cutting changes.
+   This project uses release-please. Valid scopes are `client` (drives the
+   Python client release) and `mcp` (drives the MCP server release); use no
+   scope for cross-cutting changes that should not trigger a release. See
+   CLAUDE.md "Commit Standards" for the full list and breaking-change syntax.
 
-## Phase 4: Push and open PR
+## Phase 5: Push and create PR
 
-1. **Push the branch**:
+1. Push:
 
    ```bash
    git push -u origin <branch>
    ```
 
-1. **Craft PR title and body**:
-
-   - Title: conventional format, under 70 chars (e.g.,
-     `feat(client): add batch stock endpoint`)
-   - Body format using HEREDOC:
+2. Create PR with HEREDOC body:
 
    ```bash
    gh pr create --base <base> --title "feat(scope): short description" --body "$(cat <<'EOF'
@@ -156,91 +161,72 @@ uv run poe check
    )"
    ```
 
-   - If there's a related GitHub issue, include `Closes #N` in the summary
+3. Print the PR URL.
 
-1. **Print the PR URL** for the user.
+## Phase 6: Wait for CI
 
-## Phase 5: Wait for CI
-
-1. **Poll CI status**:
-
-   ```bash
-   gh pr checks <number> --watch --fail-fast
-   ```
-
-   If `--watch` is not available, poll manually:
-
-   ```bash
-   gh pr checks <number>
-   ```
-
-1. **If a check fails**:
-
-   - Fetch the failure logs:
-     ```bash
-     gh run view <run-id> --log-failed
-     ```
-   - Fix the issue (code change, lint fix, etc.)
-   - Run `uv run poe check` locally
-   - Commit the fix (specific files only, never `git add -A`), push, and resume waiting
-
-1. Once all required checks pass, move on.
-
-## Phase 6: Wait for review comments
-
-1. **Poll for review activity** every 60 seconds, with a **15-minute timeout**:
-
-   ```bash
-   # Check for review comments
-   gh api repos/{owner}/{repo}/pulls/{number}/comments --jq 'length'
-
-   # Check for PR reviews (approve/request-changes)
-   gh pr view {number} --json reviews --jq '.reviews | length'
-   ```
-
-1. **If the PR is approved** with no comments — tell the user and stop.
-
-1. **If comments arrive** — proceed to Phase 7.
-
-1. **If timeout (15 min) with no comments** — tell the user "CI is green, PR is open, no
-   review comments yet" and stop.
-
-## Phase 7: Address review comments
-
-Invoke the `/review-pr` skill to handle all review comments:
-
-```
-/review-pr <number>
+```bash
+.claude/skills/open-pr/poll-ci.sh <number>
 ```
 
-This handles: fetching comments, triaging, fixing, validating, committing, pushing, and
-replying.
+Exit 0 = passed, exit 1 = failed (fix, commit, push, re-poll), exit 2 = timeout.
 
-**Do not duplicate this workflow** — always delegate to `/review-pr`.
+**If a check fails:** fetch logs with `gh run view <run-id> --log-failed`, fix, validate locally, commit (specific files), push, resume waiting.
 
-## Phase 8: Final summary
+## Phase 7: Wait for review
 
-Print an overall summary:
+**Always use the polling script** — never check for review comments with `gh pr view --json`. That endpoint only returns top-level PR comments, not inline review comments attached to code lines. The polling script uses the correct API (`gh api repos/.../pulls/.../comments`).
 
-- **PR URL**
-- **Number of commits** on the branch
-- **CI status** (all green / any failures)
-- **Review comments addressed** (count, if any)
-- **Current PR state** (ready for re-review, approved, etc.)
+```bash
+ctx=$(.claude/skills/shared/resolve-github-context.sh <number>)
+owner_repo=$(echo "$ctx" | jq -r '"\(.owner)/\(.repo)"')
+.claude/skills/open-pr/poll-review.sh "$owner_repo" <number>
+```
+
+Outputs: `approved`, `comments`, or `timeout` (exit 2).
+
+- **approved** → tell user and stop
+- **comments** → proceed to Phase 8
+- **timeout** → tell user "CI green, PR open, no review comments yet" and stop
+
+## Phase 8: Address review comments
+
+Invoke `/pr-comments` to handle all review comments:
+
+```bash
+/pr-comments <number>
+```
+
+**Do not duplicate the review-comment workflow** — always delegate to `/pr-comments`.
+
+## Phase 9: Summary
+
+Print:
+
+- PR URL
+- Number of commits
+- CI status
+- Review comments addressed (if any)
+- Current PR state
 
 ## Important Rules
 
-- **Validate before opening** — `uv run poe check` must pass before creating the PR
-- **Self-review is mandatory** — always review the full diff before opening
-- **Logical commits** — organize changes into meaningful commits, not one giant squash
+- **Never dismiss review findings** — Code quality concerns are the entire point of code review. Never rationalize skipping them ("not blocking", "acceptable", "good for future refinement"). Every finding gets fixed, deferred with a tracked issue, or discussed with the reviewer. "CI is green" and "tests pass" do not override review feedback.
+- **Never merge with unaddressed comments** — All review comments must be resolved before merging. No exceptions.
+- **Validate before opening** — verification must pass before creating the PR
+- **Self-review is mandatory** — always review the full diff
+- **Simplify is encouraged but optional** — Phase 3; use `/simplify` if it would
+  meaningfully reduce duplication or dead code, otherwise skip
+- **Logical commits** — organize into meaningful commits, not one giant squash
 - **No shortcuts** — never use `--no-verify`, `noqa`, or `type: ignore`
-- **Fix CI failures in-place** — don't close and re-open the PR
-- **Timeout on review wait** — don't wait forever for human review (15 min max)
-- **Invoke `/review-pr`** — don't duplicate the review-comment workflow; delegate to the
-  existing skill
-- **Stage specific files** — never use `git add -A` or `git add .`
-- **HEREDOC for messages** — always pass commit messages and PR bodies via HEREDOC for
-  proper formatting
-- **File issues for deferred work** — if the self-review identifies issues that are out
-  of scope, create GitHub issues with `gh issue create` before opening the PR. Never
-  defer work without a tracking issue.
+- **Fix CI in-place** — don't close and re-open
+- **Stage specific files** — never `git add -A` or `git add .`
+- **HEREDOC for messages** — always use HEREDOC for commit messages and PR bodies
+- **File issues for deferred work** — if self-review finds out-of-scope issues, create GitHub issues before opening
+- **Delegate to /pr-comments** — don't duplicate the comment-response workflow
+
+## Related Skills
+
+- `/pr-comments` — Address review feedback (fix, commit, push, reply)
+- `/commit` — Quality-gated conventional commits
+- `/simplify` — Code simplification pass

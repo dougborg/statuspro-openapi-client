@@ -1,0 +1,33 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f='{file_path}'; case \"$f\" in *.py) if echo \"$f\" | grep -qE '(statuspro_public_api_client/(api/|models/|client\\.py))'; then echo 'STOP: this is a generated file. Run `uv run poe regenerate-client` (then `uv run poe generate-pydantic`) instead of editing directly.' >&2; exit 2; fi; uv run ruff format \"$f\" >/dev/null 2>&1 || true; uv run ruff check --fix \"$f\" >/dev/null 2>&1 || true ;; *.md) pnpm exec prettier --write \"$f\" >/dev/null 2>&1 || true ;; esac; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "f='{file_path}'; if echo \"$f\" | grep -qE 'statuspro_mcp_server/.*/tools/'; then echo 'REMINDER: if you changed MCP tool parameters, update statuspro_mcp_server/.../resources/help.py to stay in sync.'; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "changed=$( { git diff --name-only 2>/dev/null; git diff --name-only --cached 2>/dev/null; } | sort -u | wc -l | tr -d ' '); if [ \"$changed\" -gt 0 ]; then uv run poe agent-check 2>&1 | tail -30 || true; fi; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "changed=$( { git diff --name-only 2>/dev/null; git diff --name-only --cached 2>/dev/null; git log --diff-filter=ACMR --name-only --pretty=format: --since='4 hours ago' 2>/dev/null; } | sort -u | wc -l | tr -d ' '); if [ \"$changed\" -gt 3 ]; then echo \"Session touched $changed files — consider /harness retro to capture learnings\"; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

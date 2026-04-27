@@ -224,31 +224,68 @@ status = unwrap_unset(order.status, None)
 - `ServerError` - 5xx server errors
 - `APIError` - Other errors (400, 403, 404, etc.)
 
-## Claude Code Commands
+## Claude Code Skills
 
-Project slash commands in `.claude/commands/` and skills in `.claude/skills/`:
+Skills in `.claude/skills/`. Some are project-specific; others come from the
+`harness-kit` plugin (file provenance tracked in `.harness-lock.json`).
 
-| Command          | Purpose                                      |
-| ---------------- | -------------------------------------------- |
-| `/techdebt`      | Scan for tech debt and anti-patterns         |
-| `/review`        | Structured code review of current branch     |
-| `/write-tests`   | Write comprehensive tests for target code    |
-| `/generate-docs` | Generate or update documentation             |
-| `/verify`        | Skeptically validate implementation quality  |
-| `/pre-commit`    | Quick pre-flight check before committing     |
-| `/review-pr`     | Address PR review comments, fix, push, reply |
-| `/open-pr`       | Open PR with self-review, CI wait, feedback  |
+Project-specific (StatusPro context baked in):
+
+| Skill            | Purpose                                                 |
+| ---------------- | ------------------------------------------------------- |
+| `/code-review`   | Branch review with StatusPro-specific checks            |
+| `/techdebt-scan` | Scan editable code for tech debt and anti-patterns      |
+| `/verify`        | Skeptical implementation verification across tiers      |
+| `/write-tests`   | Author pytest tests using AAA pattern + project helpers |
+| `/generate-docs` | Docstrings, ADRs, READMEs, MCP help-resource sync       |
+
+From `harness-kit` plugin:
+
+| Skill            | Purpose                                               |
+| ---------------- | ----------------------------------------------------- |
+| `/commit`        | Quality gate + conventional commit                    |
+| `/feature-spec`  | Pre-implementation specs                              |
+| `/code-reviewer` | 6-dimension structured review                         |
+| `/open-pr`       | Open PR, wait for CI, address review                  |
+| `/pr-comments`   | Address PR review comments thread-by-thread           |
+| `/skill-writer`  | Author or refactor skills with progressive disclosure |
 
 ## Claude Code Agents
 
 Sub-agents in `.claude/agents/` that can be spawned for delegated work during complex
 tasks:
 
-| Agent             | Purpose                                              |
-| ----------------- | ---------------------------------------------------- |
-| `spec-auditor`    | Audit local OpenAPI spec against upstream for drift  |
-| `code-modernizer` | Simplify code using repo-specific patterns and rules |
-| `pr-preparer`     | Validate branch readiness for pull request           |
+| Agent             | Model  | Purpose                                                       |
+| ----------------- | ------ | ------------------------------------------------------------- |
+| `code-reviewer`   | sonnet | 6-dimension structured review (from `harness-kit`)            |
+| `verifier`        | haiku  | Skeptical post-implementation validation (from `harness-kit`) |
+| `domain-advisor`  | sonnet | Read-only advisor for UNSET, helpers, transport patterns      |
+| `test-writer`     | sonnet | Pytest tests using AAA pattern and project helpers            |
+| `code-modernizer` | sonnet | Active rewrites: UNSET, helpers, attrs anti-patterns          |
+| `pr-preparer`     | haiku  | Process readiness: validation, commit format, coverage        |
+| `spec-auditor`    | sonnet | Internal consistency of `docs/statuspro-openapi.yaml`         |
+
+## Automation Philosophy
+
+`.claude/settings.json` configures hooks (committed, team-wide) so common chores are
+automated rather than left for the agent to remember:
+
+- **PostToolUse formatter** — `ruff format` + `ruff check --fix` runs silently after
+  every Python edit; `prettier --write` runs after markdown edits
+- **PostToolUse guard** — edits to generated files (`api/`, `models/`, `client.py`) are
+  blocked with a reminder to run `uv run poe regenerate-client` instead
+- **PostToolUse reminder** — edits to `statuspro_mcp_server/.../tools/` print a reminder
+  to update `resources/help.py` (see "Help resource drift" pitfall)
+- **Stop validator** — runs `uv run poe agent-check` if any files changed
+- **Stop retro nudge** — suggests `/harness retro` when more than 3 files were touched
+  in the session
+
+All hook commands exit 0 on no-op (use `if/then/fi`, never `[ ] && action`).
+
+> **Hoist TODO**: lift the autosquash fixup flow + `gh pr view --json baseRefName`
+> auto-detect + `gh pr checks --watch --fail-fast` polling pattern from the prior
+> project-local `review-pr`/`open-pr` skills back upstream to `harness-kit`. Run
+> `/harness hoist` when ready.
 
 ## Detailed Documentation
 
