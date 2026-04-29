@@ -32,6 +32,7 @@ import json
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -42,10 +43,24 @@ DEFAULT_UPSTREAM_URL = "https://orderstatuspro.com/api/openapi.json"
 DEFAULT_OUTPUT_PATH = (
     Path(__file__).resolve().parent.parent / "docs" / "statuspro-openapi.upstream.yaml"
 )
+ALLOWED_URL_SCHEMES = ("http", "https")
 
 
 def fetch_upstream_spec(url: str, *, timeout: int = 30) -> dict[str, Any]:
-    """Download the upstream OpenAPI spec as a parsed dict."""
+    """Download the upstream OpenAPI spec as a parsed dict.
+
+    The URL is configurable via env var, so validate the scheme to block
+    ``file://`` (which urllib accepts and would let a misconfigured env
+    var exfiltrate local files) and other non-HTTP schemes.
+    """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ALLOWED_URL_SCHEMES:
+        msg = (
+            f"Refusing to fetch from non-HTTP scheme {parsed.scheme!r}: {url}. "
+            f"Allowed schemes: {ALLOWED_URL_SCHEMES}."
+        )
+        raise ValueError(msg)
+
     print(f"Fetching upstream spec: {url}")
     try:
         req = urllib.request.Request(
