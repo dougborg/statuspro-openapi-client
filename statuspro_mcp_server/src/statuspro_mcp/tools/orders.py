@@ -389,13 +389,18 @@ def register_tools(mcp: FastMCP) -> None:
         services = get_services(context)
 
         if not confirm:
-            # Preview branch: fetch the order + catalog so the UI can show
-            # the current status side-by-side with the proposed new one.
+            # Preview branch: fetch order + status catalog + viable transitions
+            # in parallel so the UI can show current vs. proposed AND so we
+            # can pre-validate the transition before the user confirms (saves
+            # the agent from getting a 422 surprise on the confirm step).
+            order, statuses_list, viable = await asyncio.gather(
+                services.client.orders.get(order_id),
+                services.client.statuses.list(),
+                services.client.statuses.viable_for(order_id),
+            )
+
             # Single catalog fetch services both the color map and the
-            # new-status-name lookup (``list_statuses`` is cached, but pulling
-            # the local list avoids round-tripping the cache twice).
-            order = await services.client.orders.get(order_id)
-            statuses_list = await services.client.statuses.list()
+            # new-status-name lookup (``list_statuses`` is cached).
             catalog: dict[str, str | None] = {}
             new_name: str | None = None
             for s in statuses_list:
@@ -405,6 +410,13 @@ def register_tools(mcp: FastMCP) -> None:
                 catalog[code] = getattr(s, "color", None)
                 if code == status_code:
                     new_name = getattr(s, "name", None)
+
+            viable_codes: list[str] = []
+            for s in viable:
+                code = getattr(s, "code", None)
+                if isinstance(code, str) and code:
+                    viable_codes.append(code)
+            valid_transition = status_code in viable_codes
 
             current = getattr(order, "status", None)
             current_code = getattr(current, "code", None) if current else None
@@ -420,6 +432,8 @@ def register_tools(mcp: FastMCP) -> None:
                 public=public,
                 email_customer=email_customer,
                 email_additional=email_additional,
+                valid=valid_transition,
+                viable_status_codes=viable_codes,
             )
             app = build_status_change_preview_ui(
                 preview.model_dump(),
@@ -433,6 +447,13 @@ def register_tools(mcp: FastMCP) -> None:
                 if comment
                 else "_No comment._"
             )
+            validity_block = (
+                f"⚠️ **Not a valid transition.** Viable status codes from "
+                f"`{current_code or '—'}`: "
+                + (", ".join(f"`{c}`" for c in viable_codes) or "_(none)_")
+                if not valid_transition
+                else ""
+            )
 
             return make_tool_result(
                 preview,
@@ -445,6 +466,7 @@ def register_tools(mcp: FastMCP) -> None:
                 new_status_name=new_name or "—",
                 comment_block=comment_block,
                 recipients=recipients_text,
+                validity_block=validity_block,
             )
 
         # Confirm branch: elicit approval, then execute. Renders the

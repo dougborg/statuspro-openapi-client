@@ -280,10 +280,17 @@ def build_status_change_preview_ui(
 
     Shows current → new side by side, the optional comment (with visibility
     badge), and a Confirm button that sends the ``confirm=true`` follow-up.
+
+    When ``preview["valid"]`` is ``False`` (the requested ``new_status_code``
+    is not a viable transition from the current state), the Confirm button is
+    replaced with a destructive warning surfacing the list of viable codes
+    so the agent can self-correct.
     """
     order_id = preview.get("order_id")
     comment = preview.get("comment")
     public = bool(preview.get("public"))
+    valid = bool(preview.get("valid", True))
+    viable_codes = preview.get("viable_status_codes") or []
     # Re-hydrate as the schema so its ``recipients_text`` is the single source
     # of truth for both the UI and the markdown fallback rendered by orders.py.
     recipients_text = StatusChangePreview.model_validate(preview).recipients_text()
@@ -291,7 +298,10 @@ def build_status_change_preview_ui(
     with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
         with CardHeader(), Row(gap=2):
             CardTitle(content=f"Preview: order {order_id} status change")
-            Badge(label="PREVIEW", variant="secondary")
+            Badge(
+                label="INVALID TRANSITION" if not valid else "PREVIEW",
+                variant="destructive" if not valid else "secondary",
+            )
 
         with CardContent(), Column(gap=3):
             with Row(gap=3):
@@ -305,6 +315,21 @@ def build_status_change_preview_ui(
                     preview.get("new_status_code"),
                     preview.get("new_status_name"),
                     new_color,
+                )
+
+            if not valid:
+                Separator()
+                Text(
+                    content=(
+                        f"⚠ Not a viable transition from "
+                        f"`{preview.get('current_status_code') or '—'}`. "
+                        f"Viable codes: "
+                        + (
+                            ", ".join(f"`{c}`" for c in viable_codes)
+                            if viable_codes
+                            else "_(none)_"
+                        )
+                    ),
                 )
 
             if comment:
@@ -321,14 +346,24 @@ def build_status_change_preview_ui(
             Metric(label="Emails to", value=recipients_text)
 
         with CardFooter(), Row(gap=2):
-            Button(
-                label="Confirm change",
-                variant="default",
-                on_click=SendMessage(
-                    f"Update order {order_id} to status "
-                    f"{preview.get('new_status_code')} with confirm=true"
-                ),
-            )
+            if valid:
+                Button(
+                    label="Confirm change",
+                    variant="default",
+                    on_click=SendMessage(
+                        f"Update order {order_id} to status "
+                        f"{preview.get('new_status_code')} with confirm=true"
+                    ),
+                )
+            else:
+                Button(
+                    label="See viable transitions",
+                    variant="default",
+                    on_click=CallTool(
+                        "get_viable_statuses",
+                        arguments={"order_id": order_id},
+                    ),
+                )
             Button(
                 label="Cancel",
                 variant="outline",

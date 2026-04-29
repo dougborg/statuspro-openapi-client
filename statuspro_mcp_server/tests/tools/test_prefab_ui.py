@@ -121,6 +121,8 @@ def test_build_status_change_preview_ui_renders_with_confirm_action():
             "public": True,
             "email_customer": True,
             "email_additional": False,
+            "valid": True,
+            "viable_status_codes": ["st000003", "st000004"],
         },
         current_color="pink",
         new_color="green",
@@ -131,3 +133,35 @@ def test_build_status_change_preview_ui_renders_with_confirm_action():
     serialized = json.dumps(_envelope(app))
     assert "confirm=true" in serialized
     assert "st000003" in serialized
+
+
+def test_build_status_change_preview_ui_invalid_transition_hides_confirm():
+    """When valid=False, the Confirm button is replaced with a 'See viable
+    transitions' button that calls get_viable_statuses, and the destructive
+    INVALID TRANSITION badge surfaces. Without these, an agent that tried an
+    invalid status_code could still confirm into a guaranteed 422.
+    """
+    app = build_status_change_preview_ui(
+        {
+            "order_id": 1,
+            "current_status_code": "st000002",
+            "current_status_name": "In Production",
+            "new_status_code": "st000099",
+            "new_status_name": None,
+            "comment": None,
+            "public": False,
+            "email_customer": True,
+            "email_additional": True,
+            "valid": False,
+            "viable_status_codes": ["st000003", "st000004"],
+        },
+    )
+    serialized = json.dumps(_envelope(app))
+    # No Confirm button → no "confirm=true" SendMessage payload.
+    assert "confirm=true" not in serialized
+    # The remediation path: the get_viable_statuses CallTool action must be
+    # wired to the replacement button.
+    assert "get_viable_statuses" in serialized
+    # Viable codes surface in the warning text so the agent can self-correct.
+    assert "st000003" in serialized
+    assert "st000004" in serialized
