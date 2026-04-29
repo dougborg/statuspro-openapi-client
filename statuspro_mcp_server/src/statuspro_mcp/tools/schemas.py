@@ -147,7 +147,14 @@ class ViableStatusesResponse(BaseModel):
 class StatusChangePreview(BaseModel):
     """Preview payload returned when ``update_order_status`` is called with
     ``confirm=False``. Describes the change that *would* happen, without
-    executing it."""
+    executing it.
+
+    The preview branch self-validates the requested transition against
+    ``GET /orders/{id}/viable-statuses``. When ``valid`` is ``False``, the
+    Confirm button on the Prefab UI is replaced with a warning surfacing
+    the list of ``viable_status_codes`` so the agent can self-correct
+    without a separate ``get_viable_statuses`` round-trip.
+    """
 
     action: Literal["update_order_status"] = "update_order_status"
     confirmed: Literal[False] = False
@@ -160,6 +167,17 @@ class StatusChangePreview(BaseModel):
     public: bool
     email_customer: bool
     email_additional: bool
+    valid: bool = Field(
+        default=True,
+        description=(
+            "True when new_status_code is a viable transition from the "
+            "current state. False blocks confirmation."
+        ),
+    )
+    viable_status_codes: list[str] = Field(
+        default_factory=list,
+        description="Status codes that ARE viable transitions, for self-correction.",
+    )
 
     def recipients_text(self) -> str:
         """Human-readable list of who will receive notification emails."""
