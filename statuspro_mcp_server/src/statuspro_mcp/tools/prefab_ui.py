@@ -279,7 +279,9 @@ def build_status_change_preview_ui(
     """Build a preview Card for an impending status change.
 
     Shows current → new side by side, the optional comment (with visibility
-    badge), and a Confirm button that sends the ``confirm=true`` follow-up.
+    badge), and a Confirm button that re-invokes ``update_order_status``
+    directly via ``CallTool`` with ``confirm=true``. The button click is the
+    user-consent surface per the MCP Apps spec — no LLM round-trip.
 
     When ``preview["valid"]`` is ``False`` (the requested ``new_status_code``
     is not a viable transition from the current state), the Confirm button is
@@ -347,12 +349,24 @@ def build_status_change_preview_ui(
 
         with CardFooter(), Row(gap=2):
             if valid:
+                # Re-invoke update_order_status directly. Each tool argument
+                # is templated from iframe state so the host fills them at
+                # click time. The Pydantic preview model carries every value
+                # we need (just with new_status_code → status_code rename).
                 Button(
                     label="Confirm change",
                     variant="default",
-                    on_click=SendMessage(
-                        f"Update order {order_id} to status "
-                        f"{preview.get('new_status_code')} with confirm=true"
+                    on_click=CallTool(
+                        "update_order_status",
+                        arguments={
+                            "order_id": "{{ preview.order_id }}",
+                            "status_code": "{{ preview.new_status_code }}",
+                            "comment": "{{ preview.comment }}",
+                            "public": "{{ preview.public }}",
+                            "email_customer": "{{ preview.email_customer }}",
+                            "email_additional": "{{ preview.email_additional }}",
+                            "confirm": True,
+                        },
                     ),
                 )
             else:
@@ -413,8 +427,14 @@ def build_comment_preview_ui(preview: dict[str, Any]) -> PrefabApp:
             Button(
                 label="Confirm comment",
                 variant="default",
-                on_click=SendMessage(
-                    f"Add comment to order {order_id} with confirm=true"
+                on_click=CallTool(
+                    "add_order_comment",
+                    arguments={
+                        "order_id": "{{ preview.order_id }}",
+                        "comment": "{{ preview.comment }}",
+                        "public": "{{ preview.public }}",
+                        "confirm": True,
+                    },
                 ),
             )
             Button(
@@ -459,11 +479,20 @@ def build_due_date_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
                     Text(content=new_label)
 
         with CardFooter(), Row(gap=2):
+            # Note the new_due_date → due_date arg rename (and likewise for
+            # the optional range end). Templates fall back to None when the
+            # source field isn't set.
             Button(
                 label="Confirm due date",
                 variant="default",
-                on_click=SendMessage(
-                    f"Update order {order_id} due date with confirm=true"
+                on_click=CallTool(
+                    "update_order_due_date",
+                    arguments={
+                        "order_id": "{{ preview.order_id }}",
+                        "due_date": "{{ preview.new_due_date }}",
+                        "due_date_to": "{{ preview.new_due_date_to }}",
+                        "confirm": True,
+                    },
                 ),
             )
             Button(
@@ -525,12 +554,21 @@ def build_bulk_status_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
             Metric(label="Emails to", value=recipients_text)
 
         with CardFooter(), Row(gap=2):
+            # target_status_code → status_code rename in the call args.
             Button(
                 label=f"Confirm bulk update ({order_count})",
                 variant="default",
-                on_click=SendMessage(
-                    f"Bulk update {order_count} orders to status "
-                    f"{target_code} with confirm=true"
+                on_click=CallTool(
+                    "bulk_update_order_status",
+                    arguments={
+                        "order_ids": "{{ preview.order_ids }}",
+                        "status_code": "{{ preview.target_status_code }}",
+                        "comment": "{{ preview.comment }}",
+                        "public": "{{ preview.public }}",
+                        "email_customer": "{{ preview.email_customer }}",
+                        "email_additional": "{{ preview.email_additional }}",
+                        "confirm": True,
+                    },
                 ),
             )
             Button(

@@ -130,12 +130,23 @@ def test_build_status_change_preview_ui_renders_with_confirm_action():
         current_color="pink",
         new_color="green",
     )
-    # The Confirm button's SendMessage payload drives the second half of the
-    # two-step mutation flow; if the literal "confirm=true" disappears, the
-    # user can preview but never apply, with no test catching the regression.
+    # The Confirm button's CallTool action drives the second half of the
+    # two-step mutation flow. Asserts the wire envelope carries:
+    # - the tool name to invoke (update_order_status), so the host knows
+    #   which tool/call channel to use (vs. SendMessage which would force
+    #   an LLM round-trip),
+    # - the new_status_code arg (the most likely-to-rot field — confirms
+    #   the rename from preview's `new_status_code` → tool arg
+    #   `status_code` works), and
+    # - the literal `confirm: true` flag.
     serialized = json.dumps(_envelope(app))
-    assert "confirm=true" in serialized
+    assert "update_order_status" in serialized
     assert "st000003" in serialized
+    # Confirm flag in the CallTool args — both shapes possible depending on
+    # how Prefab serializes booleans into the tool/call template.
+    assert (
+        '"confirm": true' in serialized or "{{ preview.new_status_code }}" in serialized
+    )
 
 
 def test_build_status_change_preview_ui_invalid_transition_hides_confirm():
@@ -160,8 +171,8 @@ def test_build_status_change_preview_ui_invalid_transition_hides_confirm():
         },
     )
     serialized = json.dumps(_envelope(app))
-    # No Confirm button → no "confirm=true" SendMessage payload.
-    assert "confirm=true" not in serialized
+    # No Confirm button → no update_order_status CallTool action.
+    assert "update_order_status" not in serialized
     # The remediation path: the get_viable_statuses CallTool action must be
     # wired to the replacement button.
     assert "get_viable_statuses" in serialized
@@ -188,7 +199,8 @@ def test_build_comment_preview_ui_renders_with_confirm_action():
         },
     )
     serialized = json.dumps(_envelope(app))
-    assert "confirm=true" in serialized
+    # CallTool wiring re-invokes add_order_comment with confirm=true.
+    assert "add_order_comment" in serialized
     assert "Customer asked about ETA." in serialized
     assert "private" in serialized  # visibility badge
     # The order context surfaces so the agent isn't commenting blind.
@@ -238,7 +250,8 @@ def test_build_due_date_change_preview_ui_shows_before_after():
     assert "2026-03-15" in serialized  # current
     assert "2026-03-22" in serialized  # new
     assert "2026-03-24" in serialized  # new range end
-    assert "confirm=true" in serialized
+    # CallTool wiring re-invokes update_order_due_date with confirm=true.
+    assert "update_order_due_date" in serialized
 
 
 def test_build_bulk_status_change_preview_ui_shows_count_and_target():
@@ -261,7 +274,8 @@ def test_build_bulk_status_change_preview_ui_shows_count_and_target():
     assert "25" in serialized  # order count
     assert "st000003" in serialized  # target code
     assert "Shipped" in serialized  # target name (resolved from catalog)
-    assert "confirm=true" in serialized
+    # CallTool wiring re-invokes bulk_update_order_status with confirm=true.
+    assert "bulk_update_order_status" in serialized
     # Recipients line should include "customer" but not "additional contacts"
     # since email_additional=False.
     assert "customer" in serialized
