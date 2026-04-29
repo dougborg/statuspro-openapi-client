@@ -4,9 +4,11 @@
 pattern: call with ``confirm=False`` to see a preview, then ``confirm=True`` to
 execute (the client host elicits explicit user approval via ``ctx.elicit``).
 
-Three tools — ``list_orders``, ``get_order``, ``update_order_status`` — return
-a Prefab UI for MCP-Apps clients (Claude Desktop) via ``make_tool_result`` and
-``meta=UI_META``. Others return plain Pydantic/dict responses.
+All read-and-mutation tools (``list_orders``, ``get_order``,
+``update_order_status``, ``add_order_comment``, ``update_order_due_date``,
+``bulk_update_order_status``) return a Prefab UI for MCP-Apps clients (Claude
+Desktop) via ``make_tool_result`` and ``meta=UI_META``. ``get_order_history``
+returns a plain Pydantic page (no UI surface needed for raw timeline data).
 
 The ``GET /orders/lookup`` endpoint is intentionally not exposed: it is the
 public, customer-verification path (requires ``number`` + ``email``) and adds
@@ -26,12 +28,21 @@ from pydantic import Field
 
 from statuspro_mcp.services import get_services
 from statuspro_mcp.tools.prefab_ui import (
+    build_bulk_status_change_preview_ui,
+    build_comment_preview_ui,
+    build_due_date_change_preview_ui,
     build_order_detail_ui,
     build_orders_table_ui,
     build_status_change_preview_ui,
 )
 from statuspro_mcp.tools.schemas import (
+    BulkStatusChangePreview,
+    BulkStatusChangeResult,
+    CommentPreview,
+    CommentResult,
     ConfirmationResult,
+    DueDateChangePreview,
+    DueDateChangeResult,
     HistoryEntry,
     OrderDetail,
     OrderHistoryPage,
@@ -558,6 +569,7 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         name="add_order_comment",
         description="Add a history comment to an order (5/min rate limit). Two-step confirm.",
+        meta=UI_META,
     )
     async def add_order_comment(
         context: Context,
@@ -565,37 +577,78 @@ def register_tools(mcp: FastMCP) -> None:
         comment: Annotated[str, Field(description="Comment body")],
         public: Annotated[bool, Field(description="Visible to the customer")] = False,
         confirm: bool = False,
-    ) -> dict[str, Any]:
+    ) -> ToolResult:
         services = get_services(context)
 
-        preview = {
-            "action": "add_order_comment",
-            "order_id": order_id,
-            "comment": comment,
-            "public": public,
-        }
         if not confirm:
-            return {"preview": preview, "confirmed": False}
+            order = await services.client.orders.get(order_id)
+            order_summary = _to_summary(order)
+            preview_model = CommentPreview(
+                order_id=order_id,
+                order_summary=order_summary,
+                comment=comment,
+                public=public,
+            )
+            app = build_comment_preview_ui(preview_model.model_dump())
+            order_label = (
+                order_summary.name or order_summary.order_number or f"#{order_id}"
+            )
+            order_label = (
+                f"{order_label} ({order_summary.status_name})"
+                if order_summary.status_name
+                else order_label
+            )
+            return make_tool_result(
+                preview_model,
+                template_name="comment_preview",
+                ui=app,
+                order_id=order_id,
+                order_label=order_label,
+                comment=comment,
+                visibility="public" if public else "private",
+            )
 
-        result = await require_confirmation(
+        confirmation = await require_confirmation(
             context, f"Add comment to order {order_id}?"
         )
-        if result is not ConfirmationResult.CONFIRMED:
-            return {"preview": preview, "confirmed": False, "result": result.value}
+        if confirmation is not ConfirmationResult.CONFIRMED:
+            declined = CommentResult(
+                order_id=order_id,
+                success=False,
+                http_status=0,
+                message=f"User {confirmation.value}",
+            )
+            return make_tool_result(
+                declined,
+                template_name="comment_result",
+                order_id=order_id,
+                outcome=confirmation.value,
+                http_status=0,
+                message_line=f"\n- **Message:** User {confirmation.value}",
+            )
 
         body = AddOrderCommentRequest(comment=comment, public=public)
         response = await add_order_comment_api.asyncio_detailed(
             client=services.client, order=order_id, body=body
         )
-        return {
-            "confirmed": True,
-            "success": is_success(response),
-            "status_code": response.status_code,
-        }
+        outcome = CommentResult(
+            order_id=order_id,
+            success=is_success(response),
+            http_status=response.status_code,
+        )
+        return make_tool_result(
+            outcome,
+            template_name="comment_result",
+            order_id=order_id,
+            outcome="applied" if outcome.success else "failed",
+            http_status=response.status_code,
+            message_line="",
+        )
 
     @mcp.tool(
         name="update_order_due_date",
         description="Update an order's due date. Two-step confirm.",
+        meta=UI_META,
     )
     async def update_order_due_date(
         context: Context,
@@ -605,23 +658,70 @@ def register_tools(mcp: FastMCP) -> None:
             str | None, Field(description="Optional end of the range")
         ] = None,
         confirm: bool = False,
-    ) -> dict[str, Any]:
+    ) -> ToolResult:
         services = get_services(context)
 
-        preview = {
-            "action": "update_order_due_date",
-            "order_id": order_id,
-            "due_date": due_date,
-            "due_date_to": due_date_to,
-        }
         if not confirm:
-            return {"preview": preview, "confirmed": False}
+            order = await services.client.orders.get(order_id)
+            order_summary = _to_summary(order)
+            preview_model = DueDateChangePreview(
+                order_id=order_id,
+                order_summary=order_summary,
+                current_due_date=iso_or_none(getattr(order, "due_date", None)),
+                current_due_date_to=iso_or_none(getattr(order, "due_date_to", None)),
+                new_due_date=due_date,
+                new_due_date_to=due_date_to,
+            )
+            app = build_due_date_change_preview_ui(preview_model.model_dump())
+            order_label = (
+                order_summary.name or order_summary.order_number or f"#{order_id}"
+            )
+            order_label = (
+                f"{order_label} ({order_summary.status_name})"
+                if order_summary.status_name
+                else order_label
+            )
+            current_range = (
+                f" → {preview_model.current_due_date_to}"
+                if preview_model.current_due_date_to
+                else ""
+            )
+            new_range = f" → {due_date_to}" if due_date_to else ""
+            return make_tool_result(
+                preview_model,
+                template_name="due_date_change_preview",
+                ui=app,
+                order_id=order_id,
+                order_label=order_label,
+                current_due_date=preview_model.current_due_date or "—",
+                current_range=current_range,
+                new_due_date=due_date,
+                new_range=new_range,
+            )
 
-        result = await require_confirmation(
+        confirmation = await require_confirmation(
             context, f"Set due_date={due_date} for order {order_id}?"
         )
-        if result is not ConfirmationResult.CONFIRMED:
-            return {"preview": preview, "confirmed": False, "result": result.value}
+        if confirmation is not ConfirmationResult.CONFIRMED:
+            declined = DueDateChangeResult(
+                order_id=order_id,
+                new_due_date=due_date,
+                new_due_date_to=due_date_to,
+                success=False,
+                http_status=0,
+                message=f"User {confirmation.value}",
+            )
+            new_range = f" → {due_date_to}" if due_date_to else ""
+            return make_tool_result(
+                declined,
+                template_name="due_date_change_result",
+                order_id=order_id,
+                new_due_date=due_date,
+                new_range=new_range,
+                outcome=confirmation.value,
+                http_status=0,
+                message_line=f"\n- **Message:** User {confirmation.value}",
+            )
 
         body_kwargs: dict[str, Any] = {"due_date": due_date}
         if due_date_to is not None:
@@ -630,11 +730,24 @@ def register_tools(mcp: FastMCP) -> None:
         response = await set_order_due_date.asyncio_detailed(
             client=services.client, order=order_id, body=body
         )
-        return {
-            "confirmed": True,
-            "success": is_success(response),
-            "status_code": response.status_code,
-        }
+        outcome = DueDateChangeResult(
+            order_id=order_id,
+            new_due_date=due_date,
+            new_due_date_to=due_date_to,
+            success=is_success(response),
+            http_status=response.status_code,
+        )
+        new_range = f" → {due_date_to}" if due_date_to else ""
+        return make_tool_result(
+            outcome,
+            template_name="due_date_change_result",
+            order_id=order_id,
+            new_due_date=due_date,
+            new_range=new_range,
+            outcome="applied" if outcome.success else "failed",
+            http_status=response.status_code,
+            message_line="",
+        )
 
     @mcp.tool(
         name="bulk_update_order_status",
@@ -642,6 +755,7 @@ def register_tools(mcp: FastMCP) -> None:
             "Update status for up to 50 orders in one call (5/min rate limit). "
             "Returns 202 Accepted; updates are queued asynchronously."
         ),
+        meta=UI_META,
     )
     async def bulk_update_order_status(
         context: Context,
@@ -655,28 +769,74 @@ def register_tools(mcp: FastMCP) -> None:
         email_customer: bool = True,
         email_additional: bool = True,
         confirm: bool = False,
-    ) -> dict[str, Any]:
+    ) -> ToolResult:
         services = get_services(context)
 
-        preview = {
-            "action": "bulk_update_order_status",
-            "order_ids": order_ids,
-            "order_count": len(order_ids),
-            "status_code": status_code,
-            "comment": comment,
-            "public": public,
-            "email_customer": email_customer,
-            "email_additional": email_additional,
-        }
         if not confirm:
-            return {"preview": preview, "confirmed": False}
+            # Resolve target status name from the catalog so the preview can
+            # show "In Production" alongside the opaque code. statuses.list
+            # is cached at the middleware layer.
+            statuses_list = await services.client.statuses.list()
+            target_name: str | None = None
+            for s in statuses_list:
+                if getattr(s, "code", None) == status_code:
+                    target_name = getattr(s, "name", None)
+                    break
 
-        result = await require_confirmation(
+            preview_model = BulkStatusChangePreview(
+                order_ids=order_ids,
+                order_count=len(order_ids),
+                target_status_code=status_code,
+                target_status_name=target_name,
+                comment=comment,
+                public=public,
+                email_customer=email_customer,
+                email_additional=email_additional,
+            )
+            app = build_bulk_status_change_preview_ui(preview_model.model_dump())
+
+            ids_preview = ", ".join(str(i) for i in order_ids[:10])
+            if len(order_ids) > 10:
+                ids_preview += f", … (+{len(order_ids) - 10} more)"
+            comment_block = (
+                f"**Comment** ({'public' if public else 'private'}): {comment}"
+                if comment
+                else "_No comment._"
+            )
+            return make_tool_result(
+                preview_model,
+                template_name="bulk_status_change_preview",
+                ui=app,
+                order_count=len(order_ids),
+                target_status_code=status_code,
+                target_status_name=target_name or "—",
+                ids_preview=ids_preview,
+                comment_block=comment_block,
+                recipients=preview_model.recipients_text(),
+            )
+
+        confirmation = await require_confirmation(
             context,
             f"Bulk-update {len(order_ids)} orders to status {status_code}?",
         )
-        if result is not ConfirmationResult.CONFIRMED:
-            return {"preview": preview, "confirmed": False, "result": result.value}
+        if confirmation is not ConfirmationResult.CONFIRMED:
+            declined = BulkStatusChangeResult(
+                order_count=len(order_ids),
+                target_status_code=status_code,
+                success=False,
+                http_status=0,
+                message=f"User {confirmation.value}",
+            )
+            return make_tool_result(
+                declined,
+                template_name="bulk_status_change_result",
+                order_count=len(order_ids),
+                target_status_code=status_code,
+                outcome=confirmation.value,
+                http_status=0,
+                note_line="",
+                message_line=f"\n- **Message:** User {confirmation.value}",
+            )
 
         body = BulkStatusUpdateRequest(
             order_ids=order_ids,
@@ -689,9 +849,20 @@ def register_tools(mcp: FastMCP) -> None:
         response = await bulk_update_status.asyncio_detailed(
             client=services.client, body=body
         )
-        return {
-            "confirmed": True,
-            "success": is_success(response),
-            "status_code": response.status_code,
-            "note": "Bulk updates are queued and processed asynchronously.",
-        }
+        outcome = BulkStatusChangeResult(
+            order_count=len(order_ids),
+            target_status_code=status_code,
+            success=is_success(response),
+            http_status=response.status_code,
+            note="Bulk updates are queued and processed asynchronously.",
+        )
+        return make_tool_result(
+            outcome,
+            template_name="bulk_status_change_result",
+            order_count=len(order_ids),
+            target_status_code=status_code,
+            outcome="queued" if outcome.success else "failed",
+            http_status=response.status_code,
+            note_line="\n- **Note:** Bulk updates are queued and processed asynchronously.",
+            message_line="",
+        )
