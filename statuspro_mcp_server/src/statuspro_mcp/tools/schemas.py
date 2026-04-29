@@ -86,14 +86,38 @@ class HistoryEntry(BaseModel):
 
 
 class OrderDetail(OrderSummary):
-    """Full order record including the history timeline.
+    """Full order record including the (possibly truncated) history timeline.
 
     Returned by ``get_order`` — extends ``OrderSummary`` with the fields that
-    aren't useful in list views.
+    aren't useful in list views. The ``history`` array is truncated to the
+    most recent ``history_limit`` entries when the order has many; callers
+    should check ``history_truncated`` and use ``get_order_history`` to page
+    through older entries when set.
     """
 
     due_date_to: str | None = None
     history: list[HistoryEntry] = Field(default_factory=list)
+    history_truncated: bool = Field(
+        default=False,
+        description="True when older history entries were omitted; "
+        "use get_order_history to page through them.",
+    )
+    history_total_count: int = Field(
+        default=0,
+        description="Total number of history entries on the order; "
+        "len(history) <= history_total_count.",
+    )
+
+
+class OrderHistoryPage(BaseModel):
+    """One page of history entries returned by ``get_order_history``."""
+
+    order_id: int
+    page: int
+    per_page: int
+    total: int
+    total_pages: int
+    entries: list[HistoryEntry]
 
 
 class OrderList(BaseModel):
@@ -165,6 +189,7 @@ __all__ = [
     "ConfirmationSchema",
     "HistoryEntry",
     "OrderDetail",
+    "OrderHistoryPage",
     "OrderList",
     "OrderSummary",
     "StatusChangePreview",

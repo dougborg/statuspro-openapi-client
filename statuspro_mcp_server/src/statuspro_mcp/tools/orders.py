@@ -1,6 +1,6 @@
 """MCP tools for StatusPro orders.
 
-6 tools mapping to the ``/orders*`` endpoints. Mutations use a two-step confirm
+7 tools mapping to the ``/orders*`` endpoints. Mutations use a two-step confirm
 pattern: call with ``confirm=False`` to see a preview, then ``confirm=True`` to
 execute (the client host elicits explicit user approval via ``ctx.elicit``).
 
@@ -33,6 +33,7 @@ from statuspro_mcp.tools.schemas import (
     ConfirmationResult,
     HistoryEntry,
     OrderDetail,
+    OrderHistoryPage,
     OrderList,
     OrderSummary,
     StatusChangePreview,
@@ -93,14 +94,31 @@ def _history_entry(item: Any) -> HistoryEntry:
     )
 
 
-def _to_detail(order: Any) -> OrderDetail:
-    """Convert a domain Order into a full ``OrderDetail`` including history."""
+DEFAULT_HISTORY_LIMIT = 50
+
+
+def _to_detail(
+    order: Any, *, history_limit: int = DEFAULT_HISTORY_LIMIT
+) -> OrderDetail:
+    """Convert a domain Order into a full ``OrderDetail``.
+
+    History is truncated to the most recent ``history_limit`` entries
+    (server returns chronological order, so we slice from the tail).
+    Callers receive ``history_truncated`` + ``history_total_count`` to
+    detect truncation and page through older entries via
+    ``get_order_history``.
+    """
     summary = _to_summary(order)
     history_items = getattr(order, "history", None) or []
+    total = len(history_items)
+    truncated = total > history_limit
+    visible = history_items[-history_limit:] if truncated else history_items
     return OrderDetail(
         **summary.model_dump(),
         due_date_to=iso_or_none(getattr(order, "due_date_to", None)),
-        history=[_history_entry(h) for h in history_items],
+        history=[_history_entry(h) for h in visible],
+        history_truncated=truncated,
+        history_total_count=total,
     )
 
 
@@ -228,12 +246,25 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         name="get_order",
-        description="Fetch full details for one order by id (with history).",
+        description=(
+            "Fetch full details for one order by id (with history). "
+            "History is capped at history_limit entries (default 50, most recent); "
+            "if history_truncated is true on the result, use get_order_history to "
+            "page through older entries."
+        ),
         meta=UI_META,
     )
     async def get_order(
         context: Context,
         order_id: Annotated[int, Field(description="StatusPro order id")],
+        history_limit: Annotated[
+            int,
+            Field(
+                description="Max history entries to include (most recent N).",
+                ge=1,
+                le=500,
+            ),
+        ] = DEFAULT_HISTORY_LIMIT,
     ) -> ToolResult:
         services = get_services(context)
         order, catalog = await asyncio.gather(
@@ -241,26 +272,34 @@ def register_tools(mcp: FastMCP) -> None:
             _status_color_catalog(services),
         )
 
-        detail = _to_detail(order)
+        detail = _to_detail(order, history_limit=history_limit)
         status_color = catalog.get(detail.status_code) if detail.status_code else None
 
         app = build_order_detail_ui(detail.model_dump(), status_color=status_color)
 
-        history_table = (
-            format_md_table(
-                headers=["When", "Event", "Status", "Comment"],
-                rows=[
-                    [
-                        h.created_at or "—",
-                        h.event or "—",
-                        h.status_name or "—",
-                        h.comment or "—",
-                    ]
-                    for h in detail.history
-                ],
-            )
-            or "_(no history)_"
+        history_rows = format_md_table(
+            headers=["When", "Event", "Status", "Comment"],
+            rows=[
+                [
+                    h.created_at or "—",
+                    h.event or "—",
+                    h.status_name or "—",
+                    h.comment or "—",
+                ]
+                for h in detail.history
+            ],
         )
+        if not history_rows:
+            history_table = "_(no history)_"
+        elif detail.history_truncated:
+            history_table = (
+                f"_Showing {len(detail.history)} most recent of "
+                f"{detail.history_total_count} entries — use "
+                f"`get_order_history(order_id={detail.id})` for older entries._\n\n"
+                + history_rows
+            )
+        else:
+            history_table = history_rows
         due_date_range = f" — {detail.due_date_to}" if detail.due_date_to else ""
 
         return make_tool_result(
@@ -276,6 +315,45 @@ def register_tools(mcp: FastMCP) -> None:
             due_date=detail.due_date or "—",
             due_date_range=due_date_range,
             history_table=history_table,
+        )
+
+    @mcp.tool(
+        name="get_order_history",
+        description=(
+            "Page through an order's full history timeline. Useful when "
+            "get_order returned history_truncated=true and you need older "
+            "entries. Page is 1-based; per_page defaults to 50, max 100."
+        ),
+    )
+    async def get_order_history(
+        context: Context,
+        order_id: Annotated[int, Field(description="StatusPro order id")],
+        page: Annotated[
+            int,
+            Field(description="1-based page number.", ge=1),
+        ] = 1,
+        per_page: Annotated[
+            int,
+            Field(description="Entries per page (max 100).", ge=1, le=100),
+        ] = 50,
+    ) -> OrderHistoryPage:
+        services = get_services(context)
+        # No server-side history pagination today — fetch the full order and
+        # slice client-side. Cheap relative to LLM context cost.
+        order = await services.client.orders.get(order_id)
+        all_items = getattr(order, "history", None) or []
+        total = len(all_items)
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        start = (page - 1) * per_page
+        end = start + per_page
+        page_items = all_items[start:end]
+        return OrderHistoryPage(
+            order_id=order_id,
+            page=page,
+            per_page=per_page,
+            total=total,
+            total_pages=total_pages,
+            entries=[_history_entry(h) for h in page_items],
         )
 
     @mcp.tool(
