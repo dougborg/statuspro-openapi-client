@@ -54,19 +54,6 @@ def register_tools(mcp: FastMCP) -> None:
         services = get_services(context)
         statuses = await services.client.statuses.viable_for(order_id)
         entries = [_to_entry(s) for s in statuses]
-
         response = ViableStatusesResponse(order_id=order_id, statuses=entries)
         app = build_viable_statuses_ui(order_id, [e.model_dump() for e in entries])
-
-        if entries:
-            status_list = "\n".join(f"- `{e.code}` — {e.name or '—'}" for e in entries)
-        else:
-            status_list = "_(no valid transitions)_"
-
-        return make_tool_result(
-            response,
-            template_name="viable_statuses",
-            ui=app,
-            order_id=order_id,
-            status_list=status_list,
-        )
+        return make_tool_result(response, ui=app)

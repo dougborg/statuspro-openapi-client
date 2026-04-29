@@ -8,11 +8,13 @@ endpoint. Mutations use a two-step confirm pattern: call with
 ``confirm=False`` to see a preview, then ``confirm=True`` to execute (the
 client host elicits explicit user approval via ``ctx.elicit``).
 
-All read-and-mutation tools (``list_orders``, ``get_order``,
+Tools that benefit from interactive rendering register with ``meta=UI_META``
+— ``list_orders``, ``list_orders_in_workflow``, ``get_order``,
 ``update_order_status``, ``add_order_comment``, ``update_order_due_date``,
-``bulk_update_order_status``) return a Prefab UI for MCP-Apps clients (Claude
-Desktop) via ``make_tool_result`` and ``meta=UI_META``. ``get_order_history``
-returns a plain Pydantic page (no UI surface needed for raw timeline data).
+``bulk_update_order_status``, ``get_viable_statuses``. FastMCP 3.x's
+``_maybe_apply_prefab_ui`` expands the marker into the spec-required
+``_meta.ui.resourceUri`` and auto-registers a per-tool ``ui://`` renderer
+resource. Non-UI clients get the structured JSON content. See SEP-1865.
 
 The ``GET /orders/lookup`` endpoint is intentionally not exposed: it is the
 public, customer-verification path (requires ``number`` + ``email``) and adds
@@ -63,7 +65,6 @@ from statuspro_mcp.tools.schemas import (
 )
 from statuspro_mcp.tools.tool_result_utils import (
     UI_META,
-    format_md_table,
     iso_or_none,
     make_tool_result,
 )
@@ -435,30 +436,7 @@ def register_tools(mcp: FastMCP) -> None:
             total=len(summaries),
             filters_line=filters_line or None,
         )
-        orders_table = (
-            format_md_table(
-                headers=["Order #", "Customer", "Status", "Due"],
-                rows=[
-                    [
-                        d.get("order_number") or "—",
-                        d.get("customer_name") or "—",
-                        d.get("status_name") or "—",
-                        d.get("due_date") or "—",
-                    ]
-                    for d in summary_dicts
-                ],
-            )
-            or "_(no orders)_"
-        )
-
-        return make_tool_result(
-            response,
-            template_name="orders_list",
-            ui=app,
-            total=len(summaries),
-            filters_line=f"Filters: {filters_line}" if filters_line else "",
-            orders_table=orders_table,
-        )
+        return make_tool_result(response, ui=app)
 
     @mcp.tool(
         name="list_orders_in_workflow",
@@ -544,7 +522,7 @@ def register_tools(mcp: FastMCP) -> None:
             total=len(summaries),
             filters={
                 "in_workflow": True,
-                "status_codes": [code for code, _, _ in active_codes if code],
+                "status_codes": active_codes,
                 "search": search,
             },
         )
@@ -553,29 +531,7 @@ def register_tools(mcp: FastMCP) -> None:
             total=len(summaries),
             filters_line=filters_line,
         )
-        orders_table = (
-            format_md_table(
-                headers=["Order #", "Customer", "Status", "Due"],
-                rows=[
-                    [
-                        d.get("order_number") or "—",
-                        d.get("customer_name") or "—",
-                        d.get("status_name") or "—",
-                        d.get("due_date") or "—",
-                    ]
-                    for d in summary_dicts
-                ],
-            )
-            or "_(no orders in workflow)_"
-        )
-        return make_tool_result(
-            response,
-            template_name="orders_list",
-            ui=app,
-            total=len(summaries),
-            filters_line=f"Filters: {filters_line}",
-            orders_table=orders_table,
-        )
+        return make_tool_result(response, ui=app)
 
     @mcp.tool(
         name="get_order",
@@ -607,48 +563,8 @@ def register_tools(mcp: FastMCP) -> None:
 
         detail = _to_detail(order, history_limit=history_limit)
         status_color = catalog.get(detail.status_code) if detail.status_code else None
-
         app = build_order_detail_ui(detail.model_dump(), status_color=status_color)
-
-        history_rows = format_md_table(
-            headers=["When", "Event", "Status", "Comment"],
-            rows=[
-                [
-                    h.created_at or "—",
-                    h.event or "—",
-                    h.status_name or "—",
-                    h.comment or "—",
-                ]
-                for h in detail.history
-            ],
-        )
-        if not history_rows:
-            history_table = "_(no history)_"
-        elif detail.history_truncated:
-            history_table = (
-                f"_Showing {len(detail.history)} most recent of "
-                f"{detail.history_total_count} entries — use "
-                f"`get_order_history(order_id={detail.id})` for older entries._\n\n"
-                + history_rows
-            )
-        else:
-            history_table = history_rows
-        due_date_range = f" — {detail.due_date_to}" if detail.due_date_to else ""
-
-        return make_tool_result(
-            detail,
-            template_name="order_detail",
-            ui=app,
-            order_name=detail.name or detail.order_number or f"Order {detail.id}",
-            order_number=detail.order_number or "—",
-            customer_name=detail.customer_name or "—",
-            customer_email=detail.customer_email or "—",
-            status_name=detail.status_name or "—",
-            status_code=detail.status_code or "—",
-            due_date=detail.due_date or "—",
-            due_date_range=due_date_range,
-            history_table=history_table,
-        )
+        return make_tool_result(detail, ui=app)
 
     @mcp.tool(
         name="get_orders_batch",
@@ -990,39 +906,11 @@ def register_tools(mcp: FastMCP) -> None:
                 current_color=catalog.get(current_code) if current_code else None,
                 new_color=catalog.get(status_code),
             )
+            return make_tool_result(preview, ui=app)
 
-            recipients_text = preview.recipients_text()
-            comment_block = (
-                f"**Comment** ({'public' if public else 'private'}): {comment}"
-                if comment
-                else "_No comment._"
-            )
-            validity_block = (
-                f"⚠️ **Not a valid transition.** Viable status codes from "
-                f"`{current_code or '—'}`: "
-                + (", ".join(f"`{c}`" for c in viable_codes) or "_(none)_")
-                if not valid_transition
-                else ""
-            )
-
-            return make_tool_result(
-                preview,
-                template_name="status_change_preview",
-                ui=app,
-                order_id=order_id,
-                current_status_code=current_code or "—",
-                current_status_name=current_name or "—",
-                new_status_code=status_code,
-                new_status_name=new_name or "—",
-                comment_block=comment_block,
-                recipients=recipients_text,
-                validity_block=validity_block,
-            )
-
-        # Confirm branch: elicit approval, then execute. Renders the
-        # (markdown-only) status_change_result template — this branch doesn't
-        # emit a PrefabApp since the confirmation surface already lives in
-        # the elicit prompt.
+        # Confirm branch: elicit approval, then execute. Result branch
+        # doesn't emit a PrefabApp since the confirmation surface already
+        # lives in the elicit prompt.
         result = await require_confirmation(
             context,
             f"Change order {order_id} status to {status_code}?",
@@ -1036,15 +924,7 @@ def register_tools(mcp: FastMCP) -> None:
                 http_status=0,
                 message=f"User {result.value}",
             )
-            return make_tool_result(
-                declined,
-                template_name="status_change_result",
-                order_id=order_id,
-                new_status_code=status_code,
-                outcome=result.value,
-                http_status=0,
-                message_line=f"\n- **Message:** User {result.value}",
-            )
+            return make_tool_result(declined)
 
         body = UpdateOrderStatusRequest(
             status_code=status_code,
@@ -1062,15 +942,7 @@ def register_tools(mcp: FastMCP) -> None:
             success=is_success(response),
             http_status=response.status_code,
         )
-        return make_tool_result(
-            outcome,
-            template_name="status_change_result",
-            order_id=order_id,
-            new_status_code=status_code,
-            outcome="applied" if outcome.success else "failed",
-            http_status=response.status_code,
-            message_line="",
-        )
+        return make_tool_result(outcome)
 
     @mcp.tool(
         name="add_order_comment",
@@ -1096,23 +968,7 @@ def register_tools(mcp: FastMCP) -> None:
                 public=public,
             )
             app = build_comment_preview_ui(preview_model.model_dump())
-            order_label = (
-                order_summary.name or order_summary.order_number or f"#{order_id}"
-            )
-            order_label = (
-                f"{order_label} ({order_summary.status_name})"
-                if order_summary.status_name
-                else order_label
-            )
-            return make_tool_result(
-                preview_model,
-                template_name="comment_preview",
-                ui=app,
-                order_id=order_id,
-                order_label=order_label,
-                comment=comment,
-                visibility="public" if public else "private",
-            )
+            return make_tool_result(preview_model, ui=app)
 
         confirmation = await require_confirmation(
             context, f"Add comment to order {order_id}?"
@@ -1125,14 +981,7 @@ def register_tools(mcp: FastMCP) -> None:
                 http_status=0,
                 message=f"User {confirmation.value}",
             )
-            return make_tool_result(
-                declined,
-                template_name="comment_result",
-                order_id=order_id,
-                outcome=confirmation.value,
-                http_status=0,
-                message_line=f"\n- **Message:** User {confirmation.value}",
-            )
+            return make_tool_result(declined)
 
         body = AddOrderCommentRequest(comment=comment, public=public)
         response = await add_order_comment_api.asyncio_detailed(
@@ -1143,14 +992,7 @@ def register_tools(mcp: FastMCP) -> None:
             success=is_success(response),
             http_status=response.status_code,
         )
-        return make_tool_result(
-            outcome,
-            template_name="comment_result",
-            order_id=order_id,
-            outcome="applied" if outcome.success else "failed",
-            http_status=response.status_code,
-            message_line="",
-        )
+        return make_tool_result(outcome)
 
     @mcp.tool(
         name="update_order_due_date",
@@ -1180,31 +1022,7 @@ def register_tools(mcp: FastMCP) -> None:
                 new_due_date_to=due_date_to,
             )
             app = build_due_date_change_preview_ui(preview_model.model_dump())
-            order_label = (
-                order_summary.name or order_summary.order_number or f"#{order_id}"
-            )
-            order_label = (
-                f"{order_label} ({order_summary.status_name})"
-                if order_summary.status_name
-                else order_label
-            )
-            current_range = (
-                f" → {preview_model.current_due_date_to}"
-                if preview_model.current_due_date_to
-                else ""
-            )
-            new_range = f" → {due_date_to}" if due_date_to else ""
-            return make_tool_result(
-                preview_model,
-                template_name="due_date_change_preview",
-                ui=app,
-                order_id=order_id,
-                order_label=order_label,
-                current_due_date=preview_model.current_due_date or "—",
-                current_range=current_range,
-                new_due_date=due_date,
-                new_range=new_range,
-            )
+            return make_tool_result(preview_model, ui=app)
 
         confirmation = await require_confirmation(
             context, f"Set due_date={due_date} for order {order_id}?"
@@ -1219,17 +1037,7 @@ def register_tools(mcp: FastMCP) -> None:
                 http_status=0,
                 message=f"User {confirmation.value}",
             )
-            new_range = f" → {due_date_to}" if due_date_to else ""
-            return make_tool_result(
-                declined,
-                template_name="due_date_change_result",
-                order_id=order_id,
-                new_due_date=due_date,
-                new_range=new_range,
-                outcome=confirmation.value,
-                http_status=0,
-                message_line=f"\n- **Message:** User {confirmation.value}",
-            )
+            return make_tool_result(declined)
 
         body_kwargs: dict[str, Any] = {"due_date": due_date}
         if due_date_to is not None:
@@ -1245,17 +1053,7 @@ def register_tools(mcp: FastMCP) -> None:
             success=is_success(response),
             http_status=response.status_code,
         )
-        new_range = f" → {due_date_to}" if due_date_to else ""
-        return make_tool_result(
-            outcome,
-            template_name="due_date_change_result",
-            order_id=order_id,
-            new_due_date=due_date,
-            new_range=new_range,
-            outcome="applied" if outcome.success else "failed",
-            http_status=response.status_code,
-            message_line="",
-        )
+        return make_tool_result(outcome)
 
     @mcp.tool(
         name="bulk_update_order_status",
@@ -1302,26 +1100,7 @@ def register_tools(mcp: FastMCP) -> None:
                 email_additional=email_additional,
             )
             app = build_bulk_status_change_preview_ui(preview_model.model_dump())
-
-            ids_preview = ", ".join(str(i) for i in order_ids[:10])
-            if len(order_ids) > 10:
-                ids_preview += f", … (+{len(order_ids) - 10} more)"
-            comment_block = (
-                f"**Comment** ({'public' if public else 'private'}): {comment}"
-                if comment
-                else "_No comment._"
-            )
-            return make_tool_result(
-                preview_model,
-                template_name="bulk_status_change_preview",
-                ui=app,
-                order_count=len(order_ids),
-                target_status_code=status_code,
-                target_status_name=target_name or "—",
-                ids_preview=ids_preview,
-                comment_block=comment_block,
-                recipients=preview_model.recipients_text(),
-            )
+            return make_tool_result(preview_model, ui=app)
 
         confirmation = await require_confirmation(
             context,
@@ -1336,16 +1115,7 @@ def register_tools(mcp: FastMCP) -> None:
                 http_status=0,
                 message=f"User {confirmation.value}",
             )
-            return make_tool_result(
-                declined,
-                template_name="bulk_status_change_result",
-                order_count=len(order_ids),
-                target_status_code=status_code,
-                outcome=confirmation.value,
-                http_status=0,
-                note_line="",
-                message_line=f"\n- **Message:** User {confirmation.value}",
-            )
+            return make_tool_result(declined)
 
         body = BulkStatusUpdateRequest(
             order_ids=order_ids,
@@ -1365,13 +1135,4 @@ def register_tools(mcp: FastMCP) -> None:
             http_status=response.status_code,
             note="Bulk updates are queued and processed asynchronously.",
         )
-        return make_tool_result(
-            outcome,
-            template_name="bulk_status_change_result",
-            order_count=len(order_ids),
-            target_status_code=status_code,
-            outcome="queued" if outcome.success else "failed",
-            http_status=response.status_code,
-            note_line="\n- **Note:** Bulk updates are queued and processed asynchronously.",
-            message_line="",
-        )
+        return make_tool_result(outcome)

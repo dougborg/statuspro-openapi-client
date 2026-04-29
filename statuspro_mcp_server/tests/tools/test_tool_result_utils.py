@@ -2,17 +2,22 @@
 around Prefab UI delivery.
 
 make_tool_result is load-bearing for every tool that emits a Prefab UI:
+- ``content`` is always ``response.model_dump_json(indent=2)`` — the LLM's
+  view of the structured response.
 - when ``ui`` is None, structured_content must be the Pydantic model dump
-  so programmatic callers can read fields directly
+  so programmatic callers can read fields directly.
 - when ``ui`` is a PrefabApp, structured_content must end up as a dict that
   represents the Prefab wire envelope (FastMCP's ToolResult.__init__ handles
-  the conversion via _prefab_to_json on isinstance check)
+  the conversion via _prefab_to_json on isinstance check).
 
 A regression in either shape would silently break MCP-Apps rendering in
-Claude Desktop — exactly the class of bug that katana commit 5b373fca fixed.
+Claude Desktop. Mirrors the post-#422 / SEP-1865 contract from
+``katana-openapi-client@ca986527``.
 """
 
 from __future__ import annotations
+
+import json
 
 from prefab_ui.app import PrefabApp
 from prefab_ui.components import Text
@@ -29,10 +34,20 @@ def _make_response() -> _StubResponse:
     return _StubResponse(id=42, label="hello")
 
 
+def test_make_tool_result_emits_json_content():
+    """``content`` should be the Pydantic JSON dump — that's the model context."""
+    response = _make_response()
+    result = make_tool_result(response)
+    assert isinstance(result.content, list)
+    assert len(result.content) == 1
+    text_block = result.content[0]
+    parsed = json.loads(text_block.text)
+    assert parsed == {"id": 42, "label": "hello"}
+
+
 def test_make_tool_result_without_ui_sets_pydantic_dump_as_structured_content():
     response = _make_response()
-    result = make_tool_result(response, template_name="nonexistent_template_fallback")
-
+    result = make_tool_result(response)
     assert result.structured_content == {"id": 42, "label": "hello"}
 
 
@@ -41,11 +56,7 @@ def test_make_tool_result_with_ui_converts_prefab_to_envelope_dict():
     with PrefabApp(state={"label": response.label}) as app:
         Text(content="{{ label }}")
 
-    result = make_tool_result(
-        response,
-        template_name="nonexistent_template_fallback",
-        ui=app,
-    )
+    result = make_tool_result(response, ui=app)
 
     # FastMCP's ToolResult.__init__ detects the PrefabApp and converts it to
     # the wire-format envelope (dict). The resulting shape is not the Pydantic
