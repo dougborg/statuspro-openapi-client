@@ -1,60 +1,14 @@
 """Shared schemas for StatusPro MCP tools.
 
-This module contains Pydantic models and helpers that are shared across multiple
-tool modules to ensure consistency and avoid duplication.
+This module contains Pydantic models that are shared across multiple tool
+modules to ensure consistency and avoid duplication.
 """
 
 from __future__ import annotations
 
-from enum import StrEnum
 from typing import Any, Literal
 
-from fastmcp import Context
 from pydantic import BaseModel, Field
-
-
-class ConfirmationSchema(BaseModel):
-    """Schema for user confirmation via elicitation.
-
-    This schema is used with FastMCP's `ctx.elicit()` to request explicit
-    user confirmation before executing destructive operations.
-
-    Attributes:
-        confirm: Boolean indicating whether the user confirms the action
-    """
-
-    confirm: bool = Field(..., description="Confirm the action (true to proceed)")
-
-
-class ConfirmationResult(StrEnum):
-    """Result of a confirmation request."""
-
-    CONFIRMED = "confirmed"
-    CANCELLED = "cancelled"
-    DECLINED = "declined"
-
-
-async def require_confirmation(context: Context, message: str) -> ConfirmationResult:
-    """Request user confirmation via elicitation.
-
-    Encapsulates the common elicitation pattern used across all confirm-mode tools.
-
-    Args:
-        context: FastMCP context for elicitation
-        message: Confirmation message to display
-
-    Returns:
-        ConfirmationResult indicating user's decision
-    """
-    elicit_result = await context.elicit(message, ConfirmationSchema)
-
-    if elicit_result.action != "accept":
-        return ConfirmationResult.CANCELLED
-
-    if not elicit_result.data.confirm:
-        return ConfirmationResult.DECLINED
-
-    return ConfirmationResult.CONFIRMED
 
 
 class OrderSummary(BaseModel):
@@ -283,16 +237,14 @@ class StatusChangePreview(BaseModel):
 class StatusChangeResult(BaseModel):
     """Execution result for ``update_order_status`` after the confirm step.
 
-    ``confirmed`` reflects whether the user actually accepted the elicitation:
-    ``True`` for the confirm-and-execute path, ``False`` when the user
-    declined or cancelled (in which case ``success`` and ``http_status`` will
-    also be falsy / zero). Declined results are still emitted as this type so
-    structured-content consumers can distinguish "confirmed but failed" from
-    "user declined".
+    ``confirmed`` is always ``True`` here — the model is only constructed
+    after the API call has been issued. The host gates user-confirmation via
+    the ``destructiveHint`` annotation; there's no in-band declined path
+    that produces this shape.
     """
 
     action: Literal["update_order_status"] = "update_order_status"
-    confirmed: bool = True
+    confirmed: Literal[True] = True
     order_id: int
     new_status_code: str
     success: bool
@@ -301,15 +253,11 @@ class StatusChangeResult(BaseModel):
 
 
 class CommentResult(BaseModel):
-    """Execution result for ``add_order_comment``.
-
-    See ``StatusChangeResult`` for ``confirmed`` semantics — the same model is
-    returned for the confirm-and-execute path and the declined path, with
-    ``confirmed=False`` set on the latter.
-    """
+    """Execution result for ``add_order_comment``. See ``StatusChangeResult``
+    for ``confirmed`` semantics."""
 
     action: Literal["add_order_comment"] = "add_order_comment"
-    confirmed: bool = True
+    confirmed: Literal[True] = True
     order_id: int
     success: bool
     http_status: int
@@ -317,13 +265,11 @@ class CommentResult(BaseModel):
 
 
 class DueDateChangeResult(BaseModel):
-    """Execution result for ``update_order_due_date``.
-
-    See ``StatusChangeResult`` for ``confirmed`` semantics.
-    """
+    """Execution result for ``update_order_due_date``. See
+    ``StatusChangeResult`` for ``confirmed`` semantics."""
 
     action: Literal["update_order_due_date"] = "update_order_due_date"
-    confirmed: bool = True
+    confirmed: Literal[True] = True
     order_id: int
     new_due_date: str
     new_due_date_to: str | None = None
@@ -333,13 +279,11 @@ class DueDateChangeResult(BaseModel):
 
 
 class BulkStatusChangeResult(BaseModel):
-    """Execution result for ``bulk_update_order_status``.
-
-    See ``StatusChangeResult`` for ``confirmed`` semantics.
-    """
+    """Execution result for ``bulk_update_order_status``. See
+    ``StatusChangeResult`` for ``confirmed`` semantics."""
 
     action: Literal["bulk_update_order_status"] = "bulk_update_order_status"
-    confirmed: bool = True
+    confirmed: Literal[True] = True
     order_count: int
     target_status_code: str
     success: bool
@@ -423,8 +367,6 @@ __all__ = [
     "BulkStatusChangeResult",
     "CommentPreview",
     "CommentResult",
-    "ConfirmationResult",
-    "ConfirmationSchema",
     "DueDateChangePreview",
     "DueDateChangeResult",
     "HistoryEntry",
@@ -437,5 +379,4 @@ __all__ = [
     "StatusCount",
     "StatusEntry",
     "ViableStatusesResponse",
-    "require_confirmation",
 ]

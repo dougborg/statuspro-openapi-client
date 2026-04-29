@@ -200,9 +200,16 @@ StatusPro MCP Server — Read and update order status via the StatusPro API.
 
 ## Safety Pattern
 
-All mutation tools use a two-step confirm pattern:
+All mutation tools use a confirm=false/true pattern:
 1. Call with confirm=false — returns a preview (no changes made)
-2. Call with confirm=true — executes the operation (prompts for user confirmation)
+2. Call with confirm=true — executes the operation
+
+Per the MCP Tools spec (Security Considerations, 2025-11-25), the host —
+not the server — drives user confirmation. Every mutation tool sets the
+`destructiveHint` annotation, which is the canonical signal for hosts to
+prompt the user. The Prefab Confirm button on each preview UI directly
+re-invokes the tool with confirm=true via the MCP Apps `tools/call`
+channel.
 
 ## Rate Limits
 
