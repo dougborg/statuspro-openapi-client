@@ -1,11 +1,12 @@
 """MCP tools for StatusPro orders.
 
-10 tools covering the ``/orders*`` endpoints plus three batch read tools
-(``get_orders_batch``, ``lookup_orders_batch``, ``summarize_active_orders``)
-that fan out parallel calls under the hood when the StatusPro server has
-no native batch endpoint. Mutations use a two-step confirm pattern: call
-with ``confirm=False`` to see a preview, then ``confirm=True`` to execute
-(the client host elicits explicit user approval via ``ctx.elicit``).
+11 tools covering the ``/orders*`` endpoints plus a set of batch / aggregation
+read tools (``get_orders_batch``, ``lookup_orders_batch``,
+``list_orders_in_workflow``, ``summarize_active_orders``) that fan out
+parallel calls under the hood when the StatusPro server has no native batch
+endpoint. Mutations use a two-step confirm pattern: call with
+``confirm=False`` to see a preview, then ``confirm=True`` to execute (the
+client host elicits explicit user approval via ``ctx.elicit``).
 
 All read-and-mutation tools (``list_orders``, ``get_order``,
 ``update_order_status``, ``add_order_comment``, ``update_order_due_date``,
@@ -23,6 +24,7 @@ customer email) or ``get_order`` (by id).
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Annotated, Any
 
 from fastmcp import Context, FastMCP
@@ -89,6 +91,8 @@ from statuspro_public_api_client.models.update_order_status_request import (
     UpdateOrderStatusRequest,
 )
 from statuspro_public_api_client.utils import is_success, unwrap
+
+logger = logging.getLogger(__name__)
 
 
 def _to_summary(order: Any) -> OrderSummary:
@@ -213,6 +217,27 @@ async def _count_fulfillment(
     return value.value, int(getattr(getattr(parsed, "meta", None), "total", None) or 0)
 
 
+def _merge_unique_by_id[T](batches: list[list[T]]) -> list[T]:
+    """Flatten ``batches`` preserving first-seen order, deduplicated by ``.id``.
+
+    Used by ``list_orders_in_workflow`` to merge per-status_code results.
+    Output is deterministic: orders within a batch keep API order, and
+    earlier batches take precedence over later ones for the same id.
+
+    Each item in each batch must have an ``.id`` attribute.
+    """
+    seen_ids: set[Any] = set()
+    out: list[T] = []
+    for batch in batches:
+        for item in batch:
+            item_id = getattr(item, "id", None)
+            if item_id is None or item_id in seen_ids:
+                continue
+            seen_ids.add(item_id)
+            out.append(item)
+    return out
+
+
 def _build_batch_response(
     requested_count: int, results: list[BatchOrderResult]
 ) -> BatchOrderResponse:
@@ -324,7 +349,19 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         name="list_orders",
-        description="List orders with optional filters. Auto-paginates when page is unset.",
+        description=(
+            "List orders with optional filters. Auto-paginates when page is "
+            "unset.\n\n"
+            "Two gotchas worth knowing about:\n"
+            "1. Many orders may have NO `status` set at all (newly created, "
+            "not yet moved into the workflow). If you only want orders "
+            "StatusPro is actively tracking through workflow stages, use "
+            "`list_orders_in_workflow` — it iterates per known status_code "
+            "and returns only orders with a status assigned.\n"
+            "2. The `financial_status`, `fulfillment_status`, and `tags` "
+            "filters work server-side but those fields are NOT echoed back "
+            "on results. Filter for what you need; don't list-then-inspect."
+        ),
         meta=UI_META,
     )
     async def list_orders(
@@ -420,6 +457,123 @@ def register_tools(mcp: FastMCP) -> None:
             ui=app,
             total=len(summaries),
             filters_line=f"Filters: {filters_line}" if filters_line else "",
+            orders_table=orders_table,
+        )
+
+    @mcp.tool(
+        name="list_orders_in_workflow",
+        description=(
+            "Return only orders that StatusPro is actively tracking through "
+            "a workflow stage — i.e. orders with a `status` set to one of "
+            "the tenant's defined status codes. Excludes cancelled orders "
+            "and orders with no status assigned (which can be a large "
+            "fraction of the total — see `list_orders` description for "
+            "context). Internally fans out one `list_orders(status_code=…)` "
+            "call per defined status (concurrency capped at 10) and merges "
+            "the results."
+        ),
+        meta=UI_META,
+    )
+    async def list_orders_in_workflow(
+        context: Context,
+        search: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Optional full-text search applied within each "
+                    "status_code call (matches order number, name, or "
+                    "customer fields)."
+                ),
+            ),
+        ] = None,
+    ) -> ToolResult:
+        services = get_services(context)
+
+        # Fetch the status catalog first, then fetch the per-status order
+        # lists concurrently via _bounded_gather (capped at 10 in-flight,
+        # captures per-row exceptions). Each per-status call auto-paginates
+        # (no `page` set), so we get the full set per status code without
+        # ceiling at per_page=100.
+        statuses_list = await services.client.statuses.list()
+        active_codes: list[str] = []
+        for s in statuses_list:
+            code = getattr(s, "code", None)
+            if isinstance(code, str) and code:
+                active_codes.append(code)
+
+        async def fetch_for_code(code: str) -> list[Any]:
+            kwargs: dict[str, Any] = {
+                "exclude_cancelled": True,
+                "status_code": code,
+                "per_page": 100,
+            }
+            if search:
+                kwargs["search"] = search
+            return await services.client.orders.list(**kwargs)
+
+        # _bounded_gather catches Exception (not BaseException) so individual
+        # failures (rate limit, transport error, auth) don't kill the whole
+        # call — we proceed with whatever buckets succeeded. CancelledError
+        # propagates correctly.
+        gathered = await _bounded_gather(
+            [fetch_for_code(code) for code in active_codes]
+        )
+        successful_batches: list[list[Any]] = []
+        failed_codes: list[str] = []
+        for code, result in zip(active_codes, gathered, strict=True):
+            if isinstance(result, Exception):
+                failed_codes.append(code)
+                logger.warning(
+                    "list_orders_in_workflow: status_code=%s fetch failed: %s",
+                    code,
+                    _classify_error(result, what=f"status_code={code}"),
+                )
+            else:
+                successful_batches.append(result)
+
+        orders = _merge_unique_by_id(successful_batches)
+
+        summaries = [_to_summary(o) for o in orders]
+        summary_dicts = [s.model_dump() for s in summaries]
+        filters_line = f"in workflow ({len(active_codes)} statuses)" + (
+            f", search={search!r}" if search else ""
+        )
+
+        response = OrderList(
+            orders=summaries,
+            total=len(summaries),
+            filters={
+                "in_workflow": True,
+                "status_codes": [code for code, _, _ in active_codes if code],
+                "search": search,
+            },
+        )
+        app = build_orders_table_ui(
+            summary_dicts,
+            total=len(summaries),
+            filters_line=filters_line,
+        )
+        orders_table = (
+            format_md_table(
+                headers=["Order #", "Customer", "Status", "Due"],
+                rows=[
+                    [
+                        d.get("order_number") or "—",
+                        d.get("customer_name") or "—",
+                        d.get("status_name") or "—",
+                        d.get("due_date") or "—",
+                    ]
+                    for d in summary_dicts
+                ],
+            )
+            or "_(no orders in workflow)_"
+        )
+        return make_tool_result(
+            response,
+            template_name="orders_list",
+            ui=app,
+            total=len(summaries),
+            filters_line=f"Filters: {filters_line}",
             orders_table=orders_table,
         )
 

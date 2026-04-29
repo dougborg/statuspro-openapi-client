@@ -252,6 +252,73 @@ class TestBuildBatchResponseAggregation:
 
 
 @pytest.mark.unit
+class TestMergeUniqueById:
+    """`_merge_unique_by_id` is the dedupe helper used by `list_orders_in_workflow`.
+
+    It must produce deterministic output (so callers can rely on stable
+    ordering across calls), preserve API order within batches, and skip
+    items missing an id.
+    """
+
+    def test_empty_input(self):
+        from statuspro_mcp.tools.orders import _merge_unique_by_id
+
+        assert _merge_unique_by_id([]) == []
+
+    def test_single_batch_passthrough(self):
+        from statuspro_mcp.tools.orders import _merge_unique_by_id
+
+        a = OrderSummary(id=1)
+        b = OrderSummary(id=2)
+        result = _merge_unique_by_id([[a, b]])
+        assert [o.id for o in result] == [1, 2]
+
+    def test_dedupe_across_batches(self):
+        """Order appearing in two status_code buckets is included exactly once."""
+        from statuspro_mcp.tools.orders import _merge_unique_by_id
+
+        a = OrderSummary(id=1)
+        b = OrderSummary(id=2)
+        result = _merge_unique_by_id([[a, b], [a]])
+        assert [o.id for o in result] == [1, 2]
+
+    def test_first_seen_wins(self):
+        """When the same id appears in two batches, the first batch's item wins.
+
+        Batches are passed in catalog order — so the order's "primary" status
+        bucket (whichever comes first in the catalog) is what we surface.
+        """
+        from statuspro_mcp.tools.orders import _merge_unique_by_id
+
+        a_v1 = OrderSummary(id=1, status_name="In Production")
+        a_v2 = OrderSummary(id=1, status_name="Shipped")
+        result = _merge_unique_by_id([[a_v1], [a_v2]])
+        assert len(result) == 1
+        assert result[0].status_name == "In Production"
+
+    def test_preserves_api_order_within_batch(self):
+        from statuspro_mcp.tools.orders import _merge_unique_by_id
+
+        items = [OrderSummary(id=i) for i in (5, 2, 8, 1)]
+        result = _merge_unique_by_id([items])
+        assert [o.id for o in result] == [5, 2, 8, 1]
+
+    def test_skips_items_with_no_id(self):
+        """Defensive: if an item has no `.id`, skip it rather than crash."""
+        from statuspro_mcp.tools.orders import _merge_unique_by_id
+
+        # OrderSummary requires id, so use a stand-in that has no id attr.
+        class Anonymous:
+            pass
+
+        a = OrderSummary(id=1)
+        b = Anonymous()
+        c = OrderSummary(id=3)
+        result = _merge_unique_by_id([[a, b, c]])
+        assert [getattr(o, "id", None) for o in result] == [1, 3]
+
+
+@pytest.mark.unit
 class TestExactMatchDisambiguationNoneSafety:
     """Edge case: rows with None order_number/name must not match."""
 

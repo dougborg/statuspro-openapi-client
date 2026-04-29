@@ -11,7 +11,8 @@ _HELP_MARKDOWN = """\
 
 | Tool | Endpoint | Purpose |
 | ---- | -------- | ------- |
-| `list_orders` | `GET /orders` | Paginated list with filters (search, status, tags, due-date range). Auto-paginates. `search` matches order number, name, or customer fields — use it to find an order from just an order number. |
+| `list_orders` | `GET /orders` | Paginated list with filters (search, status, tags, due-date range). Auto-paginates. `search` matches order number, name, or customer fields — use it to find an order from just an order number. **Gotchas:** (1) many orders may have NO `status` set — use `list_orders_in_workflow` if you only want orders StatusPro is actively tracking; (2) `financial_status`, `fulfillment_status`, and `tags` filter server-side but are NOT echoed back on results — filter for what you need rather than list-then-inspect. |
+| `list_orders_in_workflow` | `GET /orders?status_code=…` xN (parallel, capped 10 concurrent) | Return only orders with a workflow status assigned. Iterates per defined status_code; merges results. Use when you want the operationally-tracked subset of orders, not the full list (which includes orders with no status set). |
 | `get_order` | `GET /orders/{id}` | Full detail for one order, with the most recent `history_limit` history entries (default 50). When `history_truncated` is true, use `get_order_history` for older entries. |
 | `get_order_history` | `GET /orders/{id}` (client-side paged) | Page through the full history timeline of one order. Use when `get_order` indicated truncation. |
 | `get_orders_batch` | `GET /orders/{id}` xN (parallel fan-out) | Fetch up to 50 orders by id in one tool call. Returns per-id found/not-found results. Useful when an external system hands you a list of ids. |
