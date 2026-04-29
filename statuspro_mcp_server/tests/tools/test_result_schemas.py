@@ -12,6 +12,7 @@ Mirrors the elicitation drop in katana-openapi-client@e49d45e2 (#436).
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 from statuspro_mcp.tools.schemas import (
     BulkStatusChangeResult,
     CommentResult,
@@ -23,8 +24,9 @@ from statuspro_mcp.tools.schemas import (
 @pytest.mark.unit
 class TestResultSchemasAlwaysConfirmed:
     """Each result schema's ``confirmed`` field is fixed to True. Pinning the
-    Literal[True] type so a future regression that loosens it back to bool
-    surfaces here."""
+    ``Literal[True]`` type so a regression that loosens it back to plain
+    ``bool`` (which would silently allow ``confirmed=False`` to slip through
+    again) surfaces here."""
 
     def test_status_change_result_confirmed_is_true(self):
         result = StatusChangeResult(
@@ -50,3 +52,16 @@ class TestResultSchemasAlwaysConfirmed:
             http_status=202,
         )
         assert result.confirmed is True
+
+    def test_status_change_result_rejects_confirmed_false(self):
+        """If the field type ever drifts back to ``bool``, this test fails —
+        catching the same Copilot-flagged "declined path with confirmed=True"
+        regression that motivated the original tightening."""
+        with pytest.raises(ValidationError):
+            StatusChangeResult(
+                confirmed=False,  # type: ignore[arg-type]
+                order_id=1,
+                new_status_code="st000003",
+                success=False,
+                http_status=0,
+            )

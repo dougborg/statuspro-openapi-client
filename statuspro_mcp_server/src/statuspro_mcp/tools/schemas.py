@@ -249,7 +249,6 @@ class StatusChangeResult(BaseModel):
     new_status_code: str
     success: bool
     http_status: int
-    message: str | None = None
 
 
 class CommentResult(BaseModel):
@@ -261,7 +260,6 @@ class CommentResult(BaseModel):
     order_id: int
     success: bool
     http_status: int
-    message: str | None = None
 
 
 class DueDateChangeResult(BaseModel):
@@ -275,7 +273,6 @@ class DueDateChangeResult(BaseModel):
     new_due_date_to: str | None = None
     success: bool
     http_status: int
-    message: str | None = None
 
 
 class BulkStatusChangeResult(BaseModel):
@@ -289,7 +286,6 @@ class BulkStatusChangeResult(BaseModel):
     success: bool
     http_status: int
     note: str | None = None
-    message: str | None = None
 
 
 class CommentPreview(BaseModel):

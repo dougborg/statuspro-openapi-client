@@ -349,10 +349,6 @@ def build_status_change_preview_ui(
 
         with CardFooter(), Row(gap=2):
             if valid:
-                # Re-invoke update_order_status directly. Each tool argument
-                # is templated from iframe state so the host fills them at
-                # click time. The Pydantic preview model carries every value
-                # we need (just with new_status_code → status_code rename).
                 Button(
                     label="Confirm change",
                     variant="default",
@@ -479,9 +475,6 @@ def build_due_date_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
                     Text(content=new_label)
 
         with CardFooter(), Row(gap=2):
-            # Note the new_due_date → due_date arg rename (and likewise for
-            # the optional range end). Templates fall back to None when the
-            # source field isn't set.
             Button(
                 label="Confirm due date",
                 variant="default",
@@ -554,7 +547,6 @@ def build_bulk_status_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
             Metric(label="Emails to", value=recipients_text)
 
         with CardFooter(), Row(gap=2):
-            # target_status_code → status_code rename in the call args.
             Button(
                 label=f"Confirm bulk update ({order_count})",
                 variant="default",

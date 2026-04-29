@@ -97,10 +97,7 @@ from statuspro_public_api_client.utils import is_success, unwrap
 
 logger = logging.getLogger(__name__)
 
-# Annotation passed on every mutation tool registration. Per MCP Tools spec
-# (Security Considerations, 2025-11-25), this is the canonical signal hosts
-# read to prompt users for confirmation — it replaces the server-side
-# ctx.elicit gate we used to run.
+# Shared annotation for all mutation tool registrations. See module docstring.
 _DESTRUCTIVE = ToolAnnotations(destructiveHint=True)
 
 
@@ -917,10 +914,6 @@ def register_tools(mcp: FastMCP) -> None:
             )
             return make_tool_result(preview, ui=app)
 
-        # confirm=true — execute. Per MCP spec, the host (driven by
-        # destructiveHint annotations) confirms with the user before
-        # invoking; the server does not gate further. The Prefab UI's
-        # Confirm button re-invokes this tool via tools/call directly.
         body = UpdateOrderStatusRequest(
             status_code=status_code,
             comment=comment,
@@ -966,7 +959,6 @@ def register_tools(mcp: FastMCP) -> None:
             app = build_comment_preview_ui(preview_model.model_dump())
             return make_tool_result(preview_model, ui=app)
 
-        # confirm=true — execute. See update_order_status comment.
         body = AddOrderCommentRequest(comment=comment, public=public)
         response = await add_order_comment_api.asyncio_detailed(
             client=services.client, order=order_id, body=body
@@ -1009,7 +1001,6 @@ def register_tools(mcp: FastMCP) -> None:
             app = build_due_date_change_preview_ui(preview_model.model_dump())
             return make_tool_result(preview_model, ui=app)
 
-        # confirm=true — execute. See update_order_status comment.
         body_kwargs: dict[str, Any] = {"due_date": due_date}
         if due_date_to is not None:
             body_kwargs["due_date_to"] = due_date_to
@@ -1074,7 +1065,6 @@ def register_tools(mcp: FastMCP) -> None:
             app = build_bulk_status_change_preview_ui(preview_model.model_dump())
             return make_tool_result(preview_model, ui=app)
 
-        # confirm=true — execute. See update_order_status comment.
         body = BulkStatusUpdateRequest(
             order_ids=order_ids,
             status_code=status_code,
