@@ -46,6 +46,23 @@ class OrderStatus(_Frozen):
     auto_change_at: AwareDatetime | None = None
 
 
+class HistoryEntry(_Frozen):
+    """One entry in an order's history timeline.
+
+    Returned only by ``/orders/{id}`` (single-order detail), never on list
+    pages. Covers status transitions (``status`` is set, ``comment`` may be
+    set or empty) and free-form comments (``comment`` set, ``status`` usually
+    not). The ``mail_log`` audit field on the underlying API is intentionally
+    omitted — operational tooling rarely needs it and it's verbose.
+    """
+
+    event: str | None = None
+    status: OrderStatus | None = None
+    comment: str | None = None
+    comment_is_public: bool | None = None
+    created_at: AwareDatetime | None = None
+
+
 class Order(_Frozen):
     """An order as returned by ``/orders`` list pages or ``/orders/{id}``."""
 
@@ -59,6 +76,10 @@ class Order(_Frozen):
     history_count: int | None = Field(
         None,
         description="Number of history entries; only present on list responses",
+    )
+    history: list[HistoryEntry] | None = Field(
+        None,
+        description="Full history timeline; only present on single-order detail responses",
     )
 
 
@@ -84,4 +105,4 @@ class PageMeta(_Frozen):
     )
 
 
-__all__ = ["Customer", "Order", "OrderStatus", "PageMeta"]
+__all__ = ["Customer", "HistoryEntry", "Order", "OrderStatus", "PageMeta"]

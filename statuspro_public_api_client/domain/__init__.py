@@ -18,11 +18,12 @@ Example:
 
 from .base import StatusProBaseModel
 from .converters import to_unset, unwrap_unset
-from .order import Customer, Order, OrderStatus, PageMeta
+from .order import Customer, HistoryEntry, Order, OrderStatus, PageMeta
 from .status import Status
 
 __all__ = [
     "Customer",
+    "HistoryEntry",
     "Order",
     "OrderStatus",
     "PageMeta",
