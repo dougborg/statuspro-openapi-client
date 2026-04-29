@@ -1,7 +1,7 @@
 """Shared pytest fixtures for MCP server tests."""
 
 import os
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
@@ -42,12 +42,8 @@ async def statuspro_context():
     yield context
 
 
-def create_mock_context(elicit_confirm: bool = True):
+def create_mock_context():
     """Build a mock FastMCP context for unit tests.
-
-    Args:
-        elicit_confirm: If True, elicit() returns an accepted confirm=True result.
-                       If False, elicit() returns a declined result.
 
     Returns:
         Tuple of (context, lifespan_context).
@@ -57,18 +53,6 @@ def create_mock_context(elicit_confirm: bool = True):
     mock_lifespan_context = MagicMock()
     context.request_context = mock_request_context
     mock_request_context.lifespan_context = mock_lifespan_context
-
-    mock_elicit_result = MagicMock()
-    if elicit_confirm:
-        mock_elicit_result.action = "accept"
-        mock_elicit_result.data = MagicMock()
-        mock_elicit_result.data.confirm = True
-    else:
-        mock_elicit_result.action = "decline"
-        mock_elicit_result.data = None
-
-    context.elicit = AsyncMock(return_value=mock_elicit_result)
-
     return context, mock_lifespan_context
 
 

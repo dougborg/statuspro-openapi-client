@@ -4,9 +4,12 @@
 read tools (``get_orders_batch``, ``lookup_orders_batch``,
 ``list_orders_in_workflow``, ``summarize_active_orders``) that fan out
 parallel calls under the hood when the StatusPro server has no native batch
-endpoint. Mutations use a two-step confirm pattern: call with
-``confirm=False`` to see a preview, then ``confirm=True`` to execute (the
-client host elicits explicit user approval via ``ctx.elicit``).
+endpoint. Mutations use a ``confirm=False`` (preview) / ``confirm=True``
+(execute) pattern. Per the MCP Tools spec (Security Considerations,
+2025-11-25), the host — not the server — drives user confirmation; the
+``destructiveHint`` annotation we set on every mutation is the canonical
+signal. The Prefab Confirm button on each preview UI invokes the same tool
+directly with ``confirm=True`` via the MCP Apps ``tools/call`` channel.
 
 Tools that benefit from interactive rendering register with ``meta=UI_META``
 — ``list_orders``, ``list_orders_in_workflow``, ``get_order``,
@@ -31,6 +34,7 @@ from typing import Annotated, Any
 
 from fastmcp import Context, FastMCP
 from fastmcp.tools import ToolResult
+from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from statuspro_mcp.services import get_services
@@ -50,7 +54,6 @@ from statuspro_mcp.tools.schemas import (
     BulkStatusChangeResult,
     CommentPreview,
     CommentResult,
-    ConfirmationResult,
     DueDateChangePreview,
     DueDateChangeResult,
     HistoryEntry,
@@ -61,7 +64,6 @@ from statuspro_mcp.tools.schemas import (
     StatusChangePreview,
     StatusChangeResult,
     StatusCount,
-    require_confirmation,
 )
 from statuspro_mcp.tools.tool_result_utils import (
     UI_META,
@@ -94,6 +96,9 @@ from statuspro_public_api_client.models.update_order_status_request import (
 from statuspro_public_api_client.utils import is_success, unwrap
 
 logger = logging.getLogger(__name__)
+
+# Shared annotation for all mutation tool registrations. See module docstring.
+_DESTRUCTIVE = ToolAnnotations(destructiveHint=True)
 
 
 def _to_summary(order: Any) -> OrderSummary:
@@ -828,6 +833,7 @@ def register_tools(mcp: FastMCP) -> None:
             "Change an order's status. Two-step confirm: call with confirm=false "
             "to preview; confirm=true runs the update."
         ),
+        annotations=_DESTRUCTIVE,
         meta=UI_META,
     )
     async def update_order_status(
@@ -908,24 +914,6 @@ def register_tools(mcp: FastMCP) -> None:
             )
             return make_tool_result(preview, ui=app)
 
-        # Confirm branch: elicit approval, then execute. Result branch
-        # doesn't emit a PrefabApp since the confirmation surface already
-        # lives in the elicit prompt.
-        result = await require_confirmation(
-            context,
-            f"Change order {order_id} status to {status_code}?",
-        )
-        if result is not ConfirmationResult.CONFIRMED:
-            declined = StatusChangeResult(
-                confirmed=False,
-                order_id=order_id,
-                new_status_code=status_code,
-                success=False,
-                http_status=0,
-                message=f"User {result.value}",
-            )
-            return make_tool_result(declined)
-
         body = UpdateOrderStatusRequest(
             status_code=status_code,
             comment=comment,
@@ -947,6 +935,7 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         name="add_order_comment",
         description="Add a history comment to an order (5/min rate limit). Two-step confirm.",
+        annotations=_DESTRUCTIVE,
         meta=UI_META,
     )
     async def add_order_comment(
@@ -970,19 +959,6 @@ def register_tools(mcp: FastMCP) -> None:
             app = build_comment_preview_ui(preview_model.model_dump())
             return make_tool_result(preview_model, ui=app)
 
-        confirmation = await require_confirmation(
-            context, f"Add comment to order {order_id}?"
-        )
-        if confirmation is not ConfirmationResult.CONFIRMED:
-            declined = CommentResult(
-                confirmed=False,
-                order_id=order_id,
-                success=False,
-                http_status=0,
-                message=f"User {confirmation.value}",
-            )
-            return make_tool_result(declined)
-
         body = AddOrderCommentRequest(comment=comment, public=public)
         response = await add_order_comment_api.asyncio_detailed(
             client=services.client, order=order_id, body=body
@@ -997,6 +973,7 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         name="update_order_due_date",
         description="Update an order's due date. Two-step confirm.",
+        annotations=_DESTRUCTIVE,
         meta=UI_META,
     )
     async def update_order_due_date(
@@ -1024,21 +1001,6 @@ def register_tools(mcp: FastMCP) -> None:
             app = build_due_date_change_preview_ui(preview_model.model_dump())
             return make_tool_result(preview_model, ui=app)
 
-        confirmation = await require_confirmation(
-            context, f"Set due_date={due_date} for order {order_id}?"
-        )
-        if confirmation is not ConfirmationResult.CONFIRMED:
-            declined = DueDateChangeResult(
-                confirmed=False,
-                order_id=order_id,
-                new_due_date=due_date,
-                new_due_date_to=due_date_to,
-                success=False,
-                http_status=0,
-                message=f"User {confirmation.value}",
-            )
-            return make_tool_result(declined)
-
         body_kwargs: dict[str, Any] = {"due_date": due_date}
         if due_date_to is not None:
             body_kwargs["due_date_to"] = due_date_to
@@ -1061,6 +1023,7 @@ def register_tools(mcp: FastMCP) -> None:
             "Update status for up to 50 orders in one call (5/min rate limit). "
             "Returns 202 Accepted; updates are queued asynchronously."
         ),
+        annotations=_DESTRUCTIVE,
         meta=UI_META,
     )
     async def bulk_update_order_status(
@@ -1101,21 +1064,6 @@ def register_tools(mcp: FastMCP) -> None:
             )
             app = build_bulk_status_change_preview_ui(preview_model.model_dump())
             return make_tool_result(preview_model, ui=app)
-
-        confirmation = await require_confirmation(
-            context,
-            f"Bulk-update {len(order_ids)} orders to status {status_code}?",
-        )
-        if confirmation is not ConfirmationResult.CONFIRMED:
-            declined = BulkStatusChangeResult(
-                confirmed=False,
-                order_count=len(order_ids),
-                target_status_code=status_code,
-                success=False,
-                http_status=0,
-                message=f"User {confirmation.value}",
-            )
-            return make_tool_result(declined)
 
         body = BulkStatusUpdateRequest(
             order_ids=order_ids,

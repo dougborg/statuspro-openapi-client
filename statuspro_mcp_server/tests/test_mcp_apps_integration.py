@@ -111,6 +111,42 @@ def test_each_renderer_resource_has_correct_mime_type(server_resources):
         )
 
 
+# Mutation tools that must carry the destructiveHint annotation. After
+# we dropped the server-side ctx.elicit gate (PR #52), the destructiveHint
+# is the canonical signal hosts read to prompt for user confirmation.
+# Without the annotation, hosts can't distinguish read-only from
+# destructive tools and may invoke mutations without a prompt — that
+# would make the elicitation drop a safety regression.
+DESTRUCTIVE_TOOL_NAMES = {
+    "update_order_status",
+    "add_order_comment",
+    "update_order_due_date",
+    "bulk_update_order_status",
+}
+
+
+@pytest.mark.parametrize("tool_name", sorted(DESTRUCTIVE_TOOL_NAMES))
+def test_mutation_tools_have_destructive_hint(server_tools, tool_name):
+    """Every mutation tool must set ``annotations.destructiveHint=True``.
+
+    Per MCP Tools spec (Security Considerations, 2025-11-25), this is the
+    canonical signal hosts read to prompt the user for confirmation. We
+    removed the server-side ``ctx.elicit`` gate in #52 — without this
+    annotation, the host has no way to know which tools are destructive,
+    and mutations would run without confirmation.
+    """
+    assert tool_name in server_tools, f"Tool {tool_name!r} not registered."
+    tool = server_tools[tool_name]
+    assert tool.annotations is not None, (
+        f"{tool_name}: no annotations set. Pass annotations=_DESTRUCTIVE on "
+        "the @mcp.tool(...) decorator."
+    )
+    assert tool.annotations.destructiveHint is True, (
+        f"{tool_name}: destructiveHint={tool.annotations.destructiveHint!r}; "
+        "expected True. Hosts use this to prompt for user confirmation."
+    )
+
+
 @pytest.mark.parametrize("tool_name", sorted(UI_TOOL_NAMES))
 def test_ui_marked_tools_expose_resource_uri(server_tools, server_resources, tool_name):
     """fastmcp expands ``meta={'ui': True}`` to the full ``_meta.ui`` shape
