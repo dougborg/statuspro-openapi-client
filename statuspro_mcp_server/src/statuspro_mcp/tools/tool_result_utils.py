@@ -1,13 +1,29 @@
-"""Utilities for creating ToolResult responses with template rendering.
+"""Utilities for creating ToolResult responses for MCP tools.
 
-This module provides helpers for converting Pydantic response models
-to FastMCP ToolResult objects with:
-- Human-readable markdown content (from templates) for non-Prefab clients
-- Machine-readable structured content (from Pydantic model) for programmatic access
-- Prefab UI (via structuredContent) for Claude Desktop and other Prefab-capable hosts
+Tools emit two pieces of data per call:
 
-When a PrefabApp is provided, it takes priority as structured_content. Claude Desktop
-renders the Prefab UI; other clients fall back to markdown content.
+- ``content`` — the LLM's model context, served as ``response.model_dump_json()``
+  so the structured response is the model's view. Per the MCP spec,
+  ``structuredContent`` is "not added to model context" so we can't rely on it
+  to inform the LLM; the JSON dump in ``content`` is what Claude actually sees.
+- ``structured_content`` — for UI binding only. When a tool returns a Prefab
+  ``ui`` argument, this is the PrefabApp itself; FastMCP's ``ToolResult.__init__``
+  converts it to the Prefab wire envelope via ``_prefab_to_json``. Without
+  ``ui``, this is ``response.model_dump()`` for any programmatic caller that
+  reads structured fields directly.
+
+Tool registrations that want interactive UI rendering pass ``meta=UI_META``
+on ``@mcp.tool(...)``. FastMCP 3.x's ``_maybe_apply_prefab_ui`` expands that
+into the spec-required ``_meta.ui = {"resourceUri": ..., "csp": ...}`` and
+auto-registers the Prefab renderer as a ``ui://`` resource. Claude Desktop
+(and other MCP Apps hosts) then renders the UI in a sandboxed iframe via
+``ui/notifications/tool-result``.
+
+Reference: SEP-1865 / MCP Apps spec; mirrors the post-#422 pattern from
+``katana-openapi-client@ca986527``. The previous Jinja-template-based
+markdown rendering path was removed — every reference MCP server (e.g.
+``modelcontextprotocol/ext-apps/examples/customer-segmentation``,
+``system-monitor``) emits raw JSON content for the same reason.
 """
 
 from __future__ import annotations
@@ -18,16 +34,14 @@ from typing import TYPE_CHECKING, Any
 from fastmcp.tools import ToolResult
 from pydantic import BaseModel
 
-from statuspro_mcp.templates import format_template
-
 if TYPE_CHECKING:
     from prefab_ui.app import PrefabApp
 
 
 # Opt-in marker for Prefab UI rendering. Pass as ``meta=UI_META`` in
-# ``mcp.tool(...)`` for every tool that returns a ``PrefabApp`` via
-# ``make_tool_result``. Any tool missing this marker will ship markdown only —
-# the UI will be built but silently discarded by the client.
+# ``@mcp.tool(...)``. FastMCP 3.x's ``_maybe_apply_prefab_ui`` expands this
+# into the spec-required ``_meta.ui`` resource pointer; tools without the
+# marker ship JSON content + structured_content but no interactive UI.
 UI_META: dict[str, Any] = {"ui": True}
 
 
@@ -51,66 +65,31 @@ def iso_or_none(dt: datetime | None) -> str | None:
     return dt.isoformat() if dt else None
 
 
-def format_md_table(
-    headers: list[str],
-    rows: list[list[Any]],
-) -> str:
-    """Format a simple markdown table from headers and row data.
-
-    Each row cell is rendered via str(); use "—" or "" for missing values.
-    Returns an empty string if `rows` is empty.
-
-    Example:
-        format_md_table(
-            ["Name", "Qty"],
-            [["Apple", 3], ["Banana", 5]],
-        )
-    """
-    if not rows:
-        return ""
-    header_line = "| " + " | ".join(headers) + " |"
-    sep_line = "|" + "|".join("---" for _ in headers) + "|"
-    body_lines = ["| " + " | ".join(str(cell) for cell in row) + " |" for row in rows]
-    return "\n".join([header_line, sep_line, *body_lines])
-
-
 def make_tool_result(
     response: BaseModel,
-    template_name: str,
     *,
     ui: PrefabApp | None = None,
-    **template_vars: Any,
 ) -> ToolResult:
-    """Create a ToolResult with markdown content and optional Prefab UI.
+    """Create a ToolResult with JSON content and optional Prefab UI binding.
 
-    When ``ui`` is provided, the PrefabApp is passed through ``structured_content``
-    as-is — FastMCP's ``ToolResult.__init__`` detects it and converts to the wire
-    envelope via ``_prefab_to_json``. Combined with ``meta={"ui": True}`` on the
-    tool registration, this causes MCP-Apps-capable clients (Claude Desktop) to
-    render the Prefab UI. Non-Prefab clients still see the markdown fallback.
-
-    Without ``ui``, ``structured_content`` is the Pydantic response dict so
-    programmatic callers can consume fields directly.
+    Always emits ``response.model_dump_json(indent=2)`` as ``content`` — the
+    LLM's view of the structured response. When ``ui`` is provided, the
+    PrefabApp goes into ``structured_content`` for FastMCP's auto-detection
+    to convert into the Prefab wire envelope; UI-capable hosts (Claude
+    Desktop) render the iframe via the canonical MCP Apps resource path.
+    Without ``ui``, structured_content is ``response.model_dump()`` so
+    programmatic callers can read fields directly.
 
     Args:
-        response: Pydantic model response from the tool
-        template_name: Name of the markdown template (without .md extension)
-        ui: Optional PrefabApp for MCP-Apps rendering
-        **template_vars: Variables for template rendering
+        response: Pydantic model response from the tool.
+        ui: Optional PrefabApp for MCP Apps rendering. Tool registration
+            must include ``meta=UI_META`` for the host to know to render it.
 
     Returns:
-        ToolResult with markdown content and structured_content
+        ToolResult with JSON content and (Prefab or dict) structured_content.
     """
-    try:
-        markdown = format_template(template_name, **template_vars)
-    except (FileNotFoundError, KeyError) as e:
-        markdown = (
-            f"# Response\n\n```json\n{response.model_dump_json(indent=2)}\n```\n\n"
-            f"Template error: {e}"
-        )
-
     return ToolResult(
-        content=markdown,
+        content=response.model_dump_json(indent=2),
         structured_content=ui if ui is not None else response.model_dump(),
     )
 
@@ -121,7 +100,7 @@ def make_simple_result(
 ) -> ToolResult:
     """Create a simple ToolResult with a message.
 
-    For simple responses where a full template isn't needed.
+    For simple responses where a Pydantic model isn't appropriate.
 
     Args:
         message: The message to display

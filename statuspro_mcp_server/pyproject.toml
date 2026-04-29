@@ -33,7 +33,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-    "fastmcp>=2.13.0",
+    "fastmcp>=3.0",
     "statuspro-openapi-client>=0.51.0",
     "prefab-ui>=0.19,<0.20",
     "pydantic>=2.12.0",
