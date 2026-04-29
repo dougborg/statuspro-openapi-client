@@ -14,6 +14,9 @@ _HELP_MARKDOWN = """\
 | `list_orders` | `GET /orders` | Paginated list with filters (search, status, tags, due-date range). Auto-paginates. `search` matches order number, name, or customer fields — use it to find an order from just an order number. |
 | `get_order` | `GET /orders/{id}` | Full detail for one order, with the most recent `history_limit` history entries (default 50). When `history_truncated` is true, use `get_order_history` for older entries. |
 | `get_order_history` | `GET /orders/{id}` (client-side paged) | Page through the full history timeline of one order. Use when `get_order` indicated truncation. |
+| `get_orders_batch` | `GET /orders/{id}` xN (parallel fan-out) | Fetch up to 50 orders by id in one tool call. Returns per-id found/not-found results. Useful when an external system hands you a list of ids. |
+| `lookup_orders_batch` | `GET /orders?search=` xN (parallel fan-out) | Resolve up to 50 order numbers to orders in one tool call. Marks ambiguous matches and not-founds explicitly. Use when you have order numbers but no ids. |
+| `summarize_active_orders` | Multiple `GET /orders` requests (parallel, capped at 10 concurrent, cached 30s) | One-shot dashboard: counts of non-cancelled orders by workflow status, financial_status, and fulfillment_status. Internal cost is variable — 1 totals + 1 status-catalog + 1 per workflow status code + 8 financial_status counts + 4 fulfillment_status counts. |
 | `get_viable_statuses` | `GET /orders/{id}/viable-statuses` | Valid status transitions for the order's current state. |
 | `update_order_status` | `POST /orders/{id}/status` | Change status. Two-step confirm. Preview self-validates against viable transitions (one extra read to `GET /orders/{id}/viable-statuses`, cached) — invalid `status_code` is surfaced before the write `POST` that would 422. |
 | `add_order_comment` | `POST /orders/{id}/comment` | Add a history comment. Two-step confirm. 5/min. |

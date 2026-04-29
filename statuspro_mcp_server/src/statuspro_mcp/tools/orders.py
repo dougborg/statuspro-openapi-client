@@ -1,8 +1,11 @@
 """MCP tools for StatusPro orders.
 
-7 tools mapping to the ``/orders*`` endpoints. Mutations use a two-step confirm
-pattern: call with ``confirm=False`` to see a preview, then ``confirm=True`` to
-execute (the client host elicits explicit user approval via ``ctx.elicit``).
+10 tools covering the ``/orders*`` endpoints plus three batch read tools
+(``get_orders_batch``, ``lookup_orders_batch``, ``summarize_active_orders``)
+that fan out parallel calls under the hood when the StatusPro server has
+no native batch endpoint. Mutations use a two-step confirm pattern: call
+with ``confirm=False`` to see a preview, then ``confirm=True`` to execute
+(the client host elicits explicit user approval via ``ctx.elicit``).
 
 All read-and-mutation tools (``list_orders``, ``get_order``,
 ``update_order_status``, ``add_order_comment``, ``update_order_due_date``,
@@ -36,6 +39,9 @@ from statuspro_mcp.tools.prefab_ui import (
     build_status_change_preview_ui,
 )
 from statuspro_mcp.tools.schemas import (
+    ActiveOrdersSummary,
+    BatchOrderResponse,
+    BatchOrderResult,
     BulkStatusChangePreview,
     BulkStatusChangeResult,
     CommentPreview,
@@ -50,6 +56,7 @@ from statuspro_mcp.tools.schemas import (
     OrderSummary,
     StatusChangePreview,
     StatusChangeResult,
+    StatusCount,
     require_confirmation,
 )
 from statuspro_mcp.tools.tool_result_utils import (
@@ -61,6 +68,7 @@ from statuspro_mcp.tools.tool_result_utils import (
 from statuspro_public_api_client.api.orders import (
     add_order_comment as add_order_comment_api,
     bulk_update_order_status as bulk_update_status,
+    list_orders as list_orders_api,
     set_order_due_date,
     update_order_status as update_order_status_api,
 )
@@ -70,11 +78,17 @@ from statuspro_public_api_client.models.add_order_comment_request import (
 from statuspro_public_api_client.models.bulk_status_update_request import (
     BulkStatusUpdateRequest,
 )
+from statuspro_public_api_client.models.list_orders_financial_status_item import (
+    ListOrdersFinancialStatusItem,
+)
+from statuspro_public_api_client.models.list_orders_fulfillment_status_item import (
+    ListOrdersFulfillmentStatusItem,
+)
 from statuspro_public_api_client.models.set_due_date_request import SetDueDateRequest
 from statuspro_public_api_client.models.update_order_status_request import (
     UpdateOrderStatusRequest,
 )
-from statuspro_public_api_client.utils import is_success
+from statuspro_public_api_client.utils import is_success, unwrap
 
 
 def _to_summary(order: Any) -> OrderSummary:
@@ -107,6 +121,125 @@ def _history_entry(item: Any) -> HistoryEntry:
 
 
 DEFAULT_HISTORY_LIMIT = 50
+
+# Cap concurrent calls in batch tools. The transport layer retries 429s but
+# does not proactively throttle; firing 50 simultaneous requests turns one
+# rate-limit hit into 50 concurrent backoff waits. 10 keeps the batch fast
+# (well under the 60/min ceiling for read endpoints) and avoids the
+# thundering-herd pattern. Applies to all three batch read tools.
+_BATCH_CONCURRENCY_LIMIT = 10
+
+
+async def _bounded_gather[T](
+    coros: list[Any], *, limit: int = _BATCH_CONCURRENCY_LIMIT
+) -> list[T | Exception]:
+    """Run ``coros`` with bounded concurrency; mirrors ``asyncio.gather`` shape.
+
+    Like ``asyncio.gather(..., return_exceptions=True)`` but caps how many
+    coroutines run at once via a semaphore. Cancellation propagates: if the
+    enclosing task is cancelled, the inner tasks are cancelled too — we
+    only catch ``Exception``, not ``BaseException``, so ``CancelledError``
+    is not swallowed and reported as a row-level error.
+    """
+    sem = asyncio.Semaphore(limit)
+
+    async def _run(coro: Any) -> Any:
+        async with sem:
+            try:
+                return await coro
+            except Exception as e:
+                return e
+
+    return await asyncio.gather(*(_run(c) for c in coros))
+
+
+def _classify_error(exc: Exception, *, what: str) -> str:
+    """Format a per-row error string for batch results.
+
+    Maps known StatusPro API errors to canonical prefixes that callers can
+    parse: ``not_found``, ``ambiguous``, ``rate_limit``, ``auth``, ``server``,
+    ``api``, or the exception class name as a generic fallback. The
+    ``not_found_count`` / ``error_count`` aggregates rely on this prefix.
+    """
+    from statuspro_public_api_client.utils import (
+        APIError,
+        AuthenticationError,
+        RateLimitError,
+        ServerError,
+    )
+
+    detail = str(exc)[:120]
+    if isinstance(exc, APIError):
+        status = getattr(exc, "status_code", None)
+        if status == 404:
+            return f"not_found: {what}"
+        if isinstance(exc, RateLimitError):
+            return f"rate_limit: {detail}"
+        if isinstance(exc, AuthenticationError):
+            return f"auth: {detail}"
+        if isinstance(exc, ServerError):
+            return f"server: {detail}"
+        return f"api: HTTP {status} {detail}"
+    return f"{type(exc).__name__}: {detail}"
+
+
+async def _count_financial(
+    client: Any, value: ListOrdersFinancialStatusItem
+) -> tuple[str, int]:
+    """Return (financial_status name, active-order count) for one enum value."""
+    resp = await list_orders_api.asyncio_detailed(
+        client=client,
+        exclude_cancelled=True,
+        financial_status=[value],
+        per_page=1,
+        page=1,
+    )
+    parsed = unwrap(resp)
+    return value.value, int(getattr(getattr(parsed, "meta", None), "total", None) or 0)
+
+
+async def _count_fulfillment(
+    client: Any, value: ListOrdersFulfillmentStatusItem
+) -> tuple[str, int]:
+    """Return (fulfillment_status name, active-order count) for one enum value."""
+    resp = await list_orders_api.asyncio_detailed(
+        client=client,
+        exclude_cancelled=True,
+        fulfillment_status=[value],
+        per_page=1,
+        page=1,
+    )
+    parsed = unwrap(resp)
+    return value.value, int(getattr(getattr(parsed, "meta", None), "total", None) or 0)
+
+
+def _build_batch_response(
+    requested_count: int, results: list[BatchOrderResult]
+) -> BatchOrderResponse:
+    """Compute aggregate counts and assemble the typed response.
+
+    Splits failures into ``not_found_count`` (rows whose error starts with
+    ``not_found``) and ``error_count`` (everything else, including ambiguous
+    and transport errors), matching the field-level docstring contract.
+    """
+    found = sum(1 for r in results if r.order is not None)
+    not_found = sum(
+        1
+        for r in results
+        if r.order is None and (r.error or "").startswith("not_found")
+    )
+    errors = sum(
+        1
+        for r in results
+        if r.order is None and not (r.error or "").startswith("not_found")
+    )
+    return BatchOrderResponse(
+        requested_count=requested_count,
+        found_count=found,
+        not_found_count=not_found,
+        error_count=errors,
+        results=results,
+    )
 
 
 def _to_detail(
@@ -361,6 +494,224 @@ def register_tools(mcp: FastMCP) -> None:
             due_date=detail.due_date or "—",
             due_date_range=due_date_range,
             history_table=history_table,
+        )
+
+    @mcp.tool(
+        name="get_orders_batch",
+        description=(
+            "Fetch summary details for multiple orders by id in one call. "
+            "Fans out to N parallel get_order requests under the hood; "
+            "transport layer handles 60/min rate-limit backoff. Capped at "
+            "50 ids per call. Returns a result per requested id with "
+            "explicit not-found markers."
+        ),
+    )
+    async def get_orders_batch(
+        context: Context,
+        order_ids: Annotated[
+            list[int],
+            Field(
+                description="Order ids to fetch (1-50 items).",
+                min_length=1,
+                max_length=50,
+            ),
+        ],
+    ) -> BatchOrderResponse:
+        services = get_services(context)
+        # Fan out with a concurrency cap; transport-layer retry handles 429s
+        # if any individual call hits the rate limit. _bounded_gather only
+        # catches Exception (not BaseException), so CancelledError propagates
+        # cleanly if the caller cancels mid-batch.
+        fetched = await _bounded_gather(
+            [services.client.orders.get(oid) for oid in order_ids],
+        )
+        results: list[BatchOrderResult] = []
+        for oid, outcome in zip(order_ids, fetched, strict=True):
+            if isinstance(outcome, Exception):
+                results.append(
+                    BatchOrderResult(
+                        order_id=oid,
+                        requested=str(oid),
+                        order=None,
+                        error=_classify_error(outcome, what=f"order id {oid}"),
+                    )
+                )
+            else:
+                results.append(
+                    BatchOrderResult(
+                        order_id=oid,
+                        requested=str(oid),
+                        order=_to_summary(outcome),
+                        error=None,
+                    )
+                )
+        return _build_batch_response(len(order_ids), results)
+
+    @mcp.tool(
+        name="lookup_orders_batch",
+        description=(
+            "Resolve multiple order numbers to orders in one call. Uses "
+            "list_orders(search=…) per number with exact-match disambiguation; "
+            "useful when an external system (e.g. Katana) hands you order "
+            "numbers but no ids. Capped at 50 numbers. Marks ambiguous "
+            "matches (multiple orders matching the same number) as errors."
+        ),
+    )
+    async def lookup_orders_batch(
+        context: Context,
+        order_numbers: Annotated[
+            list[str],
+            Field(
+                description=(
+                    "Order numbers to resolve (1-50 items). Both '20486' "
+                    "and '#20486' formats accepted; the '#' prefix is stripped."
+                ),
+                min_length=1,
+                max_length=50,
+            ),
+        ],
+    ) -> BatchOrderResponse:
+        services = get_services(context)
+        sem = asyncio.Semaphore(_BATCH_CONCURRENCY_LIMIT)
+
+        async def resolve_one(raw: str) -> BatchOrderResult:
+            number = raw.lstrip("#").strip()
+            async with sem:
+                try:
+                    # page=1 disables the transport's auto-pagination —
+                    # for short numbers like "42" the fuzzy search can match
+                    # many orders, and walking every page per row would
+                    # explode the cost of a 50-item batch.
+                    matches = await services.client.orders.list(
+                        search=number, page=1, per_page=10
+                    )
+                except Exception as e:
+                    return BatchOrderResult(
+                        requested=raw,
+                        order=None,
+                        error=_classify_error(e, what=f"order number {raw!r}"),
+                    )
+            # Disambiguate to exact order_number / name match. search is
+            # fuzzy across multiple fields, so blindly taking the first
+            # match risks false positives.
+            exact = [
+                o
+                for o in matches
+                if o.order_number == number or o.name in {number, f"#{number}"}
+            ]
+            if len(exact) == 1:
+                return BatchOrderResult(
+                    order_id=exact[0].id,
+                    requested=raw,
+                    order=_to_summary(exact[0]),
+                    error=None,
+                )
+            if len(exact) > 1:
+                return BatchOrderResult(
+                    requested=raw,
+                    order=None,
+                    error=f"ambiguous: {len(exact)} exact matches for {number!r}",
+                )
+            return BatchOrderResult(
+                requested=raw,
+                order=None,
+                error=f"not_found: no exact match for {number!r}",
+            )
+
+        results = list(await asyncio.gather(*(resolve_one(n) for n in order_numbers)))
+        return _build_batch_response(len(order_numbers), results)
+
+    @mcp.tool(
+        name="summarize_active_orders",
+        description=(
+            "One-shot summary of all non-cancelled orders. Returns counts "
+            "by workflow status, financial_status, and fulfillment_status. "
+            "Useful for reporting / dashboard views without paginating "
+            "through hundreds of records. Internally issues a variable "
+            "number of read requests: 1 totals + 1 status-catalog + N "
+            "per workflow status code + 8 financial_status counts + 4 "
+            "fulfillment_status counts. Cached at the response middleware "
+            "(30s TTL). Concurrency capped at 10 in-flight to avoid "
+            "rate-limit thundering herd. The no_status_count is computed "
+            "as total_active minus the sum of per-status counts; this is "
+            "best-effort (not snapshot-atomic) and assumes one status "
+            "code per order, which is the StatusPro server's contract."
+        ),
+    )
+    async def summarize_active_orders(
+        context: Context,
+    ) -> ActiveOrdersSummary:
+        services = get_services(context)
+
+        async def total(**kwargs: Any) -> int:
+            kwargs.setdefault("exclude_cancelled", True)
+            kwargs.setdefault("per_page", 1)
+            kwargs.setdefault("page", 1)
+            resp = await list_orders_api.asyncio_detailed(
+                client=services.client, **kwargs
+            )
+            parsed = unwrap(resp)
+            return int(getattr(getattr(parsed, "meta", None), "total", None) or 0)
+
+        async def count_by_status(code: str | None, name: str | None) -> StatusCount:
+            kwargs: dict[str, Any] = {}
+            if code:
+                kwargs["status_code"] = code
+            return StatusCount(
+                status_code=code,
+                status_name=name,
+                count=await total(**kwargs),
+            )
+
+        # Get total active + status catalog in parallel.
+        statuses_list, total_active = await asyncio.gather(
+            services.client.statuses.list(), total()
+        )
+
+        # Per-status / financial / fulfillment counts in parallel, but
+        # bounded so we don't fire ~20 simultaneous requests at the same
+        # endpoint and turn one rate-limit hit into 20 retries in lockstep.
+        sem = asyncio.Semaphore(_BATCH_CONCURRENCY_LIMIT)
+
+        async def bounded[T](coro: Any) -> T:
+            async with sem:
+                return await coro
+
+        status_coros = [
+            bounded(count_by_status(getattr(s, "code", None), getattr(s, "name", None)))
+            for s in statuses_list
+            if getattr(s, "code", None)
+        ]
+        financial_coros = [
+            bounded(_count_financial(services.client, v))
+            for v in ListOrdersFinancialStatusItem
+        ]
+        fulfillment_coros = [
+            bounded(_count_fulfillment(services.client, v))
+            for v in ListOrdersFulfillmentStatusItem
+        ]
+
+        status_counts, financial_results, fulfillment_results = await asyncio.gather(
+            asyncio.gather(*status_coros),
+            asyncio.gather(*financial_coros),
+            asyncio.gather(*fulfillment_coros),
+        )
+
+        # Active orders not accounted for by any status code = "no status set".
+        # Snapshot-best-effort: this back-computes from total_active minus the
+        # sum of per-status counts, so it's accurate when the data is stable
+        # but can be stale (or even briefly negative, hence the max(0, ...))
+        # if orders move between statuses while we're counting. Documented
+        # in the tool description above.
+        accounted_for = sum(s.count for s in status_counts)
+        no_status = max(0, total_active - accounted_for)
+
+        return ActiveOrdersSummary(
+            total_active=total_active,
+            by_status=sorted(status_counts, key=lambda s: -s.count),
+            by_financial_status={k: v for k, v in financial_results if v > 0},
+            by_fulfillment_status={k: v for k, v in fulfillment_results if v > 0},
+            no_status_count=no_status,
         )
 
     @mcp.tool(
