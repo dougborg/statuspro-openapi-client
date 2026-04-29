@@ -524,6 +524,7 @@ def register_tools(mcp: FastMCP) -> None:
         )
         if result is not ConfirmationResult.CONFIRMED:
             declined = StatusChangeResult(
+                confirmed=False,
                 order_id=order_id,
                 new_status_code=status_code,
                 success=False,
@@ -613,6 +614,7 @@ def register_tools(mcp: FastMCP) -> None:
         )
         if confirmation is not ConfirmationResult.CONFIRMED:
             declined = CommentResult(
+                confirmed=False,
                 order_id=order_id,
                 success=False,
                 http_status=0,
@@ -704,6 +706,7 @@ def register_tools(mcp: FastMCP) -> None:
         )
         if confirmation is not ConfirmationResult.CONFIRMED:
             declined = DueDateChangeResult(
+                confirmed=False,
                 order_id=order_id,
                 new_due_date=due_date,
                 new_due_date_to=due_date_to,
@@ -821,6 +824,7 @@ def register_tools(mcp: FastMCP) -> None:
         )
         if confirmation is not ConfirmationResult.CONFIRMED:
             declined = BulkStatusChangeResult(
+                confirmed=False,
                 order_count=len(order_ids),
                 target_status_code=status_code,
                 success=False,

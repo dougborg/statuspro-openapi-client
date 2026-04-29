@@ -193,11 +193,18 @@ class StatusChangePreview(BaseModel):
 
 
 class StatusChangeResult(BaseModel):
-    """Execution result returned when ``update_order_status`` is called with
-    ``confirm=True``."""
+    """Execution result for ``update_order_status`` after the confirm step.
+
+    ``confirmed`` reflects whether the user actually accepted the elicitation:
+    ``True`` for the confirm-and-execute path, ``False`` when the user
+    declined or cancelled (in which case ``success`` and ``http_status`` will
+    also be falsy / zero). Declined results are still emitted as this type so
+    structured-content consumers can distinguish "confirmed but failed" from
+    "user declined".
+    """
 
     action: Literal["update_order_status"] = "update_order_status"
-    confirmed: Literal[True] = True
+    confirmed: bool = True
     order_id: int
     new_status_code: str
     success: bool
@@ -206,10 +213,15 @@ class StatusChangeResult(BaseModel):
 
 
 class CommentResult(BaseModel):
-    """Execution result for ``add_order_comment`` with ``confirm=True``."""
+    """Execution result for ``add_order_comment``.
+
+    See ``StatusChangeResult`` for ``confirmed`` semantics — the same model is
+    returned for the confirm-and-execute path and the declined path, with
+    ``confirmed=False`` set on the latter.
+    """
 
     action: Literal["add_order_comment"] = "add_order_comment"
-    confirmed: Literal[True] = True
+    confirmed: bool = True
     order_id: int
     success: bool
     http_status: int
@@ -217,10 +229,13 @@ class CommentResult(BaseModel):
 
 
 class DueDateChangeResult(BaseModel):
-    """Execution result for ``update_order_due_date`` with ``confirm=True``."""
+    """Execution result for ``update_order_due_date``.
+
+    See ``StatusChangeResult`` for ``confirmed`` semantics.
+    """
 
     action: Literal["update_order_due_date"] = "update_order_due_date"
-    confirmed: Literal[True] = True
+    confirmed: bool = True
     order_id: int
     new_due_date: str
     new_due_date_to: str | None = None
@@ -230,10 +245,13 @@ class DueDateChangeResult(BaseModel):
 
 
 class BulkStatusChangeResult(BaseModel):
-    """Execution result for ``bulk_update_order_status`` with ``confirm=True``."""
+    """Execution result for ``bulk_update_order_status``.
+
+    See ``StatusChangeResult`` for ``confirmed`` semantics.
+    """
 
     action: Literal["bulk_update_order_status"] = "bulk_update_order_status"
-    confirmed: Literal[True] = True
+    confirmed: bool = True
     order_count: int
     target_status_code: str
     success: bool
