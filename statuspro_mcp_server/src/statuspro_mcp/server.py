@@ -222,6 +222,7 @@ The client automatically retries with exponential backoff on 429 responses.
 # Add response caching middleware with TTLs for read-only tools
 _READ_ONLY_TOOLS = [
     "list_orders",
+    "list_orders_in_workflow",
     "get_order",
     "get_order_history",
     "get_orders_batch",
