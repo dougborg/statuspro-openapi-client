@@ -1,12 +1,17 @@
 """MCP tools for StatusPro orders.
 
-7 tools mapping to the ``/orders*`` endpoints. Mutations use a two-step confirm
+6 tools mapping to the ``/orders*`` endpoints. Mutations use a two-step confirm
 pattern: call with ``confirm=False`` to see a preview, then ``confirm=True`` to
 execute (the client host elicits explicit user approval via ``ctx.elicit``).
 
 Three tools — ``list_orders``, ``get_order``, ``update_order_status`` — return
 a Prefab UI for MCP-Apps clients (Claude Desktop) via ``make_tool_result`` and
 ``meta=UI_META``. Others return plain Pydantic/dict responses.
+
+The ``GET /orders/lookup`` endpoint is intentionally not exposed: it is the
+public, customer-verification path (requires ``number`` + ``email``) and adds
+nothing for an authenticated MCP caller, who can already use ``list_orders``
+(``search`` matches order number) or ``get_order`` (by id).
 """
 
 from __future__ import annotations
@@ -272,21 +277,6 @@ def register_tools(mcp: FastMCP) -> None:
             due_date_range=due_date_range,
             history_table=history_table,
         )
-
-    @mcp.tool(
-        name="lookup_order",
-        description="Look up an order by order number + customer email.",
-    )
-    async def lookup_order(
-        context: Context,
-        number: Annotated[
-            str, Field(description="Order number, e.g. '1188' or '#1188'")
-        ],
-        email: Annotated[str, Field(description="Customer email address")],
-    ) -> OrderSummary:
-        services = get_services(context)
-        order = await services.client.orders.lookup(number=number, email=email)
-        return _to_summary(order)
 
     @mcp.tool(
         name="update_order_status",
