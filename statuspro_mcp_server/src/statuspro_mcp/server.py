@@ -223,6 +223,7 @@ The client automatically retries with exponential backoff on 429 responses.
 _READ_ONLY_TOOLS = [
     "list_orders",
     "get_order",
+    "get_order_history",
     "list_statuses",
     "get_viable_statuses",
 ]
