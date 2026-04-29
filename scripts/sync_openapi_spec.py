@@ -23,7 +23,8 @@ This script does NOT auto-merge upstream into the fork — the merge is a
 human judgment call (e.g. "did upstream rename a param we already added?").
 
 Configure the upstream URL with ``STATUSPRO_OPENAPI_URL`` if the public
-endpoint changes.
+endpoint changes. Configure the output path with ``STATUSPRO_OPENAPI_OUTPUT``
+to write the normalized upstream spec to a different file.
 """
 
 from __future__ import annotations
@@ -31,12 +32,11 @@ from __future__ import annotations
 import json
 import os
 import sys
-import urllib.error
 import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any
 
+import httpx
 import yaml
 
 DEFAULT_UPSTREAM_URL = "https://orderstatuspro.com/api/openapi.json"
@@ -46,12 +46,38 @@ DEFAULT_OUTPUT_PATH = (
 ALLOWED_URL_SCHEMES = ("http", "https")
 
 
-def fetch_upstream_spec(url: str, *, timeout: int = 30) -> dict[str, Any]:
+def _parse_body(body: bytes, *, content_type: str, url: str) -> dict[str, Any]:
+    """Parse the response body as JSON or YAML, with a clear error on failure."""
+
+    def _load_yaml() -> Any:
+        try:
+            return yaml.safe_load(body)
+        except (yaml.YAMLError, UnicodeDecodeError) as e:
+            print(
+                f"ERROR: failed to parse upstream OpenAPI spec as YAML from {url} "
+                f"(content-type: {content_type or 'unknown'}): {e}",
+                file=sys.stderr,
+            )
+            raise SystemExit(2) from e
+
+    if "json" in content_type.lower():
+        return json.loads(body)
+    if "yaml" in content_type.lower() or "yml" in content_type.lower():
+        return _load_yaml()
+    # Fall back: try JSON first (the documented endpoint serves JSON), then YAML.
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError:
+        return _load_yaml()
+
+
+def fetch_upstream_spec(url: str, *, timeout: float = 30.0) -> dict[str, Any]:
     """Download the upstream OpenAPI spec as a parsed dict.
 
     The URL is configurable via env var, so validate the scheme to block
-    ``file://`` (which urllib accepts and would let a misconfigured env
-    var exfiltrate local files) and other non-HTTP schemes.
+    non-HTTP fetches up front. ``httpx`` itself rejects ``file://`` URLs,
+    but the explicit allow-list documents the contract and protects against
+    any future transport that might accept them.
     """
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme not in ALLOWED_URL_SCHEMES:
@@ -63,32 +89,23 @@ def fetch_upstream_spec(url: str, *, timeout: int = 30) -> dict[str, Any]:
 
     print(f"Fetching upstream spec: {url}")
     try:
-        req = urllib.request.Request(
+        resp = httpx.get(
             url,
             headers={
                 "Accept": "application/json",
                 "User-Agent": "statuspro-openapi-client/sync",
             },
+            timeout=timeout,
+            follow_redirects=True,
         )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            content_type = resp.headers.get("content-type", "")
-            body = resp.read()
-    except urllib.error.HTTPError as e:
-        print(f"ERROR: HTTP {e.code} fetching {url}: {e.reason}", file=sys.stderr)
-        raise SystemExit(2) from e
-    except urllib.error.URLError as e:
-        print(f"ERROR: failed to fetch {url}: {e.reason}", file=sys.stderr)
+        resp.raise_for_status()
+    except httpx.HTTPError as e:
+        print(f"ERROR fetching {url}: {e}", file=sys.stderr)
         raise SystemExit(2) from e
 
-    if "json" in content_type.lower():
-        return json.loads(body)
-    if "yaml" in content_type.lower() or "yml" in content_type.lower():
-        return yaml.safe_load(body)
-    # Fall back: try JSON first (the documented endpoint serves JSON), then YAML.
-    try:
-        return json.loads(body)
-    except json.JSONDecodeError:
-        return yaml.safe_load(body)
+    return _parse_body(
+        resp.content, content_type=resp.headers.get("content-type", ""), url=url
+    )
 
 
 # OpenAPI conventional top-level key order. Following this at the document
@@ -190,7 +207,7 @@ def main() -> int:
         f"# docs/statuspro-openapi.yaml. Diff this file against the fork to see\n"
         f"# what changed upstream since last sync.\n"
     )
-    output_path.write_text(banner + yaml_text)
+    output_path.write_text(banner + yaml_text, encoding="utf-8")
     print(f"\nWrote {output_path} ({output_path.stat().st_size} bytes)")
     return 0
 
