@@ -6,14 +6,22 @@ relies on to turn the app into the MCP-Apps wire envelope. Pin it so a future
 Prefab version can't silently change the shape under us.
 
 Where a builder ships behavior the user actually sees — the Confirm button's
-follow-up message, the get_order drill-down tool name — assert against the
-serialized envelope so a regression in the action wiring surfaces here rather
-than in Claude Desktop.
+CallTool action, the get_order drill-down tool name — assert against the
+``toolCall`` payload in the serialized envelope so a regression in the
+action wiring surfaces here rather than in Claude Desktop.
+
+Note on assertion strategy: the preview model's ``.action`` field
+(e.g. ``action="update_order_status"``) ends up in iframe state, so a naive
+``"update_order_status" in serialized`` assertion can pass even if the
+Confirm button is mis-wired or hidden. The ``_find_tool_calls`` helper
+extracts the actual ``toolCall`` action payloads, which only appear when a
+button is wired with ``CallTool(...)``.
 """
 
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from prefab_ui.app import PrefabApp
 from statuspro_mcp.tools.prefab_ui import (
@@ -36,6 +44,32 @@ def _envelope(app: PrefabApp) -> dict:
 
 def _assert_renders(app: PrefabApp) -> None:
     _envelope(app)
+
+
+def _find_tool_calls(envelope: dict[str, Any]) -> list[dict[str, Any]]:
+    """Walk ``envelope`` and collect every ``toolCall`` action payload.
+
+    Each entry has the shape produced by Prefab's ``CallTool`` action:
+    ``{"action": "toolCall", "tool": "...", "arguments": {...}}``. Returns
+    them in document order. Used by the assertion helpers below to check
+    that a builder wires a CallTool with specific tool name + args (vs. a
+    substring match on the serialized JSON, which can be satisfied by the
+    preview model's ``action`` field that lives in iframe ``state``).
+    """
+    found: list[dict[str, Any]] = []
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            if node.get("action") == "toolCall" and "tool" in node:
+                found.append(node)
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(envelope)
+    return found
 
 
 def test_build_orders_table_ui_renders_with_drill_down_action():
@@ -131,22 +165,21 @@ def test_build_status_change_preview_ui_renders_with_confirm_action():
         new_color="green",
     )
     # The Confirm button's CallTool action drives the second half of the
-    # two-step mutation flow. Asserts the wire envelope carries:
-    # - the tool name to invoke (update_order_status), so the host knows
-    #   which tool/call channel to use (vs. SendMessage which would force
-    #   an LLM round-trip),
-    # - the new_status_code arg (the most likely-to-rot field — confirms
-    #   the rename from preview's `new_status_code` → tool arg
-    #   `status_code` works), and
-    # - the literal `confirm: true` flag.
-    serialized = json.dumps(_envelope(app))
-    assert "update_order_status" in serialized
-    assert "st000003" in serialized
-    # Confirm flag in the CallTool args — both shapes possible depending on
-    # how Prefab serializes booleans into the tool/call template.
-    assert (
-        '"confirm": true' in serialized or "{{ preview.new_status_code }}" in serialized
+    # two-step mutation flow. The assertion target is the toolCall action
+    # payload itself (not a substring of the wire envelope), since the
+    # preview model's `action` field is also "update_order_status" and
+    # lives in iframe state — a substring assertion would pass even if
+    # the Confirm button were mis-wired.
+    tool_calls = _find_tool_calls(_envelope(app))
+    update_calls = [tc for tc in tool_calls if tc["tool"] == "update_order_status"]
+    assert len(update_calls) == 1, (
+        f"expected exactly one update_order_status CallTool action; got {tool_calls}"
     )
+    args = update_calls[0]["arguments"]
+    assert args.get("confirm") is True
+    # Pin the new_status_code → status_code rename — the most likely-to-rot
+    # arg if the builder is refactored.
+    assert args.get("status_code") == "{{ preview.new_status_code }}"
 
 
 def test_build_status_change_preview_ui_invalid_transition_hides_confirm():
@@ -170,13 +203,18 @@ def test_build_status_change_preview_ui_invalid_transition_hides_confirm():
             "viable_status_codes": ["st000003", "st000004"],
         },
     )
-    serialized = json.dumps(_envelope(app))
-    # No Confirm button → no update_order_status CallTool action.
-    assert "update_order_status" not in serialized
-    # The remediation path: the get_viable_statuses CallTool action must be
-    # wired to the replacement button.
-    assert "get_viable_statuses" in serialized
+    envelope = _envelope(app)
+    tool_calls = _find_tool_calls(envelope)
+    # No update_order_status toolCall action — the Confirm-change button
+    # was replaced. (The string itself appears in iframe state under
+    # preview.action, but that's not a button wiring.)
+    assert not [tc for tc in tool_calls if tc["tool"] == "update_order_status"]
+    # The remediation: a get_viable_statuses toolCall is wired instead.
+    viable_calls = [tc for tc in tool_calls if tc["tool"] == "get_viable_statuses"]
+    assert len(viable_calls) == 1
+    assert viable_calls[0]["arguments"].get("order_id") == 1
     # Viable codes surface in the warning text so the agent can self-correct.
+    serialized = json.dumps(envelope)
     assert "st000003" in serialized
     assert "st000004" in serialized
 
@@ -198,9 +236,19 @@ def test_build_comment_preview_ui_renders_with_confirm_action():
             "public": False,
         },
     )
-    serialized = json.dumps(_envelope(app))
-    # CallTool wiring re-invokes add_order_comment with confirm=true.
-    assert "add_order_comment" in serialized
+    envelope = _envelope(app)
+    serialized = json.dumps(envelope)
+    # The Confirm button must be wired with a toolCall to add_order_comment
+    # carrying confirm=true.
+    tool_calls = _find_tool_calls(envelope)
+    confirm_calls = [tc for tc in tool_calls if tc["tool"] == "add_order_comment"]
+    assert len(confirm_calls) == 1, (
+        "expected exactly one add_order_comment toolCall action"
+    )
+    args = confirm_calls[0]["arguments"]
+    assert args.get("confirm") is True
+    # The visible content stays as substring assertions — those legitimately
+    # appear in the rendered text, not in state.
     assert "Customer asked about ETA." in serialized
     assert "private" in serialized  # visibility badge
     # The order context surfaces so the agent isn't commenting blind.
@@ -246,12 +294,20 @@ def test_build_due_date_change_preview_ui_shows_before_after():
             "new_due_date_to": "2026-03-24",
         },
     )
-    serialized = json.dumps(_envelope(app))
+    envelope = _envelope(app)
+    serialized = json.dumps(envelope)
     assert "2026-03-15" in serialized  # current
     assert "2026-03-22" in serialized  # new
     assert "2026-03-24" in serialized  # new range end
-    # CallTool wiring re-invokes update_order_due_date with confirm=true.
-    assert "update_order_due_date" in serialized
+    # Confirm button: toolCall to update_order_due_date with confirm=true,
+    # and pin the new_due_date → due_date arg rename.
+    tool_calls = _find_tool_calls(envelope)
+    confirm_calls = [tc for tc in tool_calls if tc["tool"] == "update_order_due_date"]
+    assert len(confirm_calls) == 1
+    args = confirm_calls[0]["arguments"]
+    assert args.get("confirm") is True
+    assert args.get("due_date") == "{{ preview.new_due_date }}"
+    assert args.get("due_date_to") == "{{ preview.new_due_date_to }}"
 
 
 def test_build_bulk_status_change_preview_ui_shows_count_and_target():
@@ -270,12 +326,21 @@ def test_build_bulk_status_change_preview_ui_shows_count_and_target():
             "email_additional": False,
         },
     )
-    serialized = json.dumps(_envelope(app))
+    envelope = _envelope(app)
+    serialized = json.dumps(envelope)
     assert "25" in serialized  # order count
     assert "st000003" in serialized  # target code
     assert "Shipped" in serialized  # target name (resolved from catalog)
-    # CallTool wiring re-invokes bulk_update_order_status with confirm=true.
-    assert "bulk_update_order_status" in serialized
+    # Confirm button: toolCall to bulk_update_order_status with confirm=true,
+    # plus the target_status_code → status_code arg rename.
+    tool_calls = _find_tool_calls(envelope)
+    confirm_calls = [
+        tc for tc in tool_calls if tc["tool"] == "bulk_update_order_status"
+    ]
+    assert len(confirm_calls) == 1
+    args = confirm_calls[0]["arguments"]
+    assert args.get("confirm") is True
+    assert args.get("status_code") == "{{ preview.target_status_code }}"
     # Recipients line should include "customer" but not "additional contacts"
     # since email_additional=False.
     assert "customer" in serialized

@@ -34,6 +34,7 @@ from typing import Annotated, Any
 
 from fastmcp import Context, FastMCP
 from fastmcp.tools import ToolResult
+from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from statuspro_mcp.services import get_services
@@ -95,6 +96,12 @@ from statuspro_public_api_client.models.update_order_status_request import (
 from statuspro_public_api_client.utils import is_success, unwrap
 
 logger = logging.getLogger(__name__)
+
+# Annotation passed on every mutation tool registration. Per MCP Tools spec
+# (Security Considerations, 2025-11-25), this is the canonical signal hosts
+# read to prompt users for confirmation — it replaces the server-side
+# ctx.elicit gate we used to run.
+_DESTRUCTIVE = ToolAnnotations(destructiveHint=True)
 
 
 def _to_summary(order: Any) -> OrderSummary:
@@ -829,6 +836,7 @@ def register_tools(mcp: FastMCP) -> None:
             "Change an order's status. Two-step confirm: call with confirm=false "
             "to preview; confirm=true runs the update."
         ),
+        annotations=_DESTRUCTIVE,
         meta=UI_META,
     )
     async def update_order_status(
@@ -934,6 +942,7 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         name="add_order_comment",
         description="Add a history comment to an order (5/min rate limit). Two-step confirm.",
+        annotations=_DESTRUCTIVE,
         meta=UI_META,
     )
     async def add_order_comment(
@@ -972,6 +981,7 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         name="update_order_due_date",
         description="Update an order's due date. Two-step confirm.",
+        annotations=_DESTRUCTIVE,
         meta=UI_META,
     )
     async def update_order_due_date(
@@ -1022,6 +1032,7 @@ def register_tools(mcp: FastMCP) -> None:
             "Update status for up to 50 orders in one call (5/min rate limit). "
             "Returns 202 Accepted; updates are queued asynchronously."
         ),
+        annotations=_DESTRUCTIVE,
         meta=UI_META,
     )
     async def bulk_update_order_status(
