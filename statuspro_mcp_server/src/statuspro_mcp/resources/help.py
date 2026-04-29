@@ -15,7 +15,7 @@ _HELP_MARKDOWN = """\
 | `get_order` | `GET /orders/{id}` | Full detail for one order, with the most recent `history_limit` history entries (default 50). When `history_truncated` is true, use `get_order_history` for older entries. |
 | `get_order_history` | `GET /orders/{id}` (client-side paged) | Page through the full history timeline of one order. Use when `get_order` indicated truncation. |
 | `get_viable_statuses` | `GET /orders/{id}/viable-statuses` | Valid status transitions for the order's current state. |
-| `update_order_status` | `POST /orders/{id}/status` | Change status. Two-step confirm. Preview self-validates against viable transitions — invalid `status_code` is caught at preview time without the API round-trip. |
+| `update_order_status` | `POST /orders/{id}/status` | Change status. Two-step confirm. Preview self-validates against viable transitions (one extra read to `GET /orders/{id}/viable-statuses`, cached) — invalid `status_code` is surfaced before the write `POST` that would 422. |
 | `add_order_comment` | `POST /orders/{id}/comment` | Add a history comment. Two-step confirm. 5/min. |
 | `update_order_due_date` | `POST /orders/{id}/due-date` | Change due date / date range. Two-step confirm. |
 | `bulk_update_order_status` | `POST /orders/bulk-status` | Update up to 50 orders in one request. Two-step confirm. 5/min. |
