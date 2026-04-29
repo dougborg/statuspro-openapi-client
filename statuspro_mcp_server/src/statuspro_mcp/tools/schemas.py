@@ -120,6 +120,94 @@ class OrderHistoryPage(BaseModel):
     entries: list[HistoryEntry]
 
 
+class BatchOrderResult(BaseModel):
+    """One entry in a batch order-fetch response.
+
+    Either ``order`` is set (the lookup succeeded) or ``error`` is set
+    (the lookup failed — order id not found, ambiguous match, etc.).
+    Callers should iterate the batch and partition by which field is set.
+    """
+
+    order_id: int | None = Field(
+        None,
+        description="The order id if known. May be None for lookup-by-number where no id was resolved.",
+    )
+    requested: str = Field(
+        ...,
+        description=(
+            "What the caller passed in (id as a string, or order_number). "
+            "Echoed back so callers can join results to their input list."
+        ),
+    )
+    order: OrderSummary | None = None
+    error: str | None = Field(
+        None,
+        description="Set when the lookup failed; describes why (not_found, ambiguous, etc.).",
+    )
+
+
+class BatchOrderResponse(BaseModel):
+    """Wrapper for batch order-fetch responses, typed for make_tool_result.
+
+    Failures in a batch can be due to several causes (404 not-found,
+    ambiguous match in `lookup_orders_batch`, transport errors, rate-limit
+    exhaustion). The response splits these into ``not_found_count`` (only
+    explicit not-found / no-exact-match cases) and ``error_count`` (all
+    other failures, like transport / ambiguous). A row's ``error`` field
+    starts with one of: ``not_found``, ``ambiguous``, or the exception
+    class name for transport-level failures.
+    """
+
+    requested_count: int
+    found_count: int = Field(..., description="Rows where ``order`` is set.")
+    not_found_count: int = Field(
+        0,
+        description="Rows whose error starts with ``not_found`` (no exact match).",
+    )
+    error_count: int = Field(
+        0,
+        description=(
+            "Rows whose error is anything OTHER than not_found — ambiguous "
+            "matches, transport errors, etc. Sum of (found + not_found + "
+            "error) equals ``requested_count``."
+        ),
+    )
+    results: list[BatchOrderResult]
+
+
+class StatusCount(BaseModel):
+    """One row in the active-orders summary."""
+
+    status_code: str | None = None
+    status_name: str | None = None
+    count: int
+
+
+class ActiveOrdersSummary(BaseModel):
+    """One-shot summary across all active (non-cancelled) orders.
+
+    Built client-side by issuing one ``list_orders`` call per status code
+    plus one each for the financial-status and fulfillment-status enums
+    that are populated. The response is small but the underlying calls
+    are not free — count this as 8-12 read requests internally.
+    """
+
+    total_active: int = Field(..., description="Total non-cancelled orders.")
+    by_status: list[StatusCount]
+    by_financial_status: dict[str, int] = Field(
+        default_factory=dict,
+        description="financial_status enum value -> count of matching orders.",
+    )
+    by_fulfillment_status: dict[str, int] = Field(
+        default_factory=dict,
+        description="fulfillment_status enum value -> count of matching orders.",
+    )
+    no_status_count: int = Field(
+        0,
+        description="Active orders with no workflow status assigned (newly created, unstaged).",
+    )
+
+
 class OrderList(BaseModel):
     """Wrapper for list_orders responses, typed for make_tool_result."""
 
@@ -328,6 +416,9 @@ class BulkStatusChangePreview(BaseModel):
 
 
 __all__ = [
+    "ActiveOrdersSummary",
+    "BatchOrderResponse",
+    "BatchOrderResult",
     "BulkStatusChangePreview",
     "BulkStatusChangeResult",
     "CommentPreview",
@@ -343,6 +434,7 @@ __all__ = [
     "OrderSummary",
     "StatusChangePreview",
     "StatusChangeResult",
+    "StatusCount",
     "StatusEntry",
     "ViableStatusesResponse",
     "require_confirmation",

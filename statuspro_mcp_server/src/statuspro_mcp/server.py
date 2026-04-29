@@ -224,6 +224,9 @@ _READ_ONLY_TOOLS = [
     "list_orders",
     "get_order",
     "get_order_history",
+    "get_orders_batch",
+    "lookup_orders_batch",
+    "summarize_active_orders",
     "list_statuses",
     "get_viable_statuses",
 ]
