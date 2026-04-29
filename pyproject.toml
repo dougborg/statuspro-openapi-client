@@ -481,6 +481,7 @@ test-schema = "pytest -m schema_validation"  # Run schema validation tests only 
 regenerate-client = "python scripts/regenerate_client.py"
 generate-pydantic = "python scripts/generate_pydantic_models.py"
 regenerate-all = ["regenerate-client", "generate-pydantic"]
+sync-openapi-spec = "python scripts/sync_openapi_spec.py"
 validate-openapi = "openapi-spec-validator docs/statuspro-openapi.yaml"
 validate-openapi-redocly = "npx @redocly/cli lint docs/statuspro-openapi.yaml"
 

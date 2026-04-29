@@ -1,0 +1,868 @@
+# AUTO-GENERATED — DO NOT EDIT. Regenerate with: uv run poe sync-openapi-spec
+# Upstream: https://orderstatuspro.com/api/openapi.json
+# This is the unmerged upstream view; the local fork lives at
+# docs/statuspro-openapi.yaml. Diff this file against the fork to see
+# what changed upstream since last sync.
+openapi: 3.1.0
+info:
+  description: Use this API to retrieve and update the status of an order.
+  license:
+    identifier: LicenseRef-Proprietary
+    name: Proprietary
+  title: StatusPro API
+  version: 1.0.0
+servers:
+- description: Production
+  url: https://app.orderstatuspro.com/api/v1
+security:
+- bearerAuth: []
+tags:
+- description: Order retrieval, status updates, comments, due dates, and lookup operations.
+  name: Orders
+- description: Status definition and viable-status listing operations.
+  name: Statuses
+paths:
+  /orders:
+    get:
+      description: Limited to 60 requests per minute.
+      operationId: listOrders
+      parameters:
+      - description: Filter by partial match against order name, order number, customer name, or customer
+          email.
+        in: query
+        name: search
+        required: false
+        schema:
+          type: string
+      - description: Filter by a single status code like st000002.
+        in: query
+        name: status_code
+        required: false
+        schema:
+          maxLength: 8
+          minLength: 8
+          type: string
+      - description: Filter by tags that must all be present using repeated query params such as tags[]=commercial&tags[]=commercial-lease.
+        examples:
+          allTags:
+            summary: Only orders containing every tag
+            value:
+            - commercial
+            - commercial-lease
+        explode: true
+        in: query
+        name: tags[]
+        required: false
+        schema:
+          items:
+            type: string
+          type: array
+        style: form
+      - description: Filter by tags where any listed tag may be present using repeated query params such
+          as tags_any[]=commercial&tags_any[]=commercial-flooring.
+        examples:
+          anyTags:
+            summary: Orders matching any listed tag
+            value:
+            - commercial-flooring
+            - commercial-rental
+        explode: true
+        in: query
+        name: tags_any[]
+        required: false
+        schema:
+          items:
+            type: string
+          type: array
+        style: form
+      - description: 'Filter by one or more financial statuses using repeated query params such as financial_status[]=partially_paid&financial_status[]=pending.
+          Accepted values: paid, partially_paid, partially_refunded, refunded, voided, pending, authorized,
+          unpaid.'
+        examples:
+          dueStatuses:
+            summary: Capture all due orders
+            value:
+            - partially_paid
+            - pending
+            - unpaid
+        explode: true
+        in: query
+        name: financial_status[]
+        required: false
+        schema:
+          items:
+            enum:
+            - paid
+            - partially_paid
+            - partially_refunded
+            - refunded
+            - voided
+            - pending
+            - authorized
+            - unpaid
+            type: string
+          type: array
+        style: form
+      - description: 'Filter by one or more fulfillment statuses using repeated query params such as fulfillment_status[]=fulfilled.
+          Accepted values: unfulfilled, partial, restocked, fulfilled.'
+        examples:
+          fulfilledOnly:
+            summary: Only fulfilled orders
+            value:
+            - fulfilled
+        explode: true
+        in: query
+        name: fulfillment_status[]
+        required: false
+        schema:
+          items:
+            enum:
+            - unfulfilled
+            - partial
+            - restocked
+            - fulfilled
+            type: string
+          type: array
+        style: form
+      - description: When true, excludes orders where cancelled_at is set.
+        example: true
+        in: query
+        name: exclude_cancelled
+        required: false
+        schema:
+          type: boolean
+      - description: Filter to orders with a due date on or after this `YYYY-MM-DD` date.
+        in: query
+        name: due_date_from
+        required: false
+        schema:
+          format: date
+          type: string
+      - description: Filter to orders with a due date on or before this `YYYY-MM-DD` date.
+        in: query
+        name: due_date_to
+        required: false
+        schema:
+          format: date
+          type: string
+      - description: Number of orders to return per page. Defaults to 15. Maximum 100.
+        in: query
+        name: per_page
+        required: false
+        schema:
+          default: 15
+          maximum: 100
+          minimum: 1
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                data:
+                - customer:
+                    email: jon@example.com
+                    locale: en
+                    name: Jon Smith
+                  due_date: '2026-03-15T00:00:00+00:00'
+                  due_date_to: '2026-03-17T00:00:00+00:00'
+                  history_count: 4
+                  id: 6110375248088
+                  name: '#1188'
+                  order_number: '1188'
+                  status:
+                    auto_change_at: null
+                    code: st000002
+                    color: '#F59E0B'
+                    description: Order being handcrafted in the workshop
+                    is_set: true
+                    name: In Production
+                    public: true
+                    public_name: Crafting With Care
+                    set_at: '2026-03-12T10:14:00+00:00'
+                meta:
+                  current_page: 1
+                  from: 1
+                  last_page: 1
+                  per_page: 15
+                  to: 1
+                  total: 1
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+          description: Success
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Retrieve a paginated list of orders
+      tags:
+      - Orders
+  /orders/bulk-status:
+    post:
+      description: Limited to 5 requests per minute.
+      operationId: bulkUpdateOrderStatus
+      requestBody:
+        content:
+          application/json:
+            example:
+              comment: Batch moved to shipped
+              email_additional: false
+              email_customer: true
+              order_ids:
+              - 6110375248088
+              - 6110375248089
+              public: false
+              status_code: st000003
+            schema:
+              $ref: '#/components/schemas/BulkStatusUpdateRequest'
+        required: true
+      responses:
+        '202':
+          content:
+            application/json:
+              example:
+                count: 2
+                limit: 50
+                message: Bulk status update queued.
+              schema:
+                $ref: '#/components/schemas/BulkStatusUpdateResponse'
+          description: Accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Queue a bulk status update for up to 50 orders
+      tags:
+      - Orders
+  /orders/lookup:
+    get:
+      description: Limited to 60 requests per minute.
+      operationId: lookupOrder
+      parameters:
+      - description: 'Order number or name (for example: 1188 or #1188).'
+        in: query
+        name: number
+        required: true
+        schema:
+          type: string
+      - description: Customer email address.
+        in: query
+        name: email
+        required: true
+        schema:
+          format: email
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+          description: Success
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Retrieve an order by order number and customer email
+      tags:
+      - Orders
+  /orders/{order}:
+    get:
+      description: Limited to 60 requests per minute.
+      operationId: getOrder
+      parameters:
+      - description: The ID of the order.
+        in: path
+        name: order
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+          description: Success
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Retrieve details of a specific order
+      tags:
+      - Orders
+  /orders/{order}/comment:
+    post:
+      description: Limited to 60 requests per minute.
+      operationId: addOrderComment
+      parameters:
+      - description: The ID of the order.
+        in: path
+        name: order
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            example:
+              comment: This is a comment
+              public: true
+            schema:
+              $ref: '#/components/schemas/AddOrderCommentRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                message: Order comment added!
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: Success
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Add a comment to the order
+      tags:
+      - Orders
+  /orders/{order}/due-date:
+    post:
+      description: Limited to 60 requests per minute.
+      operationId: setOrderDueDate
+      parameters:
+      - description: The ID of the order.
+        in: path
+        name: order
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            example:
+              due_date: '2026-02-10'
+              due_date_to: '2026-02-12'
+            schema:
+              $ref: '#/components/schemas/SetDueDateRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                message: Order due date set!
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: Success
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Set a due date on the order
+      tags:
+      - Orders
+  /orders/{order}/status:
+    post:
+      description: Limited to 60 requests per minute.
+      operationId: updateOrderStatus
+      parameters:
+      - description: The ID of the order.
+        in: path
+        name: order
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            example:
+              comment: This is a comment
+              email_additional: true
+              email_customer: true
+              public: true
+              status_code: st000002
+            schema:
+              $ref: '#/components/schemas/UpdateOrderStatusRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                message: Order status updated successfully!
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: Success
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Update an order status
+      tags:
+      - Orders
+  /orders/{order}/viable-statuses:
+    get:
+      description: Limited to 60 requests per minute.
+      operationId: getViableStatuses
+      parameters:
+      - description: The ID of the order.
+        in: path
+        name: order
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+              - code: st000002
+                color: pink
+                description: Order being handcrafted in the workshop
+                name: In Production
+              - code: st000003
+                color: green
+                description: Safely packed and dispatched
+                name: Shipped
+              schema:
+                items:
+                  $ref: '#/components/schemas/ViableStatus'
+                type: array
+          description: Success
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Get viable statuses for an order
+      tags:
+      - Orders
+      - Statuses
+  /statuses:
+    get:
+      description: Limited to 60 requests per minute.
+      operationId: getStatuses
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+              - code: st000001
+                color: gray
+                description: We have received your order.
+                name: Order Received
+              - code: st000002
+                color: pink
+                description: Your order is being handcrafted in the workshop.
+                name: In Production
+              - code: st000003
+                color: green
+                description: Order has been shipped and is on its way.
+                name: Shipped
+              schema:
+                items:
+                  $ref: '#/components/schemas/StatusDefinition'
+                type: array
+          description: Success
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Get all defined statuses for your account
+      tags:
+      - Statuses
+components:
+  responses:
+    BadRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Bad Request. The request was malformed or missing required headers.
+    InternalServerError:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Internal Server Error. An unexpected error occurred.
+    NotFound:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Not Found. The requested resource does not exist.
+    TooManyRequests:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: Too Many Requests. The request was rate limited. Wait before retrying.
+    UnprocessableEntity:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+      description: Unprocessable Entity. The request was well-formed but contains invalid data or failed
+        validation.
+  schemas:
+    AddOrderCommentRequest:
+      properties:
+        comment:
+          maxLength: 1000
+          minLength: 3
+          type: string
+        public:
+          default: false
+          type: boolean
+      required:
+      - comment
+      type: object
+    BulkStatusUpdateRequest:
+      properties:
+        comment:
+          type: string
+        due_date:
+          format: date
+          type: string
+        email_additional:
+          default: true
+          type: boolean
+        email_customer:
+          default: true
+          type: boolean
+        order_ids:
+          items:
+            type: integer
+          maxItems: 50
+          minItems: 1
+          type: array
+        public:
+          default: false
+          type: boolean
+        send_at:
+          description: Unix timestamp to schedule status emails.
+          type: integer
+        status_code:
+          type: string
+      required:
+      - order_ids
+      - status_code
+      type: object
+    BulkStatusUpdateResponse:
+      properties:
+        count:
+          type: integer
+        limit:
+          type: integer
+        message:
+          type: string
+      required:
+      - message
+      - count
+      - limit
+      type: object
+    Customer:
+      properties:
+        email:
+          format: email
+          type: string
+        locale:
+          type: string
+        name:
+          type: string
+      type: object
+    ErrorResponse:
+      properties:
+        message:
+          type: string
+      type: object
+    HistoryItem:
+      properties:
+        comment:
+          type:
+          - string
+          - 'null'
+        comment_is_public:
+          type: boolean
+        created_at:
+          format: date-time
+          type: string
+        event:
+          type: string
+        mail_log:
+          anyOf:
+          - $ref: '#/components/schemas/MailLog'
+          - type: 'null'
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/Status'
+          - type: 'null'
+      type: object
+    LocaleTranslation:
+      properties:
+        description:
+          type: string
+        name:
+          type: string
+      type: object
+    MailLog:
+      properties:
+        delivery_status:
+          type: string
+        from:
+          format: email
+          type: string
+        subject:
+          type: string
+        to:
+          format: email
+          type: string
+      type: object
+    MessageResponse:
+      properties:
+        message:
+          type: string
+      required:
+      - message
+      type: object
+    OrderListItem:
+      properties:
+        customer:
+          $ref: '#/components/schemas/Customer'
+        due_date:
+          format: date-time
+          type:
+          - string
+          - 'null'
+        due_date_to:
+          format: date-time
+          type:
+          - string
+          - 'null'
+        history_count:
+          type: integer
+        id:
+          type: integer
+        name:
+          type: string
+        order_number:
+          type: string
+        status:
+          $ref: '#/components/schemas/Status'
+      type: object
+    OrderListMeta:
+      properties:
+        current_page:
+          type: integer
+        from:
+          type:
+          - integer
+          - 'null'
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        to:
+          type:
+          - integer
+          - 'null'
+        total:
+          type: integer
+      type: object
+    OrderListResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/OrderListItem'
+          type: array
+        meta:
+          $ref: '#/components/schemas/OrderListMeta'
+      required:
+      - data
+      - meta
+      type: object
+    OrderResponse:
+      properties:
+        customer:
+          $ref: '#/components/schemas/Customer'
+        due_date:
+          format: date-time
+          type:
+          - string
+          - 'null'
+        due_date_to:
+          format: date-time
+          type:
+          - string
+          - 'null'
+        history:
+          items:
+            $ref: '#/components/schemas/HistoryItem'
+          type: array
+        id:
+          type: integer
+        name:
+          type: string
+        order_number:
+          type: string
+        public_progress_timeline:
+          items:
+            $ref: '#/components/schemas/ProgressTimelineItem'
+          type: array
+        status:
+          $ref: '#/components/schemas/Status'
+      type: object
+    ProgressTimelineItem:
+      properties:
+        description:
+          type: string
+        name:
+          type: string
+        progress:
+          type: string
+        timestamp:
+          type:
+          - string
+          - 'null'
+      type: object
+    SetDueDateRequest:
+      properties:
+        due_date:
+          format: date
+          type:
+          - string
+          - 'null'
+        due_date_to:
+          format: date
+          type: string
+      required:
+      - due_date
+      type: object
+    Status:
+      properties:
+        auto_change_at:
+          format: date-time
+          type:
+          - string
+          - 'null'
+        code:
+          type: string
+        description:
+          type: string
+        is_set:
+          type: boolean
+        name:
+          type: string
+        public:
+          type: boolean
+        public_name:
+          type:
+          - string
+          - 'null'
+        set_at:
+          format: date-time
+          type:
+          - string
+          - 'null'
+        translations:
+          additionalProperties:
+            $ref: '#/components/schemas/LocaleTranslation'
+          type: object
+      type: object
+    StatusDefinition:
+      properties:
+        code:
+          type: string
+        color:
+          type: string
+        description:
+          type: string
+        name:
+          type: string
+      type: object
+    UpdateOrderStatusRequest:
+      properties:
+        comment:
+          type: string
+        email_additional:
+          default: true
+          type: boolean
+        email_customer:
+          default: true
+          type: boolean
+        public:
+          default: false
+          type: boolean
+        status_code:
+          type: string
+      required:
+      - status_code
+      type: object
+    ValidationErrorResponse:
+      properties:
+        errors:
+          additionalProperties:
+            items:
+              type: string
+            type: array
+          type: object
+        message:
+          type: string
+      type: object
+    ViableStatus:
+      properties:
+        code:
+          type: string
+        color:
+          type: string
+        description:
+          type: string
+        name:
+          type: string
+      type: object
+  securitySchemes:
+    bearerAuth:
+      bearerFormat: API Key
+      scheme: bearer
+      type: http
