@@ -1,0 +1,81 @@
+name: Sync upstream OpenAPI spec
+
+# Pull the canonical upstream OpenAPI spec from
+# https://orderstatuspro.com/api/openapi.json into
+# docs/statuspro-openapi.upstream.yaml. If anything changed, open a PR
+# with the diff so a human can decide whether to reconcile changes
+# into the local fork at docs/statuspro-openapi.yaml.
+#
+# This workflow does NOT auto-merge upstream into the fork — see
+# scripts/sync_openapi_spec.py for the rationale.
+
+on:
+  schedule:
+    # Mondays at 9:00 UTC — early enough in the week that any
+    # reconciliation work fits before Friday.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Sync upstream spec
+        run: uv run poe sync-openapi-spec
+
+      - name: Detect changes
+        id: detect
+        run: |
+          if git diff --quiet docs/statuspro-openapi.upstream.yaml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No upstream changes detected."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Upstream changed — will open a PR."
+            git diff --stat docs/statuspro-openapi.upstream.yaml
+          fi
+
+      - name: Open PR if upstream changed
+        if: steps.detect.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/upstream-openapi-spec-sync
+          delete-branch: true
+          commit-message: |
+            chore(spec): sync upstream OpenAPI spec snapshot
+          title: "chore(spec): sync upstream OpenAPI spec snapshot"
+          body: |
+            Automated sync of `docs/statuspro-openapi.upstream.yaml` from
+            <https://orderstatuspro.com/api/openapi.json>.
+
+            **What this PR is:** the upstream-only view, refreshed.
+            Reviewing the diff shows what changed upstream since the
+            last sync.
+
+            **What this PR is NOT:** an auto-merge into the local fork
+            (`docs/statuspro-openapi.yaml`). Reconciliation is a human
+            judgment call — e.g. "did upstream rename a parameter we
+            already added?". After merging this PR, manually port any
+            relevant deltas into the local fork in a follow-up.
+
+            See [`scripts/sync_openapi_spec.py`](../blob/main/scripts/sync_openapi_spec.py)
+            for the workflow.
+          labels: |
+            area/spec
+            theme/tool-surface-redesign
