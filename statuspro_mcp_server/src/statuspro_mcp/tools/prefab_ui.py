@@ -372,7 +372,179 @@ def build_status_change_preview_ui(
     return app
 
 
+def _summary_chip(summary: dict[str, Any]) -> None:
+    """Render a compact "order #N (status)" chip for mutation previews."""
+    label = summary.get("name") or f"order #{summary.get('order_number') or '?'}"
+    status_name = summary.get("status_name") or "—"
+    Badge(label=f"{label} · {status_name}", variant="secondary")
+
+
+def build_comment_preview_ui(preview: dict[str, Any]) -> PrefabApp:
+    """Preview Card for ``add_order_comment``.
+
+    Shows which order the comment lands on (id + current status), the comment
+    body, and a public/private visibility badge — then the standard
+    Confirm/Cancel pair. Mirrors ``build_status_change_preview_ui`` so all
+    mutation previews share UX shape.
+    """
+    order_id = preview.get("order_id")
+    summary = preview.get("order_summary") or {}
+    comment = preview.get("comment") or ""
+    public = bool(preview.get("public"))
+
+    with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
+        with CardHeader(), Row(gap=2):
+            CardTitle(content=f"Preview: comment on order {order_id}")
+            Badge(label="PREVIEW", variant="secondary")
+
+        with CardContent(), Column(gap=3):
+            with Row(gap=2):
+                _summary_chip(summary)
+            Separator()
+            with Row(gap=2):
+                Muted(content="Comment:")
+                Text(content=comment)
+                Badge(
+                    label="public" if public else "private",
+                    variant="info" if public else "outline",
+                )
+
+        with CardFooter(), Row(gap=2):
+            Button(
+                label="Confirm comment",
+                variant="default",
+                on_click=SendMessage(
+                    f"Add comment to order {order_id} with confirm=true"
+                ),
+            )
+            Button(
+                label="Cancel",
+                variant="outline",
+                on_click=SendMessage("Cancel the comment"),
+            )
+    return app
+
+
+def build_due_date_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
+    """Preview Card for ``update_order_due_date``.
+
+    Shows current vs. proposed due_date (and due_date_to if set) side-by-side
+    so the agent can see the delta before confirming.
+    """
+    order_id = preview.get("order_id")
+    summary = preview.get("order_summary") or {}
+    current = preview.get("current_due_date") or "—"
+    current_to = preview.get("current_due_date_to")
+    new_due = preview.get("new_due_date") or "—"
+    new_to = preview.get("new_due_date_to")
+
+    current_label = f"{current} → {current_to}" if current_to else current
+    new_label = f"{new_due} → {new_to}" if new_to else new_due
+
+    with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
+        with CardHeader(), Row(gap=2):
+            CardTitle(content=f"Preview: due date for order {order_id}")
+            Badge(label="PREVIEW", variant="secondary")
+
+        with CardContent(), Column(gap=3):
+            _summary_chip(summary)
+            Separator()
+            with Row(gap=3):
+                with Column(gap=1):
+                    Muted(content="Current")
+                    Text(content=current_label)
+                Text(content="→")
+                with Column(gap=1):
+                    Muted(content="Proposed")
+                    Text(content=new_label)
+
+        with CardFooter(), Row(gap=2):
+            Button(
+                label="Confirm due date",
+                variant="default",
+                on_click=SendMessage(
+                    f"Update order {order_id} due date with confirm=true"
+                ),
+            )
+            Button(
+                label="Cancel",
+                variant="outline",
+                on_click=SendMessage("Cancel the due date change"),
+            )
+    return app
+
+
+def build_bulk_status_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
+    """Preview Card for ``bulk_update_order_status``.
+
+    Lists every order id about to be updated, the target status, and the
+    notification flags. Per-order context (current status) is intentionally
+    not fetched — that would be N round-trips today; once the ``id[]`` batch
+    fetch lands (issue #32) the UI can render a richer per-order table.
+    """
+    target_code = preview.get("target_status_code") or "—"
+    target_name = preview.get("target_status_name") or "—"
+    order_ids = preview.get("order_ids") or []
+    order_count = preview.get("order_count") or len(order_ids)
+    comment = preview.get("comment")
+    public = bool(preview.get("public"))
+    # Re-hydrate as the schema so its ``recipients_text`` is the single source
+    # of truth for both the UI and the markdown fallback rendered by orders.py.
+    from statuspro_mcp.tools.schemas import BulkStatusChangePreview as _BSP
+
+    recipients_text = _BSP.model_validate(preview).recipients_text()
+
+    with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
+        with CardHeader(), Row(gap=2):
+            CardTitle(content=f"Preview: bulk status change ({order_count} orders)")
+            Badge(label="PREVIEW", variant="secondary")
+
+        with CardContent(), Column(gap=3):
+            with Row(gap=2):
+                Muted(content="Target status:")
+                Badge(label=f"{target_name} · {target_code}", variant="info")
+            Separator()
+            Metric(label="Orders affected", value=str(order_count))
+            # Show the first ~10 ids inline; agents can ask for full list if needed.
+            ids_preview = ", ".join(str(i) for i in order_ids[:10])
+            if len(order_ids) > 10:
+                ids_preview += f", … (+{len(order_ids) - 10} more)"
+            Muted(content=f"IDs: {ids_preview}")
+
+            if comment:
+                Separator()
+                with Row(gap=2):
+                    Muted(content="Comment:")
+                    Text(content=comment)
+                    Badge(
+                        label="public" if public else "private",
+                        variant="info" if public else "outline",
+                    )
+
+            Separator()
+            Metric(label="Emails to", value=recipients_text)
+
+        with CardFooter(), Row(gap=2):
+            Button(
+                label=f"Confirm bulk update ({order_count})",
+                variant="default",
+                on_click=SendMessage(
+                    f"Bulk update {order_count} orders to status "
+                    f"{target_code} with confirm=true"
+                ),
+            )
+            Button(
+                label="Cancel",
+                variant="outline",
+                on_click=SendMessage("Cancel the bulk update"),
+            )
+    return app
+
+
 __all__ = [
+    "build_bulk_status_change_preview_ui",
+    "build_comment_preview_ui",
+    "build_due_date_change_preview_ui",
     "build_order_detail_ui",
     "build_orders_table_ui",
     "build_status_change_preview_ui",

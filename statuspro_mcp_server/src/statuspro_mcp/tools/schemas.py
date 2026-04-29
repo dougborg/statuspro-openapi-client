@@ -193,11 +193,18 @@ class StatusChangePreview(BaseModel):
 
 
 class StatusChangeResult(BaseModel):
-    """Execution result returned when ``update_order_status`` is called with
-    ``confirm=True``."""
+    """Execution result for ``update_order_status`` after the confirm step.
+
+    ``confirmed`` reflects whether the user actually accepted the elicitation:
+    ``True`` for the confirm-and-execute path, ``False`` when the user
+    declined or cancelled (in which case ``success`` and ``http_status`` will
+    also be falsy / zero). Declined results are still emitted as this type so
+    structured-content consumers can distinguish "confirmed but failed" from
+    "user declined".
+    """
 
     action: Literal["update_order_status"] = "update_order_status"
-    confirmed: Literal[True] = True
+    confirmed: bool = True
     order_id: int
     new_status_code: str
     success: bool
@@ -205,9 +212,130 @@ class StatusChangeResult(BaseModel):
     message: str | None = None
 
 
+class CommentResult(BaseModel):
+    """Execution result for ``add_order_comment``.
+
+    See ``StatusChangeResult`` for ``confirmed`` semantics — the same model is
+    returned for the confirm-and-execute path and the declined path, with
+    ``confirmed=False`` set on the latter.
+    """
+
+    action: Literal["add_order_comment"] = "add_order_comment"
+    confirmed: bool = True
+    order_id: int
+    success: bool
+    http_status: int
+    message: str | None = None
+
+
+class DueDateChangeResult(BaseModel):
+    """Execution result for ``update_order_due_date``.
+
+    See ``StatusChangeResult`` for ``confirmed`` semantics.
+    """
+
+    action: Literal["update_order_due_date"] = "update_order_due_date"
+    confirmed: bool = True
+    order_id: int
+    new_due_date: str
+    new_due_date_to: str | None = None
+    success: bool
+    http_status: int
+    message: str | None = None
+
+
+class BulkStatusChangeResult(BaseModel):
+    """Execution result for ``bulk_update_order_status``.
+
+    See ``StatusChangeResult`` for ``confirmed`` semantics.
+    """
+
+    action: Literal["bulk_update_order_status"] = "bulk_update_order_status"
+    confirmed: bool = True
+    order_count: int
+    target_status_code: str
+    success: bool
+    http_status: int
+    note: str | None = None
+    message: str | None = None
+
+
+class CommentPreview(BaseModel):
+    """Preview payload for ``add_order_comment`` with ``confirm=False``.
+
+    Includes the current ``order_summary`` so the preview UI can show
+    "you are about to comment on order #1188 (In Production)" rather than
+    just an opaque order id.
+    """
+
+    action: Literal["add_order_comment"] = "add_order_comment"
+    confirmed: Literal[False] = False
+    order_id: int
+    order_summary: OrderSummary
+    comment: str
+    public: bool
+
+
+class DueDateChangePreview(BaseModel):
+    """Preview payload for ``update_order_due_date`` with ``confirm=False``.
+
+    Surfaces the current vs. proposed due_date side-by-side via the order
+    summary plus the proposed new values.
+    """
+
+    action: Literal["update_order_due_date"] = "update_order_due_date"
+    confirmed: Literal[False] = False
+    order_id: int
+    order_summary: OrderSummary
+    current_due_date: str | None = None
+    current_due_date_to: str | None = None
+    new_due_date: str
+    new_due_date_to: str | None = None
+
+
+class BulkStatusChangePreview(BaseModel):
+    """Preview payload for ``bulk_update_order_status`` with ``confirm=False``.
+
+    Lists every order id that will be affected (capped at 50 by the API),
+    the target status code/name, and notification flags. We don't expand
+    each order_id to a full summary — that would be N round-trips today;
+    once the ``id[]`` batch fetch lands the UI can be enriched.
+    """
+
+    action: Literal["bulk_update_order_status"] = "bulk_update_order_status"
+    confirmed: Literal[False] = False
+    order_ids: list[int]
+    order_count: int
+    target_status_code: str
+    target_status_name: str | None = None
+    comment: str | None = None
+    public: bool
+    email_customer: bool
+    email_additional: bool
+
+    def recipients_text(self) -> str:
+        """Human-readable list of who will receive notification emails.
+
+        Mirrors ``StatusChangePreview.recipients_text`` so the UI builders
+        can share rendering logic.
+        """
+        recipients: list[str] = []
+        if self.email_customer:
+            recipients.append("customer")
+        if self.email_additional:
+            recipients.append("additional contacts")
+        return ", ".join(recipients) or "nobody"
+
+
 __all__ = [
+    "BulkStatusChangePreview",
+    "BulkStatusChangeResult",
+    "CommentPreview",
+    "CommentResult",
     "ConfirmationResult",
     "ConfirmationSchema",
+    "DueDateChangePreview",
+    "DueDateChangeResult",
     "HistoryEntry",
     "OrderDetail",
     "OrderHistoryPage",

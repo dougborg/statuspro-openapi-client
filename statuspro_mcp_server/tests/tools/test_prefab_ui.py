@@ -17,6 +17,9 @@ import json
 
 from prefab_ui.app import PrefabApp
 from statuspro_mcp.tools.prefab_ui import (
+    build_bulk_status_change_preview_ui,
+    build_comment_preview_ui,
+    build_due_date_change_preview_ui,
     build_order_detail_ui,
     build_orders_table_ui,
     build_status_change_preview_ui,
@@ -165,3 +168,122 @@ def test_build_status_change_preview_ui_invalid_transition_hides_confirm():
     # Viable codes surface in the warning text so the agent can self-correct.
     assert "st000003" in serialized
     assert "st000004" in serialized
+
+
+def test_build_comment_preview_ui_renders_with_confirm_action():
+    """Comment preview shows the order context, the comment body + visibility,
+    and a Confirm button that fires the confirm=true follow-up.
+    """
+    app = build_comment_preview_ui(
+        {
+            "order_id": 1188,
+            "order_summary": {
+                "id": 1188,
+                "name": "#1188",
+                "order_number": "1188",
+                "status_name": "In Production",
+            },
+            "comment": "Customer asked about ETA.",
+            "public": False,
+        },
+    )
+    serialized = json.dumps(_envelope(app))
+    assert "confirm=true" in serialized
+    assert "Customer asked about ETA." in serialized
+    assert "private" in serialized  # visibility badge
+    # The order context surfaces so the agent isn't commenting blind.
+    assert "1188" in serialized
+
+
+def test_build_comment_preview_ui_public_visibility_renders():
+    """Public flag flips the badge variant and label."""
+    app = build_comment_preview_ui(
+        {
+            "order_id": 1,
+            "order_summary": {
+                "id": 1,
+                "name": "#1",
+                "order_number": "1",
+                "status_name": None,
+            },
+            "comment": "Shipped today.",
+            "public": True,
+        },
+    )
+    serialized = json.dumps(_envelope(app))
+    assert "public" in serialized
+
+
+def test_build_due_date_change_preview_ui_shows_before_after():
+    """Due date preview side-by-sides current vs. proposed so the delta is
+    obvious before confirmation. Without this test, a regression that
+    accidentally hides the current value passes silently.
+    """
+    app = build_due_date_change_preview_ui(
+        {
+            "order_id": 1188,
+            "order_summary": {
+                "id": 1188,
+                "name": "#1188",
+                "order_number": "1188",
+                "status_name": "In Production",
+            },
+            "current_due_date": "2026-03-15",
+            "current_due_date_to": None,
+            "new_due_date": "2026-03-22",
+            "new_due_date_to": "2026-03-24",
+        },
+    )
+    serialized = json.dumps(_envelope(app))
+    assert "2026-03-15" in serialized  # current
+    assert "2026-03-22" in serialized  # new
+    assert "2026-03-24" in serialized  # new range end
+    assert "confirm=true" in serialized
+
+
+def test_build_bulk_status_change_preview_ui_shows_count_and_target():
+    """Bulk preview must surface the affected count + target status code so
+    the agent can sanity-check before confirming a 50-order mutation.
+    """
+    app = build_bulk_status_change_preview_ui(
+        {
+            "order_ids": list(range(1, 26)),  # 25 ids
+            "order_count": 25,
+            "target_status_code": "st000003",
+            "target_status_name": "Shipped",
+            "comment": None,
+            "public": False,
+            "email_customer": True,
+            "email_additional": False,
+        },
+    )
+    serialized = json.dumps(_envelope(app))
+    assert "25" in serialized  # order count
+    assert "st000003" in serialized  # target code
+    assert "Shipped" in serialized  # target name (resolved from catalog)
+    assert "confirm=true" in serialized
+    # Recipients line should include "customer" but not "additional contacts"
+    # since email_additional=False.
+    assert "customer" in serialized
+
+
+def test_build_bulk_status_change_preview_ui_truncates_long_id_list():
+    """When more than 10 ids are bulk-updated, the UI must truncate the
+    inline ids preview with a "+N more" hint rather than dumping all 50.
+    """
+    app = build_bulk_status_change_preview_ui(
+        {
+            "order_ids": list(range(1, 51)),  # 50 ids — the API max
+            "order_count": 50,
+            "target_status_code": "st000003",
+            "target_status_name": "Shipped",
+            "comment": None,
+            "public": False,
+            "email_customer": True,
+            "email_additional": True,
+        },
+    )
+    serialized = json.dumps(_envelope(app))
+    # First 10 ids visible (1, 2, ..., 10); last id (50) hidden behind "+40 more"
+    assert "+40 more" in serialized
+    assert "50" in serialized  # the count, not the id
