@@ -45,4 +45,5 @@ ignore: |
   *.egg-info/
   statuspro_public_api_client/generated/
   docs/statuspro-openapi.yaml
+  docs/statuspro-openapi.upstream.yaml
   pnpm-lock.yaml
