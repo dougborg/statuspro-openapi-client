@@ -11,9 +11,8 @@ _HELP_MARKDOWN = """\
 
 | Tool | Endpoint | Purpose |
 | ---- | -------- | ------- |
-| `list_orders` | `GET /orders` | Paginated list with filters (search, status, tags, due-date range). Auto-paginates. |
+| `list_orders` | `GET /orders` | Paginated list with filters (search, status, tags, due-date range). Auto-paginates. `search` matches order number, name, or customer fields — use it to find an order from just an order number. |
 | `get_order` | `GET /orders/{id}` | Full detail for one order, including history. |
-| `lookup_order` | `GET /orders/lookup` | Look up an order by `number` + customer `email`. |
 | `get_viable_statuses` | `GET /orders/{id}/viable-statuses` | Valid status transitions for the order's current state. |
 | `update_order_status` | `POST /orders/{id}/status` | Change status. Two-step confirm. |
 | `add_order_comment` | `POST /orders/{id}/comment` | Add a history comment. Two-step confirm. 5/min. |

@@ -189,7 +189,7 @@ StatusPro MCP Server — Read and update order status via the StatusPro API.
 ## Tool Selection Guide
 
 **Finding orders:**
-  list_orders (filter by status, date range, tags) | lookup_order (by order number + customer email) | get_order (by id)
+  list_orders (filter by status, date range, tags; `search` matches order number, name, or customer fields) | get_order (by id)
 
 **Changing status:**
   get_viable_statuses → update_order_status
@@ -223,7 +223,6 @@ The client automatically retries with exponential backoff on 429 responses.
 _READ_ONLY_TOOLS = [
     "list_orders",
     "get_order",
-    "lookup_order",
     "list_statuses",
     "get_viable_statuses",
 ]
