@@ -11,7 +11,8 @@ a Prefab UI for MCP-Apps clients (Claude Desktop) via ``make_tool_result`` and
 The ``GET /orders/lookup`` endpoint is intentionally not exposed: it is the
 public, customer-verification path (requires ``number`` + ``email``) and adds
 nothing for an authenticated MCP caller, who can already use ``list_orders``
-(``search`` matches order number) or ``get_order`` (by id).
+(``search`` partially matches order name, order number, customer name, or
+customer email) or ``get_order`` (by id).
 """
 
 from __future__ import annotations
@@ -107,7 +108,15 @@ def _to_detail(
     Callers receive ``history_truncated`` + ``history_total_count`` to
     detect truncation and page through older entries via
     ``get_order_history``.
+
+    ``history_limit`` must be >= 1. The MCP tool layer enforces this via
+    ``Field(ge=1)``, but the helper guards explicitly: Python's
+    ``items[-0:]`` returns the full list (since ``-0 == 0``), which would
+    silently contradict ``history_truncated=True`` when called with 0.
     """
+    if history_limit < 1:
+        msg = f"history_limit must be >= 1, got {history_limit}"
+        raise ValueError(msg)
     summary = _to_summary(order)
     history_items = getattr(order, "history", None) or []
     total = len(history_items)
@@ -120,6 +129,32 @@ def _to_detail(
         history_truncated=truncated,
         history_total_count=total,
     )
+
+
+def _paginate_history(
+    items: list[Any], *, page: int, per_page: int
+) -> tuple[list[Any], int, int]:
+    """Slice the in-memory history array into one page.
+
+    Returns ``(page_items, total, total_pages)``. Extracted so the
+    pagination contract is testable without spinning up FastMCP to
+    invoke the registered ``get_order_history`` tool.
+
+    ``page`` and ``per_page`` are assumed >= 1 (enforced at the tool
+    layer via ``Field(ge=1)``); guard explicitly so a misuse raises
+    rather than producing nonsensical slices.
+    """
+    if page < 1:
+        msg = f"page must be >= 1, got {page}"
+        raise ValueError(msg)
+    if per_page < 1:
+        msg = f"per_page must be >= 1, got {per_page}"
+        raise ValueError(msg)
+    total = len(items)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    start = (page - 1) * per_page
+    end = start + per_page
+    return items[start:end], total, total_pages
 
 
 async def _status_color_catalog(services: Any) -> dict[str, str | None]:
@@ -339,14 +374,13 @@ def register_tools(mcp: FastMCP) -> None:
     ) -> OrderHistoryPage:
         services = get_services(context)
         # No server-side history pagination today — fetch the full order and
-        # slice client-side. Cheap relative to LLM context cost.
+        # slice client-side via _paginate_history. Cheap relative to LLM
+        # context cost; the helper makes the slicing math testable.
         order = await services.client.orders.get(order_id)
         all_items = getattr(order, "history", None) or []
-        total = len(all_items)
-        total_pages = max(1, (total + per_page - 1) // per_page)
-        start = (page - 1) * per_page
-        end = start + per_page
-        page_items = all_items[start:end]
+        page_items, total, total_pages = _paginate_history(
+            all_items, page=page, per_page=per_page
+        )
         return OrderHistoryPage(
             order_id=order_id,
             page=page,
