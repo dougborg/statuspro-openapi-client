@@ -171,7 +171,10 @@ class StatusChangePreview(BaseModel):
         default=True,
         description=(
             "True when new_status_code is a viable transition from the "
-            "current state. False blocks confirmation."
+            "current state (per GET /orders/{id}/viable-statuses). When "
+            "False, the Prefab UI hides the Confirm button and surfaces "
+            "viable_status_codes; the agent can still call the tool with "
+            "confirm=True directly, in which case the API will likely 422."
         ),
     )
     viable_status_codes: list[str] = Field(
