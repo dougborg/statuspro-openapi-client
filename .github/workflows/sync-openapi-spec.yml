@@ -25,6 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Always sync against main, regardless of which ref triggered the
+          # workflow. Manual `workflow_dispatch` from a feature branch
+          # would otherwise base the diff (and the PR) on that branch.
+          ref: main
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -55,6 +60,7 @@ jobs:
         if: steps.detect.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
+          base: main
           branch: chore/upstream-openapi-spec-sync
           delete-branch: true
           commit-message: |
@@ -74,7 +80,7 @@ jobs:
             already added?". After merging this PR, manually port any
             relevant deltas into the local fork in a follow-up.
 
-            See [`scripts/sync_openapi_spec.py`](../blob/main/scripts/sync_openapi_spec.py)
+            See [`scripts/sync_openapi_spec.py`](scripts/sync_openapi_spec.py)
             for the workflow.
           labels: |
             area/spec
