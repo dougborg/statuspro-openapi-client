@@ -27,6 +27,7 @@ def _get_kwargs(
     exclude_cancelled: bool | Unset = UNSET,
     due_date_from: datetime.date | Unset = UNSET,
     due_date_to: datetime.date | Unset = UNSET,
+    page: int | Unset = UNSET,
     per_page: int | Unset = 15,
 ) -> dict[str, Any]:
 
@@ -77,6 +78,8 @@ def _get_kwargs(
     if not isinstance(due_date_to, Unset):
         json_due_date_to = due_date_to.isoformat()
     params["due_date_to"] = json_due_date_to
+
+    params["page"] = page
 
     params["per_page"] = per_page
 
@@ -148,6 +151,7 @@ def sync_detailed(
     exclude_cancelled: bool | Unset = UNSET,
     due_date_from: datetime.date | Unset = UNSET,
     due_date_to: datetime.date | Unset = UNSET,
+    page: int | Unset = UNSET,
     per_page: int | Unset = 15,
 ) -> Response[ErrorResponse | OrderListResponse | ValidationErrorResponse]:
     """Retrieve a paginated list of orders
@@ -164,6 +168,7 @@ def sync_detailed(
         exclude_cancelled (bool | Unset):
         due_date_from (datetime.date | Unset):
         due_date_to (datetime.date | Unset):
+        page (int | Unset):
         per_page (int | Unset):  Default: 15.
 
 
@@ -186,6 +191,7 @@ def sync_detailed(
         exclude_cancelled=exclude_cancelled,
         due_date_from=due_date_from,
         due_date_to=due_date_to,
+        page=page,
         per_page=per_page,
     )
 
@@ -208,6 +214,7 @@ def sync(
     exclude_cancelled: bool | Unset = UNSET,
     due_date_from: datetime.date | Unset = UNSET,
     due_date_to: datetime.date | Unset = UNSET,
+    page: int | Unset = UNSET,
     per_page: int | Unset = 15,
 ) -> ErrorResponse | OrderListResponse | ValidationErrorResponse | None:
     """Retrieve a paginated list of orders
@@ -224,6 +231,7 @@ def sync(
         exclude_cancelled (bool | Unset):
         due_date_from (datetime.date | Unset):
         due_date_to (datetime.date | Unset):
+        page (int | Unset):
         per_page (int | Unset):  Default: 15.
 
 
@@ -247,6 +255,7 @@ def sync(
         exclude_cancelled=exclude_cancelled,
         due_date_from=due_date_from,
         due_date_to=due_date_to,
+        page=page,
         per_page=per_page,
     ).parsed
 
@@ -263,6 +272,7 @@ async def asyncio_detailed(
     exclude_cancelled: bool | Unset = UNSET,
     due_date_from: datetime.date | Unset = UNSET,
     due_date_to: datetime.date | Unset = UNSET,
+    page: int | Unset = UNSET,
     per_page: int | Unset = 15,
 ) -> Response[ErrorResponse | OrderListResponse | ValidationErrorResponse]:
     """Retrieve a paginated list of orders
@@ -279,6 +289,7 @@ async def asyncio_detailed(
         exclude_cancelled (bool | Unset):
         due_date_from (datetime.date | Unset):
         due_date_to (datetime.date | Unset):
+        page (int | Unset):
         per_page (int | Unset):  Default: 15.
 
 
@@ -301,6 +312,7 @@ async def asyncio_detailed(
         exclude_cancelled=exclude_cancelled,
         due_date_from=due_date_from,
         due_date_to=due_date_to,
+        page=page,
         per_page=per_page,
     )
 
@@ -321,6 +333,7 @@ async def asyncio(
     exclude_cancelled: bool | Unset = UNSET,
     due_date_from: datetime.date | Unset = UNSET,
     due_date_to: datetime.date | Unset = UNSET,
+    page: int | Unset = UNSET,
     per_page: int | Unset = 15,
 ) -> ErrorResponse | OrderListResponse | ValidationErrorResponse | None:
     """Retrieve a paginated list of orders
@@ -337,6 +350,7 @@ async def asyncio(
         exclude_cancelled (bool | Unset):
         due_date_from (datetime.date | Unset):
         due_date_to (datetime.date | Unset):
+        page (int | Unset):
         per_page (int | Unset):  Default: 15.
 
 
@@ -361,6 +375,7 @@ async def asyncio(
             exclude_cancelled=exclude_cancelled,
             due_date_from=due_date_from,
             due_date_to=due_date_to,
+            page=page,
             per_page=per_page,
         )
     ).parsed

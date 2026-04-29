@@ -461,6 +461,80 @@ class TestPaginationTransport:
         assert combined_data["pagination"]["collected_pages"] == 3
         assert combined_data["pagination"]["auto_paginated"] is True
 
+    @pytest.mark.asyncio
+    async def test_auto_pagination_emits_statuspro_meta_shape(
+        self, transport, mock_wrapped_transport
+    ):
+        """Combined paginated response must include a `meta` block parseable by
+        OrderListResponse.from_dict (StatusPro's wrapped list schema requires it).
+        """
+        from statuspro_public_api_client.models.order_list_response import (
+            OrderListResponse,
+        )
+
+        page1 = {
+            "data": [
+                {"id": 1, "name": "#1", "order_number": "1"},
+                {"id": 2, "name": "#2", "order_number": "2"},
+            ],
+            "meta": {
+                "current_page": 1,
+                "last_page": 2,
+                "per_page": 2,
+                "total": 3,
+                "from": 1,
+                "to": 2,
+            },
+        }
+        page2 = {
+            "data": [{"id": 3, "name": "#3", "order_number": "3"}],
+            "meta": {
+                "current_page": 2,
+                "last_page": 2,
+                "per_page": 2,
+                "total": 3,
+                "from": 3,
+                "to": 3,
+            },
+        }
+
+        def create_response(data):
+            mock_resp = MagicMock(spec=httpx.Response)
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = data
+            mock_resp.headers = {}
+
+            async def mock_aread():
+                pass
+
+            mock_resp.aread = mock_aread
+            return mock_resp
+
+        mock_wrapped_transport.handle_async_request.side_effect = [
+            create_response(page1),
+            create_response(page2),
+        ]
+
+        request = httpx.Request(method="GET", url="https://api.example.com/orders")
+        response = await transport.handle_async_request(request)
+
+        combined = json.loads(response.content)
+        # All items concatenated
+        assert [item["id"] for item in combined["data"]] == [1, 2, 3]
+        # StatusPro `meta` block must be present and well-formed
+        assert "meta" in combined, (
+            "Combined paginated response must emit a `meta` block — "
+            "OrderListResponse.from_dict() requires it."
+        )
+        assert combined["meta"]["current_page"] == 1
+        assert combined["meta"]["last_page"] == 1
+        assert combined["meta"]["per_page"] == 3
+        assert combined["meta"]["total"] == 3
+        # And the response must round-trip through the generated parser
+        parsed = OrderListResponse.from_dict(combined)
+        assert len(parsed.data) == 3
+        assert parsed.meta.total == 3
+
 
 @pytest.mark.unit
 class TestStatusProClient:

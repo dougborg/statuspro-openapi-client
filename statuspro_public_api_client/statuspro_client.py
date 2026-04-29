@@ -538,13 +538,29 @@ class PaginationTransport(AsyncHTTPTransport):
             # Original endpoint returned a raw JSON list - preserve that format
             combined_content = json.dumps(all_data).encode()
         else:
-            combined_data: dict[str, Any] = {"data": all_data}
-            # Add pagination metadata
+            # StatusPro wrapped list shape: {"data": [...], "meta": {...}}.
+            # Generated response models (e.g. OrderListResponse.from_dict)
+            # require `meta`, so synthesize one describing the combined result
+            # as a single page containing every collected item.
+            total_items = len(all_data)
+            combined_data: dict[str, Any] = {
+                "data": all_data,
+                "meta": {
+                    "current_page": 1,
+                    "last_page": 1,
+                    "per_page": total_items,
+                    "total": total_items,
+                    "from": 1 if total_items else None,
+                    "to": total_items if total_items else None,
+                },
+            }
+            # Telemetry about the underlying pagination walk; lands in
+            # additional_properties on the parsed model.
             if total_pages:
                 combined_data["pagination"] = {
                     "total_pages": total_pages,
                     "collected_pages": page_num,
-                    "total_items": len(all_data),
+                    "total_items": total_items,
                     "auto_paginated": True,
                 }
             combined_content = json.dumps(combined_data).encode()
