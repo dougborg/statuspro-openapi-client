@@ -59,7 +59,21 @@ STATUSPRO_BASE_URL=https://app.orderstatuspro.com/api/v1  # optional override
 
 ### 4. Use with Claude Desktop (stdio)
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+**Recommended: install the `.mcpb` bundle** — Claude Desktop has built-in support for
+[MCP Bundles](https://github.com/anthropics/mcpb), which install local MCP servers in
+one click and prompt for the API key via UI (no JSON editing).
+
+1. Download `statuspro-mcp-server-<version>.mcpb` from the
+   [latest GitHub release](https://github.com/dougborg/statuspro-openapi-client/releases?q=mcp-v).
+1. Drag the `.mcpb` file into Claude Desktop, or open it from the Finder.
+1. Confirm install in the dialog. Claude Desktop prompts for your StatusPro API key
+   (stored securely; never written to a config file by hand).
+
+The bundle ships the server source plus a manifest that declares the runtime
+requirements; UV handles dep resolution on first launch.
+
+**Manual `uvx` install (fallback)** — if you'd rather edit
+`~/Library/Application Support/Claude/claude_desktop_config.json` directly:
 
 ```json
 {
@@ -75,7 +89,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop and the StatusPro tools will appear.
+Either path: restart Claude Desktop and the StatusPro tools will appear.
 
 ### 5. Use with Claude.ai (streamable-http)
 
