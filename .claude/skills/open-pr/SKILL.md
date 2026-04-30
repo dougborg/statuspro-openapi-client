@@ -24,6 +24,7 @@ Ship a feature branch end-to-end: validate, self-review, push, create PR, wait f
 - **Use polling scripts for CI and review state** — never check review comments with `gh pr view --json`. That endpoint only returns top-level PR comments, not inline review comments attached to code lines. Use `poll-review.sh` which calls the correct API (`gh api repos/.../pulls/.../comments`).
 - **Never merge with unaddressed review comments** — every comment gets fixed, deferred with a tracked issue, or discussed. CI green does not override review feedback.
 - **No `--no-verify`** — never bypass commit hooks, type checkers, or linters. If a check fails, fix the cause.
+- **Push with the safe refspec, never the bare branch name** — use `git push -u origin HEAD:refs/heads/<branch-name>`, **not** `git push -u origin <branch-name>`. The bare form resolves the destination via the local branch's *upstream*. When a feature branch is created with `git checkout -b <name> origin/main`, its upstream is `origin/main` — and `git push -u origin <name>` then pushes straight to **`main`**, not to a new remote `<name>` ref. The pre-push guard at `scripts/pre-push-guard.sh` exists for this reason but does not fire from worktrees that haven't installed the repo hooks via `uv run pre-commit install`. Same rule applies to subsequent pushes (`git push --force-with-lease` after a rebase).
 
 ## STANDARD PATH
 
@@ -140,10 +141,11 @@ Note: This phase is optional and relies on manual review or the `/simplify` skil
 
 ## Phase 5: Push and create PR
 
-1. Push:
+1. Push with the explicit-destination refspec (see CRITICAL — bare-branch form
+   can push to `main` when the local branch's upstream is `origin/main`):
 
    ```bash
-   git push -u origin <branch>
+   git push -u origin HEAD:refs/heads/<branch>
    ```
 
 2. Create PR with HEREDOC body:
