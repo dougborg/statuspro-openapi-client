@@ -57,17 +57,19 @@ def coerce_str_list_input(value: Any) -> Any:
         return []
 
     # JSON-stringified array: '[...]' — trust it if it parses to a list.
+    # ``json.JSONDecodeError`` is a subclass of ``ValueError``; catching the
+    # parent covers both.
     if s.startswith("["):
         try:
             parsed = json.loads(s)
-        except (json.JSONDecodeError, ValueError):
+        except ValueError:
             pass
         else:
             if isinstance(parsed, list):
                 return parsed
 
     # Fall back to CSV: split, strip, drop empty fragments.
-    return [item.strip() for item in s.split(",") if item.strip()]
+    return [stripped for item in s.split(",") if (stripped := item.strip())]
 
 
 # Type aliases — collapse the per-field
