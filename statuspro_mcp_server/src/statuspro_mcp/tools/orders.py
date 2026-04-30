@@ -38,6 +38,11 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from statuspro_mcp.services import get_services
+from statuspro_mcp.tools.list_coercion import (
+    CoercedIntList,
+    CoercedStrList,
+    CoercedStrListOpt,
+)
 from statuspro_mcp.tools.prefab_ui import (
     build_bulk_status_change_preview_ui,
     build_comment_preview_ui,
@@ -377,13 +382,19 @@ def register_tools(mcp: FastMCP) -> None:
             str | None, Field(description="Filter to one status code")
         ] = None,
         tags: Annotated[
-            list[str] | None, Field(description="Must match all tags")
+            CoercedStrListOpt, Field(description="Must match all tags")
         ] = None,
         tags_any: Annotated[
-            list[str] | None, Field(description="Match any of these tags")
+            CoercedStrListOpt, Field(description="Match any of these tags")
         ] = None,
-        financial_status: list[str] | None = None,
-        fulfillment_status: list[str] | None = None,
+        financial_status: Annotated[
+            CoercedStrListOpt,
+            Field(description="Filter by financial status (e.g. paid, pending)"),
+        ] = None,
+        fulfillment_status: Annotated[
+            CoercedStrListOpt,
+            Field(description="Filter by fulfillment status (e.g. fulfilled, partial)"),
+        ] = None,
         exclude_cancelled: Annotated[
             bool | None, Field(description="Exclude cancelled orders")
         ] = None,
@@ -584,7 +595,7 @@ def register_tools(mcp: FastMCP) -> None:
     async def get_orders_batch(
         context: Context,
         order_ids: Annotated[
-            list[int],
+            CoercedIntList,
             Field(
                 description="Order ids to fetch (1-50 items).",
                 min_length=1,
@@ -635,7 +646,7 @@ def register_tools(mcp: FastMCP) -> None:
     async def lookup_orders_batch(
         context: Context,
         order_numbers: Annotated[
-            list[str],
+            CoercedStrList,
             Field(
                 description=(
                     "Order numbers to resolve (1-50 items). Both '20486' "
@@ -1029,7 +1040,7 @@ def register_tools(mcp: FastMCP) -> None:
     async def bulk_update_order_status(
         context: Context,
         order_ids: Annotated[
-            list[int],
+            CoercedIntList,
             Field(description="Order ids (1-50 items)", min_length=1, max_length=50),
         ],
         status_code: str,
