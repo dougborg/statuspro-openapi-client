@@ -24,6 +24,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+from prefab_ui.actions import ShowToast
 from prefab_ui.actions.mcp import CallTool, SendMessage
 from prefab_ui.app import PrefabApp
 from prefab_ui.components import (
@@ -377,7 +378,7 @@ def build_status_change_preview_ui(
             Button(
                 label="Cancel",
                 variant="outline",
-                on_click=SendMessage("Cancel the status change"),
+                on_click=ShowToast(message="Status change cancelled", variant="info"),
             )
     return app
 
@@ -436,7 +437,7 @@ def build_comment_preview_ui(preview: dict[str, Any]) -> PrefabApp:
             Button(
                 label="Cancel",
                 variant="outline",
-                on_click=SendMessage("Cancel the comment"),
+                on_click=ShowToast(message="Comment cancelled", variant="info"),
             )
     return app
 
@@ -491,7 +492,7 @@ def build_due_date_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
             Button(
                 label="Cancel",
                 variant="outline",
-                on_click=SendMessage("Cancel the due date change"),
+                on_click=ShowToast(message="Due date change cancelled", variant="info"),
             )
     return app
 
@@ -566,7 +567,7 @@ def build_bulk_status_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
             Button(
                 label="Cancel",
                 variant="outline",
-                on_click=SendMessage("Cancel the bulk update"),
+                on_click=ShowToast(message="Bulk update cancelled", variant="info"),
             )
     return app
 

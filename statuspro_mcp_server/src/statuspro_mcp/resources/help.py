@@ -47,6 +47,20 @@ update_order_status(
 update_order_status(…, confirm=True)  # apply
 ```
 
+## Input handling
+
+List-typed parameters (`tags`, `tags_any`, `financial_status`,
+`fulfillment_status`, `order_ids`, `order_numbers`) accept three input
+shapes — pass whichever is most natural for the call:
+
+- A real list: `["20486", "20487"]`
+- A JSON-stringified array: `'["20486", "20487"]'`
+- A comma-separated string: `"20486,20487"`
+
+The CSV and JSON-string forms are normalized to a list before validation.
+Empty / whitespace-only strings yield `[]`. Anything else (e.g. a bare
+integer for a `list[int]` field) raises a normal pydantic type error.
+
 ## Rate limits
 
 StatusPro documents rate limits per-endpoint in its OpenAPI description (not

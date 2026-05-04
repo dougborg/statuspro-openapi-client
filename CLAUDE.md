@@ -6,9 +6,14 @@ Guidance for Claude Code working with this repository.
 
 ```bash
 uv sync --all-extras         # Install dependencies
-uv run pre-commit install    # Setup hooks
+uv run pre-commit install    # Setup hooks (incl. pre-push guard)
 cp .env.example .env         # Add STATUSPRO_API_KEY
 ```
+
+> **Worktree note**: pre-commit hooks aren't shared across git worktrees. Fresh
+> worktrees only have whatever hooks were installed at clone time — re-run
+> `uv run pre-commit install` after creating a new worktree, otherwise the pre-push
+> guard won't fire.
 
 ## Essential Commands
 
@@ -92,6 +97,13 @@ Common mistakes to avoid:
 - **None-to-UNSET conversion** — When building attrs API request models from optional
   fields, use `to_unset(value)` from `statuspro_public_api_client.domain.converters`
   instead of `value if value is not None else UNSET`.
+- **Push-refspec trap** — `git checkout -b <name> origin/main` sets the new branch's
+  upstream to `origin/main`. A subsequent `git push -u origin <name>` then resolves to
+  the tracked upstream and pushes straight to **`main`**, bypassing PR review. Always
+  use the explicit-destination form: `git push -u origin HEAD:refs/heads/<name>`. The
+  pre-push guard at `scripts/pre-push-guard.sh` catches this mistake — but only fires if
+  `pre-commit install` has run in the current worktree (hooks aren't shared across
+  worktrees). Bypassing the guard with `--no-verify` is forbidden by project policy.
 
 ## Using the LSP tool
 
