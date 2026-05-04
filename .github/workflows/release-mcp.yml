@@ -65,3 +65,54 @@ jobs:
         with:
           packages-dir: dist/
           attestations: true
+
+  build-mcpb:
+    name: Build MCPB bundle
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      # ``scripts/build_mcpb.py`` is stdlib-only and shells out to the ``mcpb``
+      # CLI — no project deps are needed for this job. Use setup-python
+      # instead of setup-uv so we don't pull in a project venv resolution we
+      # don't use.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Node.js (for mcpb CLI)
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+
+      - name: Install mcpb CLI
+        run: npm install -g @anthropic-ai/mcpb
+
+      - name: Build .mcpb bundle
+        id: build
+        run: |
+          artifact=$(python scripts/build_mcpb.py | tail -n 1)
+          echo "artifact=${artifact}" >> "$GITHUB_OUTPUT"
+          ls -la "${artifact}"
+
+      - name: Upload .mcpb artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: mcpb
+          path: ${{ steps.build.outputs.artifact }}
+
+      - name: Attach .mcpb to GitHub release
+        # The release workflow triggers on ``mcp-v*`` tags; semantic-release
+        # creates the GitHub release in an earlier job. Upload the .mcpb as
+        # an additional asset on the release matching the tag that
+        # triggered this run.
+        if: startsWith(github.ref, 'refs/tags/mcp-v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release upload "$tag" "${{ steps.build.outputs.artifact }}" --clobber

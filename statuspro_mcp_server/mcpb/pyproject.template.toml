@@ -1,0 +1,34 @@
+# Bundle pyproject.toml for the .mcpb artifact — do NOT edit this directly to
+# add deps. The build script (scripts/build_mcpb.py) substitutes ``__VERSION__``
+# from the package's own pyproject.toml at pack time. Production runtime deps
+# are mirrored from ``statuspro_mcp_server/pyproject.toml`` and must stay in
+# sync; the build script verifies this and fails loudly on drift.
+#
+# This file deliberately omits the ``[tool.uv.sources]`` workspace ref — the
+# bundle resolves ``statuspro-openapi-client`` from PyPI, since the workspace
+# doesn't exist on the user's machine.
+[project]
+name = "statuspro-mcp-server"
+version = "__VERSION__"
+description = "MCP server for the StatusPro API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastmcp>=3.0",
+    "statuspro-openapi-client>=0.1.0",
+    "prefab-ui>=0.19,<0.20",
+    "pydantic>=2.12.0",
+    "python-dotenv>=1.0.0",
+    "structlog>=25.5.0",
+    "aiosqlite>=0.20.0",
+    "platformdirs>=4.0.0",
+]
+
+[project.scripts]
+statuspro-mcp-server = "statuspro_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/statuspro_mcp"]
