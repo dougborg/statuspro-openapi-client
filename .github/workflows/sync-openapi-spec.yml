@@ -58,7 +58,7 @@ jobs:
 
       - name: Open PR if upstream changed
         if: steps.detect.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           base: main
           branch: chore/upstream-openapi-spec-sync
