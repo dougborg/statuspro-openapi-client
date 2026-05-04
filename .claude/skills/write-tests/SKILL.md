@@ -52,6 +52,7 @@ Core coverage must stay ≥ 87%.
 - [Async test] — must have `@pytest.mark.asyncio`. Don't forget the marker even when the test looks synchronous from inside.
 - [HTTP mocking] — use `httpx.MockTransport` with shared fixtures from `conftest.py`. Don't reinvent mocking per test module.
 - [Tabular cases] — use `@pytest.mark.parametrize` instead of duplicating bodies.
+- [Asserting on nested envelopes] — for tool results, Prefab payloads, response wrappers, and other nested-dict structures, write a small walker that extracts the specific node you care about (e.g., `_find_tool_calls(envelope) → list[dict]`) and assert on the extracted value. Avoid `repr(envelope)` substring or `"thing" in str(envelope)` checks — they pass via unrelated fields that happen to share keywords (e.g., a preview's `action` field can satisfy a substring check meant to verify a button's tool target). This bit us twice in PR #50/#52 review.
 - [Test reveals undocumented API behavior] — update CLAUDE.md "Known Pitfalls" so the next session doesn't rediscover it.
 
 ## RELATED
