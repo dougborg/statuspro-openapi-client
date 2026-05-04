@@ -1,0 +1,18 @@
+# Files excluded from the .mcpb archive when ``mcpb pack`` runs against the
+# build/mcpb/ staging directory. The CLI already excludes a default set
+# (.git, node_modules, .DS_Store, .vscode, etc.); this list adds project-
+# specific noise.
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+*.egg-info/
+build/
+dist/
+tests/

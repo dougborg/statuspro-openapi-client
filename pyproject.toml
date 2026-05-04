@@ -486,6 +486,15 @@ validate-openapi = "openapi-spec-validator docs/statuspro-openapi.yaml"
 validate-openapi-redocly = "npx @redocly/cli lint docs/statuspro-openapi.yaml"
 
 # -----------------------------------------------------------------------------
+# MCP Bundle (.mcpb) Build
+# -----------------------------------------------------------------------------
+# Produces ``dist/statuspro-mcp-server-<version>.mcpb`` for one-click install
+# in Claude Desktop. Requires the ``mcpb`` CLI on PATH:
+#   npm install -g @anthropic-ai/mcpb
+# CI installs it on demand; locally, install once with the command above.
+build-mcpb = "python scripts/build_mcpb.py"
+
+# -----------------------------------------------------------------------------
 # Documentation Tasks
 # -----------------------------------------------------------------------------
 docs-build = "mkdocs build"

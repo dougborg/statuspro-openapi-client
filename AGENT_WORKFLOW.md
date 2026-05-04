@@ -545,6 +545,27 @@ gh pr checks
 # Should show all checks passing
 ```
 
+#### Wait for Copilot Review
+
+GitHub Copilot's automated review typically lands 2–5 minutes after a PR opens. **Do not
+merge before it lands** — Copilot regularly catches type-narrowing gaps, weak
+assertions, and edge cases that human review and CI miss. Merging early bypasses real
+feedback.
+
+```bash
+# Check whether Copilot has reviewed
+gh pr view <pr-number> --json reviews --jq '.reviews[] | select(.author.login == "copilot-pull-request-reviewer") | .state'
+```
+
+If Copilot has commented:
+
+```bash
+/review-pr <pr-number>   # Address each comment, push fixes, reply
+```
+
+Only merge once Copilot's findings are addressed (fixed in-branch, deferred with a
+tracked issue, or explicitly disagreed with in a reply).
+
 #### Merge
 
 ```bash
