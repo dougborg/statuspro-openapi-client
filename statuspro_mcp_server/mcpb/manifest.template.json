@@ -1,0 +1,54 @@
+{
+  "manifest_version": "0.4",
+  "name": "statuspro-mcp-server",
+  "display_name": "StatusPro",
+  "version": "__VERSION__",
+  "description": "MCP server for the StatusPro order-status API — list, search, batch-fetch, and update orders from Claude Desktop.",
+  "long_description": "Exposes the StatusPro public API (orders + statuses) as MCP tools. Includes order search and lookup, batch fetch by id or order number, two-step confirmation flows for status changes / comments / due-date updates / bulk operations, and a status-catalog resource. Transport layer handles retries, rate limits, and auto-pagination.",
+  "author": {
+    "name": "Doug Borg",
+    "email": "dougborg@dougborg.org",
+    "url": "https://github.com/dougborg"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dougborg/statuspro-openapi-client.git"
+  },
+  "homepage": "https://github.com/dougborg/statuspro-openapi-client",
+  "documentation": "https://dougborg.github.io/statuspro-openapi-client/",
+  "support": "https://github.com/dougborg/statuspro-openapi-client/issues",
+  "license": "MIT",
+  "keywords": ["statuspro", "orders", "mcp", "claude", "manufacturing"],
+  "server": {
+    "type": "uv",
+    "entry_point": "src/statuspro_mcp/__main__.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${__dirname}",
+        "statuspro-mcp-server"
+      ],
+      "env": {
+        "STATUSPRO_API_KEY": "${user_config.api_key}"
+      }
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": {
+      "python": ">=3.12,<4.0"
+    }
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "StatusPro API Key",
+      "description": "Bearer token for the StatusPro API. Generate one at https://app.orderstatuspro.com — Settings → API.",
+      "required": true,
+      "sensitive": true
+    }
+  }
+}
