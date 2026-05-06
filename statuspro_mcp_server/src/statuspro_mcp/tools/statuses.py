@@ -15,6 +15,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.tools import ToolResult
 
 from statuspro_mcp.services import get_services
+from statuspro_mcp.tools.param_types import OrderIdParam
 from statuspro_mcp.tools.prefab_ui import build_viable_statuses_ui
 from statuspro_mcp.tools.schemas import StatusEntry, ViableStatusesResponse
 from statuspro_mcp.tools.tool_result_utils import UI_META, make_tool_result
@@ -50,7 +51,10 @@ def register_tools(mcp: FastMCP) -> None:
         ),
         meta=UI_META,
     )
-    async def get_viable_statuses(context: Context, order_id: int) -> ToolResult:
+    async def get_viable_statuses(
+        context: Context,
+        order_id: OrderIdParam,
+    ) -> ToolResult:
         services = get_services(context)
         statuses = await services.client.statuses.viable_for(order_id)
         entries = [_to_entry(s) for s in statuses]

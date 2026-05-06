@@ -44,6 +44,7 @@ from statuspro_mcp.tools.list_coercion import (
     CoercedStrList,
     CoercedStrListOpt,
 )
+from statuspro_mcp.tools.param_types import ConfirmFlag, OrderIdParam
 from statuspro_mcp.tools.prefab_ui import (
     build_bulk_status_change_preview_ui,
     build_comment_preview_ui,
@@ -563,7 +564,7 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def get_order(
         context: Context,
-        order_id: Annotated[int, Field(description="StatusPro order id")],
+        order_id: OrderIdParam,
         history_limit: Annotated[
             int,
             Field(
@@ -812,7 +813,7 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def get_order_history(
         context: Context,
-        order_id: Annotated[int, Field(description="StatusPro order id")],
+        order_id: OrderIdParam,
         page: Annotated[
             int,
             Field(description="1-based page number.", ge=1),
@@ -851,7 +852,7 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def update_order_status(
         context: Context,
-        order_id: int,
+        order_id: OrderIdParam,
         status_code: Annotated[
             str, Field(description="8-char status code, e.g. 'st000002'")
         ],
@@ -867,9 +868,7 @@ def register_tools(mcp: FastMCP) -> None:
         email_additional: Annotated[
             bool, Field(description="Send additional notification emails")
         ] = True,
-        confirm: Annotated[
-            bool, Field(description="Must be true to apply the change")
-        ] = False,
+        confirm: ConfirmFlag = False,
     ) -> ToolResult:
         services = get_services(context)
 
@@ -953,10 +952,10 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def add_order_comment(
         context: Context,
-        order_id: int,
+        order_id: OrderIdParam,
         comment: Annotated[str, Field(description="Comment body")],
         public: Annotated[bool, Field(description="Visible to the customer")] = False,
-        confirm: bool = False,
+        confirm: ConfirmFlag = False,
     ) -> ToolResult:
         services = get_services(context)
 
@@ -991,12 +990,12 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def update_order_due_date(
         context: Context,
-        order_id: int,
+        order_id: OrderIdParam,
         due_date: Annotated[str, Field(description="ISO 8601 date, e.g. '2026-03-15'")],
         due_date_to: Annotated[
             str | None, Field(description="Optional end of the range")
         ] = None,
-        confirm: bool = False,
+        confirm: ConfirmFlag = False,
     ) -> ToolResult:
         services = get_services(context)
 
@@ -1050,7 +1049,7 @@ def register_tools(mcp: FastMCP) -> None:
         public: bool = False,
         email_customer: bool = True,
         email_additional: bool = True,
-        confirm: bool = False,
+        confirm: ConfirmFlag = False,
     ) -> ToolResult:
         services = get_services(context)
 
