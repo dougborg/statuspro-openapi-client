@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable
 from typing import Annotated, Any
 
 from fastmcp import Context, FastMCP
@@ -43,6 +44,7 @@ from statuspro_mcp.tools.list_coercion import (
     CoercedStrList,
     CoercedStrListOpt,
 )
+from statuspro_mcp.tools.param_types import ConfirmFlag, OrderIdParam
 from statuspro_mcp.tools.prefab_ui import (
     build_bulk_status_change_preview_ui,
     build_comment_preview_ui,
@@ -82,6 +84,7 @@ from statuspro_public_api_client.api.orders import (
     set_order_due_date,
     update_order_status as update_order_status_api,
 )
+from statuspro_public_api_client.domain.converters import to_unset
 from statuspro_public_api_client.models.add_order_comment_request import (
     AddOrderCommentRequest,
 )
@@ -146,7 +149,7 @@ _BATCH_CONCURRENCY_LIMIT = 10
 
 
 async def _bounded_gather[T](
-    coros: list[Any], *, limit: int = _BATCH_CONCURRENCY_LIMIT
+    coros: list[Awaitable[T]], *, limit: int = _BATCH_CONCURRENCY_LIMIT
 ) -> list[T | Exception]:
     """Run ``coros`` with bounded concurrency; mirrors ``asyncio.gather`` shape.
 
@@ -158,7 +161,7 @@ async def _bounded_gather[T](
     """
     sem = asyncio.Semaphore(limit)
 
-    async def _run(coro: Any) -> Any:
+    async def _run(coro: Awaitable[T]) -> T | Exception:
         async with sem:
             try:
                 return await coro
@@ -561,7 +564,7 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def get_order(
         context: Context,
-        order_id: Annotated[int, Field(description="StatusPro order id")],
+        order_id: OrderIdParam,
         history_limit: Annotated[
             int,
             Field(
@@ -759,7 +762,7 @@ def register_tools(mcp: FastMCP) -> None:
         # endpoint and turn one rate-limit hit into 20 retries in lockstep.
         sem = asyncio.Semaphore(_BATCH_CONCURRENCY_LIMIT)
 
-        async def bounded[T](coro: Any) -> T:
+        async def bounded[T](coro: Awaitable[T]) -> T:
             async with sem:
                 return await coro
 
@@ -810,7 +813,7 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def get_order_history(
         context: Context,
-        order_id: Annotated[int, Field(description="StatusPro order id")],
+        order_id: OrderIdParam,
         page: Annotated[
             int,
             Field(description="1-based page number.", ge=1),
@@ -849,7 +852,7 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def update_order_status(
         context: Context,
-        order_id: int,
+        order_id: OrderIdParam,
         status_code: Annotated[
             str, Field(description="8-char status code, e.g. 'st000002'")
         ],
@@ -865,9 +868,7 @@ def register_tools(mcp: FastMCP) -> None:
         email_additional: Annotated[
             bool, Field(description="Send additional notification emails")
         ] = True,
-        confirm: Annotated[
-            bool, Field(description="Must be true to apply the change")
-        ] = False,
+        confirm: ConfirmFlag = False,
     ) -> ToolResult:
         services = get_services(context)
 
@@ -927,7 +928,7 @@ def register_tools(mcp: FastMCP) -> None:
 
         body = UpdateOrderStatusRequest(
             status_code=status_code,
-            comment=comment,
+            comment=to_unset(comment),
             public=public,
             email_customer=email_customer,
             email_additional=email_additional,
@@ -951,10 +952,10 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def add_order_comment(
         context: Context,
-        order_id: int,
+        order_id: OrderIdParam,
         comment: Annotated[str, Field(description="Comment body")],
         public: Annotated[bool, Field(description="Visible to the customer")] = False,
-        confirm: bool = False,
+        confirm: ConfirmFlag = False,
     ) -> ToolResult:
         services = get_services(context)
 
@@ -989,12 +990,12 @@ def register_tools(mcp: FastMCP) -> None:
     )
     async def update_order_due_date(
         context: Context,
-        order_id: int,
+        order_id: OrderIdParam,
         due_date: Annotated[str, Field(description="ISO 8601 date, e.g. '2026-03-15'")],
         due_date_to: Annotated[
             str | None, Field(description="Optional end of the range")
         ] = None,
-        confirm: bool = False,
+        confirm: ConfirmFlag = False,
     ) -> ToolResult:
         services = get_services(context)
 
@@ -1048,7 +1049,7 @@ def register_tools(mcp: FastMCP) -> None:
         public: bool = False,
         email_customer: bool = True,
         email_additional: bool = True,
-        confirm: bool = False,
+        confirm: ConfirmFlag = False,
     ) -> ToolResult:
         services = get_services(context)
 
@@ -1079,7 +1080,7 @@ def register_tools(mcp: FastMCP) -> None:
         body = BulkStatusUpdateRequest(
             order_ids=order_ids,
             status_code=status_code,
-            comment=comment,
+            comment=to_unset(comment),
             public=public,
             email_customer=email_customer,
             email_additional=email_additional,
