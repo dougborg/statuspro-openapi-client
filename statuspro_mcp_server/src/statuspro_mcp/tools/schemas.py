@@ -83,7 +83,7 @@ class BatchOrderResult(BaseModel):
     """
 
     order_id: int | None = Field(
-        None,
+        default=None,
         description="The order id if known. May be None for lookup-by-number where no id was resolved.",
     )
     requested: str = Field(
@@ -95,7 +95,7 @@ class BatchOrderResult(BaseModel):
     )
     order: OrderSummary | None = None
     error: str | None = Field(
-        None,
+        default=None,
         description="Set when the lookup failed; describes why (not_found, ambiguous, etc.).",
     )
 
