@@ -24,11 +24,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from prefab_ui.actions import ShowToast
-from prefab_ui.actions.mcp import CallTool, SendMessage
+from prefab_ui.actions import Action, SetState, ShowToast
+from prefab_ui.actions.mcp import CallTool, SendMessage, UpdateContext
 from prefab_ui.app import PrefabApp
 from prefab_ui.components import (
     H3,
+    Alert,
+    AlertDescription,
+    AlertTitle,
     Badge,
     Button,
     Card,
@@ -45,7 +48,8 @@ from prefab_ui.components import (
     Separator,
     Text,
 )
-from prefab_ui.components.control_flow import ForEach
+from prefab_ui.components.control_flow import Elif, Else, ForEach, If
+from prefab_ui.rx import ERROR, RESULT, Rx
 
 from statuspro_mcp.tools.schemas import StatusChangePreview
 
@@ -109,6 +113,171 @@ def _status_chip(code: str | None, name: str | None, color: str | None) -> None:
     """
     label = name or code or "unknown"
     Badge(label=label, variant=_color_to_variant(color))
+
+
+# Initial state seeded into every preview card. The Confirm/Cancel action
+# chains flip these via SetState; the footer's If/Elif blocks bind to them to
+# morph the button row through Preview → Pending… → Applied / Failed /
+# Cancelled. Seeding them up-front gives the iframe something to bind to
+# before the first click — otherwise the first `Rx("pending")` read would
+# resolve to undefined and the disable guard wouldn't fire.
+_PREVIEW_STATE_INIT: dict[str, Any] = {
+    "pending": False,
+    "cancelled": False,
+    "applied": False,
+    "error": None,
+}
+
+
+def _build_confirm_action(
+    tool: str,
+    arguments: dict[str, Any],
+) -> list[Action]:
+    """Build the Confirm-button click chain for a preview card.
+
+    The chain is ``[SetState(pending, True), CallTool(...)]``. Setting
+    ``pending=True`` synchronously before the call fires is the double-click
+    guard: the button also binds ``disabled=Rx("pending") | Rx("cancelled")``
+    as belt-and-suspenders, but the SetState happens *before* the network
+    call so a second click can never sneak through while the iframe's
+    re-render is in flight.
+
+    ``on_success`` clears ``pending`` and flips ``applied=True`` so the
+    button row morphs in-place to a terminal "Applied" pill — the user gets
+    visible confirmation that their click landed. ``UpdateContext`` pushes
+    the structured response into the agent's model context so the next turn
+    sees the apply result without an extra round-trip.
+
+    ``on_error`` clears ``pending`` and flips ``error`` to the failure
+    reason so the footer can swap to a Retry button + inline error text.
+
+    ``error`` is also cleared synchronously at the start of the chain so a
+    Retry click hides the prior failure Alert immediately — without this,
+    a successful retry would leave the stale Alert visible alongside the
+    Applied pill.
+    """
+    return [
+        SetState("pending", True),
+        SetState("error", None),
+        CallTool(
+            tool=tool,
+            arguments=arguments,
+            on_success=[
+                SetState("pending", False),
+                SetState("applied", True),
+                UpdateContext(content=RESULT),
+            ],
+            on_error=[
+                SetState("pending", False),
+                SetState("error", ERROR),
+                # ShowToast.__init__ types ``message: str`` despite the field
+                # being ``RxStr``; coerce so pyright accepts the Rx reference.
+                ShowToast(message=str(ERROR), variant="error"),
+                UpdateContext(content=f"Apply failed: {ERROR}"),
+            ],
+        ),
+    ]
+
+
+def _build_cancel_action(toast_message: str) -> list[Action]:
+    """Build the Cancel-button click chain.
+
+    Flips ``cancelled=True`` so the footer's Else block morphs to a
+    "Cancelled" pill + disabled Cancel button, and surfaces a toast for
+    immediate visual feedback. The Confirm button binds
+    ``disabled=Rx("pending") | Rx("cancelled")`` so cancelling locks out
+    a subsequent confirm as well.
+    """
+    return [
+        SetState("cancelled", True),
+        ShowToast(message=toast_message, variant="info"),
+    ]
+
+
+def _render_error_block() -> None:
+    """Render the inline apply-failed Alert, bound to iframe ``error`` state.
+
+    Sits inside ``CardContent`` and stays hidden until ``on_error`` flips
+    ``error`` to a truthy string; matches katana's shadcn ``Alert`` primitive
+    so the error surface is visually consistent across sibling MCP servers.
+    """
+    with If("error"):
+        Separator()
+        with Alert(variant="destructive", icon="circle-alert"):
+            AlertTitle(content="Apply failed")
+            AlertDescription(content="{{ error }}")
+
+
+def _render_confirm_footer(
+    *,
+    confirm_label: str,
+    confirm_action: list[Action],
+    cancel_action: list[Action],
+    applied_label: str = "Applied",
+) -> None:
+    """Render the preview-card footer button row with a state machine.
+
+    Five visible states driven by ``pending`` / ``cancelled`` / ``applied`` /
+    ``error`` in iframe state. The If/Elif chain checks them in that order:
+
+    - **Pending…** (highest): action in flight — loader icon, disabled.
+    - **Cancelled**: user opted out — outline pill, disabled. Wins over
+      ``error`` so a Cancel click after an apply failure reliably locks the
+      footer down (otherwise the Retry button would keep showing because
+      ``error`` is still set).
+    - **Applied**: terminal success — success pill, disabled. The agent
+      has the structured result via ``UpdateContext``.
+    - **Error**: apply failed — warning Retry pill. Cancel remains usable
+      and (per its own ``disabled`` binding) ends the flow.
+    - **Preview** (initial, ``Else()``): Confirm + Cancel both enabled.
+
+    Must be called inside a ``CardFooter`` context.
+    """
+    with Row(gap=2):
+        with If("pending"):
+            Button(
+                label="Applying…",
+                variant="default",
+                icon="loader",
+                disabled=True,
+            )
+        with Elif("cancelled"):
+            Button(label="Cancelled", variant="outline", disabled=True)
+        with Elif("applied"):
+            Button(
+                label=applied_label,
+                variant="success",
+                icon="check",
+                disabled=True,
+            )
+        with Elif("error"):
+            Button(
+                label="Retry",
+                variant="warning",
+                icon="rotate-cw",
+                on_click=confirm_action,
+                # Mirror the initial Confirm button's belt-and-suspenders
+                # guard so a rapid double-click on Retry during an in-flight
+                # call can't fire a second apply. ``SetState("pending", True)``
+                # in ``confirm_action`` flips state before re-render, but
+                # the explicit ``disabled`` binding closes any iframe
+                # propagation gap.
+                disabled=Rx("pending") | Rx("cancelled"),
+            )
+        with Else():
+            Button(
+                label=confirm_label,
+                variant="default",
+                on_click=confirm_action,
+                disabled=Rx("pending") | Rx("cancelled"),
+            )
+
+        Button(
+            label="Cancel",
+            variant="outline",
+            on_click=cancel_action,
+            disabled=Rx("pending") | Rx("applied") | Rx("cancelled"),
+        )
 
 
 def _is_overdue(due_date: str | None) -> bool:
@@ -208,11 +377,14 @@ def build_order_detail_ui(
             if history:
                 Separator()
                 Muted(content="History")
-                with ForEach("order.history"), Row(gap=2):
-                    Text(content="{{ created_at }}")
-                    Text(content="{{ event }}")
-                    Text(content="{{ status_name }}")
-                    Text(content="{{ comment }}")
+                # Inside ForEach, bare ``{{ field }}`` resolves against
+                # parent state, not the row. Capture the LoopItem so each
+                # cell binds to ``$item.field``.
+                with ForEach("order.history") as entry, Row(gap=2):
+                    Text(content=entry.created_at)
+                    Text(content=entry.event)
+                    Text(content=entry.status_name)
+                    Text(content=entry.comment)
             else:
                 Separator()
                 Muted(content="No history entries.")
@@ -292,19 +464,19 @@ def build_status_change_preview_ui(
     order_id = preview.get("order_id")
     comment = preview.get("comment")
     public = bool(preview.get("public"))
-    valid = bool(preview.get("valid", True))
-    viable_codes = preview.get("viable_status_codes") or []
+    if not bool(preview.get("valid", True)):
+        return _build_invalid_status_change_ui(
+            preview, current_color=current_color, new_color=new_color
+        )
     # Re-hydrate as the schema so its ``recipients_text`` is the single source
     # of truth for both the UI and the markdown fallback rendered by orders.py.
     recipients_text = StatusChangePreview.model_validate(preview).recipients_text()
 
-    with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
+    state: dict[str, Any] = {"preview": preview, **_PREVIEW_STATE_INIT}
+    with PrefabApp(state=state, css_class="p-4") as app, Card():
         with CardHeader(), Row(gap=2):
             CardTitle(content=f"Preview: order {order_id} status change")
-            Badge(
-                label="INVALID TRANSITION" if not valid else "PREVIEW",
-                variant="destructive" if not valid else "secondary",
-            )
+            Badge(label="PREVIEW", variant="secondary")
 
         with CardContent(), Column(gap=3):
             with Row(gap=3):
@@ -320,21 +492,6 @@ def build_status_change_preview_ui(
                     new_color,
                 )
 
-            if not valid:
-                Separator()
-                Text(
-                    content=(
-                        f"⚠ Not a viable transition from "
-                        f"`{preview.get('current_status_code') or '—'}`. "
-                        f"Viable codes: "
-                        + (
-                            ", ".join(f"`{c}`" for c in viable_codes)
-                            if viable_codes
-                            else "_(none)_"
-                        )
-                    ),
-                )
-
             if comment:
                 Separator()
                 with Row(gap=2):
@@ -347,34 +504,85 @@ def build_status_change_preview_ui(
 
             Separator()
             Metric(label="Emails to", value=recipients_text)
+            _render_error_block()
+
+        with CardFooter():
+            _render_confirm_footer(
+                confirm_label="Confirm change",
+                confirm_action=_build_confirm_action(
+                    "update_order_status",
+                    {
+                        "order_id": "{{ preview.order_id }}",
+                        "status_code": "{{ preview.new_status_code }}",
+                        "comment": "{{ preview.comment }}",
+                        "public": "{{ preview.public }}",
+                        "email_customer": "{{ preview.email_customer }}",
+                        "email_additional": "{{ preview.email_additional }}",
+                        "confirm": True,
+                    },
+                ),
+                cancel_action=_build_cancel_action("Status change cancelled"),
+                applied_label="Status updated",
+            )
+    return app
+
+
+def _build_invalid_status_change_ui(
+    preview: dict[str, Any],
+    *,
+    current_color: str | None,
+    new_color: str | None,
+) -> PrefabApp:
+    """Render the destructive-warning card for an invalid status transition.
+
+    The confirm rail is intentionally absent — agents that picked an
+    unreachable ``new_status_code`` see the viable codes and a button that
+    refetches them, but cannot fire the apply.
+    """
+    order_id = preview.get("order_id")
+    viable_codes = preview.get("viable_status_codes") or []
+
+    with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
+        with CardHeader(), Row(gap=2):
+            CardTitle(content=f"Preview: order {order_id} status change")
+            Badge(label="INVALID TRANSITION", variant="destructive")
+
+        with CardContent(), Column(gap=3):
+            with Row(gap=3):
+                _status_chip(
+                    preview.get("current_status_code"),
+                    preview.get("current_status_name"),
+                    current_color,
+                )
+                Text(content="→")
+                _status_chip(
+                    preview.get("new_status_code"),
+                    preview.get("new_status_name"),
+                    new_color,
+                )
+            Separator()
+            Text(
+                content=(
+                    f"⚠ Not a viable transition from "
+                    f"`{preview.get('current_status_code') or '—'}`. "
+                    f"Viable codes: "
+                    + (
+                        ", ".join(f"`{c}`" for c in viable_codes)
+                        if viable_codes
+                        else "_(none)_"
+                    )
+                ),
+            )
 
         with CardFooter(), Row(gap=2):
-            if valid:
-                Button(
-                    label="Confirm change",
-                    variant="default",
-                    on_click=CallTool(
-                        "update_order_status",
-                        arguments={
-                            "order_id": "{{ preview.order_id }}",
-                            "status_code": "{{ preview.new_status_code }}",
-                            "comment": "{{ preview.comment }}",
-                            "public": "{{ preview.public }}",
-                            "email_customer": "{{ preview.email_customer }}",
-                            "email_additional": "{{ preview.email_additional }}",
-                            "confirm": True,
-                        },
-                    ),
-                )
-            else:
-                Button(
-                    label="See viable transitions",
-                    variant="default",
-                    on_click=CallTool(
-                        "get_viable_statuses",
-                        arguments={"order_id": order_id},
-                    ),
-                )
+            Button(
+                label="See viable transitions",
+                variant="default",
+                on_click=CallTool(
+                    "get_viable_statuses",
+                    arguments={"order_id": order_id},
+                ),
+            )
             Button(
                 label="Cancel",
                 variant="outline",
@@ -403,7 +611,8 @@ def build_comment_preview_ui(preview: dict[str, Any]) -> PrefabApp:
     comment = preview.get("comment") or ""
     public = bool(preview.get("public"))
 
-    with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
+    state = {"preview": preview, **_PREVIEW_STATE_INIT}
+    with PrefabApp(state=state, css_class="p-4") as app, Card():
         with CardHeader(), Row(gap=2):
             CardTitle(content=f"Preview: comment on order {order_id}")
             Badge(label="PREVIEW", variant="secondary")
@@ -419,25 +628,22 @@ def build_comment_preview_ui(preview: dict[str, Any]) -> PrefabApp:
                     label="public" if public else "private",
                     variant="info" if public else "outline",
                 )
+            _render_error_block()
 
-        with CardFooter(), Row(gap=2):
-            Button(
-                label="Confirm comment",
-                variant="default",
-                on_click=CallTool(
+        with CardFooter():
+            _render_confirm_footer(
+                confirm_label="Confirm comment",
+                confirm_action=_build_confirm_action(
                     "add_order_comment",
-                    arguments={
+                    {
                         "order_id": "{{ preview.order_id }}",
                         "comment": "{{ preview.comment }}",
                         "public": "{{ preview.public }}",
                         "confirm": True,
                     },
                 ),
-            )
-            Button(
-                label="Cancel",
-                variant="outline",
-                on_click=ShowToast(message="Comment cancelled", variant="info"),
+                cancel_action=_build_cancel_action("Comment cancelled"),
+                applied_label="Comment added",
             )
     return app
 
@@ -458,7 +664,8 @@ def build_due_date_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
     current_label = f"{current} → {current_to}" if current_to else current
     new_label = f"{new_due} → {new_to}" if new_to else new_due
 
-    with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
+    state = {"preview": preview, **_PREVIEW_STATE_INIT}
+    with PrefabApp(state=state, css_class="p-4") as app, Card():
         with CardHeader(), Row(gap=2):
             CardTitle(content=f"Preview: due date for order {order_id}")
             Badge(label="PREVIEW", variant="secondary")
@@ -474,25 +681,22 @@ def build_due_date_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
                 with Column(gap=1):
                     Muted(content="Proposed")
                     Text(content=new_label)
+            _render_error_block()
 
-        with CardFooter(), Row(gap=2):
-            Button(
-                label="Confirm due date",
-                variant="default",
-                on_click=CallTool(
+        with CardFooter():
+            _render_confirm_footer(
+                confirm_label="Confirm due date",
+                confirm_action=_build_confirm_action(
                     "update_order_due_date",
-                    arguments={
+                    {
                         "order_id": "{{ preview.order_id }}",
                         "due_date": "{{ preview.new_due_date }}",
                         "due_date_to": "{{ preview.new_due_date_to }}",
                         "confirm": True,
                     },
                 ),
-            )
-            Button(
-                label="Cancel",
-                variant="outline",
-                on_click=ShowToast(message="Due date change cancelled", variant="info"),
+                cancel_action=_build_cancel_action("Due date change cancelled"),
+                applied_label="Due date updated",
             )
     return app
 
@@ -517,7 +721,8 @@ def build_bulk_status_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
 
     recipients_text = _BSP.model_validate(preview).recipients_text()
 
-    with PrefabApp(state={"preview": preview}, css_class="p-4") as app, Card():
+    state = {"preview": preview, **_PREVIEW_STATE_INIT}
+    with PrefabApp(state=state, css_class="p-4") as app, Card():
         with CardHeader(), Row(gap=2):
             CardTitle(content=f"Preview: bulk status change ({order_count} orders)")
             Badge(label="PREVIEW", variant="secondary")
@@ -546,14 +751,14 @@ def build_bulk_status_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
 
             Separator()
             Metric(label="Emails to", value=recipients_text)
+            _render_error_block()
 
-        with CardFooter(), Row(gap=2):
-            Button(
-                label=f"Confirm bulk update ({order_count})",
-                variant="default",
-                on_click=CallTool(
+        with CardFooter():
+            _render_confirm_footer(
+                confirm_label=f"Confirm bulk update ({order_count})",
+                confirm_action=_build_confirm_action(
                     "bulk_update_order_status",
-                    arguments={
+                    {
                         "order_ids": "{{ preview.order_ids }}",
                         "status_code": "{{ preview.target_status_code }}",
                         "comment": "{{ preview.comment }}",
@@ -563,11 +768,8 @@ def build_bulk_status_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
                         "confirm": True,
                     },
                 ),
-            )
-            Button(
-                label="Cancel",
-                variant="outline",
-                on_click=ShowToast(message="Bulk update cancelled", variant="info"),
+                cancel_action=_build_cancel_action("Bulk update cancelled"),
+                applied_label=f"Updated {order_count} orders",
             )
     return app
 

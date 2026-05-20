@@ -21,6 +21,7 @@ button is wired with ``CallTool(...)``.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from typing import Any
 
 from prefab_ui.app import PrefabApp
@@ -46,30 +47,52 @@ def _assert_renders(app: PrefabApp) -> None:
     _envelope(app)
 
 
-def _find_tool_calls(envelope: dict[str, Any]) -> list[dict[str, Any]]:
-    """Walk ``envelope`` and collect every ``toolCall`` action payload.
+def _walk_nodes(envelope: Any) -> Iterator[dict[str, Any]]:
+    """Yield every dict node in ``envelope`` in document order.
 
-    Each entry has the shape produced by Prefab's ``CallTool`` action:
-    ``{"action": "toolCall", "tool": "...", "arguments": {...}}``. Returns
-    them in document order. Used by the assertion helpers below to check
-    that a builder wires a CallTool with specific tool name + args (vs. a
-    substring match on the serialized JSON, which can be satisfied by the
-    preview model's ``action`` field that lives in iframe ``state``).
+    The Prefab wire envelope nests dicts and lists; this generator visits
+    them depth-first so callers can scan for action payloads, component
+    types, or other structural matches without re-implementing the walk.
     """
-    found: list[dict[str, Any]] = []
+    if isinstance(envelope, dict):
+        yield envelope
+        for v in envelope.values():
+            yield from _walk_nodes(v)
+    elif isinstance(envelope, list):
+        for item in envelope:
+            yield from _walk_nodes(item)
 
-    def walk(node: Any) -> None:
-        if isinstance(node, dict):
-            if node.get("action") == "toolCall" and "tool" in node:
-                found.append(node)
-            for v in node.values():
-                walk(v)
-        elif isinstance(node, list):
-            for item in node:
-                walk(item)
 
-    walk(envelope)
-    return found
+def _find_confirm_button(envelope: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the first Button with ``"Confirm"`` in its label.
+
+    Targets the *initial* Confirm button (the footer Condition's ``else``
+    branch) so its ``onClick`` chain can be asserted on directly without
+    hardcoding the path through Condition.else.
+    """
+    return next(
+        (
+            n
+            for n in _walk_nodes(envelope)
+            if n.get("type") == "Button" and "Confirm" in str(n.get("label", ""))
+        ),
+        None,
+    )
+
+
+def _find_tool_calls(envelope: dict[str, Any]) -> list[dict[str, Any]]:
+    """Collect every ``toolCall`` action payload in ``envelope``.
+
+    Used to assert against the actual button-click wiring, which would be
+    invisible to a substring scan because the preview model's ``action``
+    field lives in iframe ``state`` and would satisfy the substring check
+    even when the Confirm button is mis-wired.
+    """
+    return [
+        n
+        for n in _walk_nodes(envelope)
+        if n.get("action") == "toolCall" and "tool" in n
+    ]
 
 
 def test_build_orders_table_ui_renders_with_drill_down_action():
@@ -164,16 +187,13 @@ def test_build_status_change_preview_ui_renders_with_confirm_action():
         current_color="pink",
         new_color="green",
     )
-    # The Confirm button's CallTool action drives the second half of the
-    # two-step mutation flow. The assertion target is the toolCall action
-    # payload itself (not a substring of the wire envelope), since the
-    # preview model's `action` field is also "update_order_status" and
-    # lives in iframe state — a substring assertion would pass even if
-    # the Confirm button were mis-wired.
+    # Assert on the toolCall payload (not a substring) — the preview model's
+    # ``action`` field is also "update_order_status" and lives in iframe state,
+    # so a substring match would pass even with a mis-wired button.
     tool_calls = _find_tool_calls(_envelope(app))
     update_calls = [tc for tc in tool_calls if tc["tool"] == "update_order_status"]
-    assert len(update_calls) == 1, (
-        f"expected exactly one update_order_status CallTool action; got {tool_calls}"
+    assert update_calls, (
+        f"expected an update_order_status CallTool action; got {tool_calls}"
     )
     args = update_calls[0]["arguments"]
     assert args.get("confirm") is True
@@ -242,9 +262,7 @@ def test_build_comment_preview_ui_renders_with_confirm_action():
     # carrying confirm=true.
     tool_calls = _find_tool_calls(envelope)
     confirm_calls = [tc for tc in tool_calls if tc["tool"] == "add_order_comment"]
-    assert len(confirm_calls) == 1, (
-        "expected exactly one add_order_comment toolCall action"
-    )
+    assert confirm_calls, "expected an add_order_comment toolCall action"
     args = confirm_calls[0]["arguments"]
     assert args.get("confirm") is True
     # The visible content stays as substring assertions — those legitimately
@@ -303,7 +321,7 @@ def test_build_due_date_change_preview_ui_shows_before_after():
     # and pin the new_due_date → due_date arg rename.
     tool_calls = _find_tool_calls(envelope)
     confirm_calls = [tc for tc in tool_calls if tc["tool"] == "update_order_due_date"]
-    assert len(confirm_calls) == 1
+    assert confirm_calls, "expected an update_order_due_date toolCall action"
     args = confirm_calls[0]["arguments"]
     assert args.get("confirm") is True
     assert args.get("due_date") == "{{ preview.new_due_date }}"
@@ -337,7 +355,7 @@ def test_build_bulk_status_change_preview_ui_shows_count_and_target():
     confirm_calls = [
         tc for tc in tool_calls if tc["tool"] == "bulk_update_order_status"
     ]
-    assert len(confirm_calls) == 1
+    assert confirm_calls, "expected a bulk_update_order_status toolCall action"
     args = confirm_calls[0]["arguments"]
     assert args.get("confirm") is True
     assert args.get("status_code") == "{{ preview.target_status_code }}"
@@ -366,3 +384,204 @@ def test_build_bulk_status_change_preview_ui_truncates_long_id_list():
     # First 10 ids visible (1, 2, ..., 10); last id (50) hidden behind "+40 more"
     assert "+40 more" in serialized
     assert "50" in serialized  # the count, not the id
+
+
+def test_preview_cards_wire_double_click_guard():
+    """Every preview card must seed the pending/cancelled state slots and bind
+    its Confirm button to a chain that flips ``pending=True`` *before* firing
+    the apply CallTool.
+
+    Without these, a rapid double-click on the Confirm button fires two
+    identical mutation calls — e.g. two bulk status updates that double-send
+    notification emails to the customer. The SetState in the on_click chain
+    is the spam guard; the explicit ``disabled={{ pending || cancelled }}``
+    binding on the button is belt-and-suspenders.
+    """
+    builders = [
+        (
+            build_status_change_preview_ui,
+            {
+                "order_id": 1,
+                "current_status_code": "st000002",
+                "new_status_code": "st000003",
+                "comment": None,
+                "public": False,
+                "email_customer": True,
+                "email_additional": False,
+                "valid": True,
+                "viable_status_codes": ["st000003"],
+            },
+        ),
+        (
+            build_comment_preview_ui,
+            {
+                "order_id": 1,
+                "order_summary": {"id": 1},
+                "comment": "hi",
+                "public": False,
+            },
+        ),
+        (
+            build_due_date_change_preview_ui,
+            {
+                "order_id": 1,
+                "order_summary": {"id": 1},
+                "current_due_date": "2026-01-01",
+                "new_due_date": "2026-02-01",
+            },
+        ),
+        (
+            build_bulk_status_change_preview_ui,
+            {
+                "order_ids": [1, 2],
+                "order_count": 2,
+                "target_status_code": "st000003",
+                "target_status_name": "Shipped",
+                "comment": None,
+                "public": False,
+                "email_customer": True,
+                "email_additional": False,
+            },
+        ),
+    ]
+    for builder, preview in builders:
+        envelope = _envelope(builder(preview))
+        state = envelope.get("state") or {}
+        # The four state slots the footer's If/Elif blocks bind to.
+        assert state.get("pending") is False, (
+            f"{builder.__name__} must seed pending=False"
+        )
+        assert state.get("cancelled") is False, (
+            f"{builder.__name__} must seed cancelled=False"
+        )
+        assert state.get("applied") is False, (
+            f"{builder.__name__} must seed applied=False"
+        )
+        # Locate the Confirm button (lives in the footer Condition's ``else``
+        # branch — the initial Preview state) and verify its on_click chain
+        # leads with ``SetState("pending", True)``. A substring match on the
+        # whole envelope wouldn't catch a regression that moved the guard
+        # SetState into ``on_success``/``on_error`` (where ``pending`` is
+        # also referenced, but for clearing rather than guarding).
+        confirm = _find_confirm_button(envelope)
+        assert confirm is not None, (
+            f"{builder.__name__}: could not locate Confirm button in footer"
+        )
+        on_click = confirm.get("onClick") or []
+        assert on_click and isinstance(on_click, list), (
+            f"{builder.__name__}: Confirm button has no on_click chain"
+        )
+        assert (
+            on_click[0].get("action") == "setState"
+            and on_click[0].get("key") == "pending"
+            and on_click[0].get("value") is True
+        ), (
+            f"{builder.__name__}: on_click[0] must be SetState(pending, True); "
+            f"got {on_click[0]}"
+        )
+        # The disabled binding gates rapid clicks even if the SetState above
+        # is somehow delayed (belt-and-suspenders). It must reference both
+        # ``pending`` and ``cancelled``.
+        disabled = str(confirm.get("disabled") or "")
+        assert "pending" in disabled and "cancelled" in disabled, (
+            f"{builder.__name__}: Confirm button disabled binding must include "
+            f"both pending and cancelled; got {disabled!r}"
+        )
+
+
+def test_confirm_footer_state_precedence():
+    """The footer state machine must check ``cancelled`` before ``error`` so a
+    Cancel click after an apply failure locks the footer down. Otherwise
+    ``cancelled=True`` would be set but the Retry button would keep showing
+    because ``error`` is still truthy from the prior failure.
+
+    Pinning the case order here so a future shuffle of the If/Elif chain
+    can't silently regress the user-cancel-after-error flow.
+    """
+    app = build_comment_preview_ui(
+        {
+            "order_id": 1,
+            "order_summary": {"id": 1},
+            "comment": "hi",
+            "public": False,
+        },
+    )
+    envelope = _envelope(app)
+    # Find the footer Condition (the one with multiple cases — the error-block
+    # uses an If too but only has a single ``{{ error }}`` case).
+    footer_condition = next(
+        (
+            n
+            for n in _walk_nodes(envelope)
+            if n.get("type") == "Condition" and len(n.get("cases") or []) > 1
+        ),
+        None,
+    )
+    assert footer_condition is not None, "footer Condition not found in envelope"
+    whens = [c.get("when") for c in footer_condition["cases"]]
+    cancelled_idx = next(
+        (i for i, w in enumerate(whens) if w and "cancelled" in str(w)), -1
+    )
+    error_idx = next((i for i, w in enumerate(whens) if w and "error" in str(w)), -1)
+    assert cancelled_idx >= 0 and error_idx >= 0, (
+        f"footer must have both cancelled and error cases; got whens={whens}"
+    )
+    assert cancelled_idx < error_idx, (
+        f"cancelled case must precede error case in the footer state machine; "
+        f"got cancelled@{cancelled_idx}, error@{error_idx} in {whens}"
+    )
+
+
+def test_retry_button_has_double_click_guard():
+    """The Retry button (rendered in the error state) must share the initial
+    Confirm button's ``disabled=Rx(pending) | Rx(cancelled)`` belt-and-
+    suspenders binding. Without it, a rapid double-click on Retry during an
+    in-flight retry can fire a second apply call before the iframe re-renders.
+    """
+    app = build_comment_preview_ui(
+        {
+            "order_id": 1,
+            "order_summary": {"id": 1},
+            "comment": "hi",
+            "public": False,
+        },
+    )
+    envelope = _envelope(app)
+    retry = next(
+        (
+            n
+            for n in _walk_nodes(envelope)
+            if n.get("type") == "Button" and n.get("label") == "Retry"
+        ),
+        None,
+    )
+    assert retry is not None, "Retry button missing from footer state machine"
+    disabled = str(retry.get("disabled") or "")
+    assert "pending" in disabled and "cancelled" in disabled, (
+        f"Retry button disabled binding must include both pending and "
+        f"cancelled; got {disabled!r}"
+    )
+
+
+def test_status_change_preview_invalid_does_not_seed_apply_state():
+    """When ``valid=False`` the Confirm button is replaced with a "See viable
+    transitions" button — the apply rail isn't live, so the pending/applied
+    state slots shouldn't appear in the envelope (no apply to guard).
+    """
+    app = build_status_change_preview_ui(
+        {
+            "order_id": 1,
+            "current_status_code": "st000002",
+            "new_status_code": "st000099",
+            "comment": None,
+            "public": False,
+            "email_customer": True,
+            "email_additional": True,
+            "valid": False,
+            "viable_status_codes": ["st000003"],
+        },
+    )
+    envelope = _envelope(app)
+    state = envelope.get("state") or {}
+    assert "pending" not in state
+    assert "applied" not in state
