@@ -80,12 +80,12 @@ jobs:
       # instead of setup-uv so we don't pull in a project venv resolution we
       # don't use.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.14"
 
       - name: Install Node.js (for mcpb CLI)
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
 
