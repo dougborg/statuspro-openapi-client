@@ -95,6 +95,59 @@ def _find_tool_calls(envelope: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+# Smallest-viable preview fixtures for the four mutation cards. Used by tests
+# that pin contracts across every preview card (state-machine guards,
+# Cancel-no-SendMessage). Kept module-level so a new "every card must…"
+# assertion can iterate over them without copying ~45 lines per test.
+_PREVIEW_BUILDER_FIXTURES: list[tuple[Any, dict[str, Any]]] = [
+    (
+        build_status_change_preview_ui,
+        {
+            "order_id": 1,
+            "current_status_code": "st000002",
+            "new_status_code": "st000003",
+            "comment": None,
+            "public": False,
+            "email_customer": True,
+            "email_additional": False,
+            "valid": True,
+            "viable_status_codes": ["st000003"],
+        },
+    ),
+    (
+        build_comment_preview_ui,
+        {
+            "order_id": 1,
+            "order_summary": {"id": 1},
+            "comment": "hi",
+            "public": False,
+        },
+    ),
+    (
+        build_due_date_change_preview_ui,
+        {
+            "order_id": 1,
+            "order_summary": {"id": 1},
+            "current_due_date": "2026-01-01",
+            "new_due_date": "2026-02-01",
+        },
+    ),
+    (
+        build_bulk_status_change_preview_ui,
+        {
+            "order_ids": [1, 2],
+            "order_count": 2,
+            "target_status_code": "st000003",
+            "target_status_name": "Shipped",
+            "comment": None,
+            "public": False,
+            "email_customer": True,
+            "email_additional": False,
+        },
+    ),
+]
+
+
 def test_build_orders_table_ui_renders_with_drill_down_action():
     app = build_orders_table_ui(
         [
@@ -397,54 +450,7 @@ def test_preview_cards_wire_double_click_guard():
     is the spam guard; the explicit ``disabled={{ pending || cancelled }}``
     binding on the button is belt-and-suspenders.
     """
-    builders = [
-        (
-            build_status_change_preview_ui,
-            {
-                "order_id": 1,
-                "current_status_code": "st000002",
-                "new_status_code": "st000003",
-                "comment": None,
-                "public": False,
-                "email_customer": True,
-                "email_additional": False,
-                "valid": True,
-                "viable_status_codes": ["st000003"],
-            },
-        ),
-        (
-            build_comment_preview_ui,
-            {
-                "order_id": 1,
-                "order_summary": {"id": 1},
-                "comment": "hi",
-                "public": False,
-            },
-        ),
-        (
-            build_due_date_change_preview_ui,
-            {
-                "order_id": 1,
-                "order_summary": {"id": 1},
-                "current_due_date": "2026-01-01",
-                "new_due_date": "2026-02-01",
-            },
-        ),
-        (
-            build_bulk_status_change_preview_ui,
-            {
-                "order_ids": [1, 2],
-                "order_count": 2,
-                "target_status_code": "st000003",
-                "target_status_name": "Shipped",
-                "comment": None,
-                "public": False,
-                "email_customer": True,
-                "email_additional": False,
-            },
-        ),
-    ]
-    for builder, preview in builders:
+    for builder, preview in _PREVIEW_BUILDER_FIXTURES:
         envelope = _envelope(builder(preview))
         state = envelope.get("state") or {}
         # The four state slots the footer's If/Elif blocks bind to.
@@ -561,6 +567,43 @@ def test_retry_button_has_double_click_guard():
         f"Retry button disabled binding must include both pending and "
         f"cancelled; got {disabled!r}"
     )
+
+
+def test_cancel_buttons_do_not_send_chat_messages():
+    """Cancel on every preview card must dismiss client-side (SetState +
+    optional toast) — never fire ``SendMessage``.
+
+    SendMessage round-trips through the LLM and shows up as a fake user
+    message in the chat, which is noisy and unnecessary now that Confirm
+    fires the apply directly via CallTool (no agent middleman). Pinning
+    this so a future regression that re-introduces SendMessage on Cancel
+    surfaces here instead of as chat-noise in production.
+    """
+    for builder, preview in _PREVIEW_BUILDER_FIXTURES:
+        envelope = _envelope(builder(preview))
+        cancel_buttons = [
+            n
+            for n in _walk_nodes(envelope)
+            if n.get("type") == "Button" and n.get("label") == "Cancel"
+        ]
+        assert cancel_buttons, f"{builder.__name__}: no Cancel button found in envelope"
+        for cancel in cancel_buttons:
+            # ``_build_cancel_action`` returns ``list[Action]``, so the
+            # serialized on_click is always a list — no defensive coercion
+            # needed.
+            on_click = cancel.get("onClick") or []
+            assert isinstance(on_click, list), (
+                f"{builder.__name__}: Cancel on_click must be a list; got {on_click!r}"
+            )
+            send_messages = [
+                a
+                for a in on_click
+                if isinstance(a, dict) and a.get("action") == "sendMessage"
+            ]
+            assert not send_messages, (
+                f"{builder.__name__}: Cancel button must not fire SendMessage; "
+                f"got {send_messages}"
+            )
 
 
 def test_status_change_preview_invalid_does_not_seed_apply_state():

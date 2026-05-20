@@ -129,6 +129,24 @@ _PREVIEW_STATE_INIT: dict[str, Any] = {
 }
 
 
+def _preview_ref(field: str) -> Rx:
+    """Build a reactive reference to ``preview.<field>`` in iframe state.
+
+    The Confirm-button ``CallTool`` actions wire iframe state into tool
+    arguments via templates like ``{{ preview.order_id }}``. Bare strings
+    are fragile: a typo in the prefix (``{{ preivew.order_id }}``) silently
+    expands to empty and the host calls the tool with a missing arg.
+
+    This helper doesn't validate the field at runtime — ``Rx`` accepts any
+    string. The win is structural: the ``preview.`` prefix exists in
+    exactly one place (this function body), so prefix typos at call sites
+    are impossible. Field-name typos like ``_preview_ref("ordr_id")`` are
+    still possible, but the field name is now a bare identifier that's
+    greppable and refactor-safe (vs. embedded in a template string).
+    """
+    return Rx(f"preview.{field}")
+
+
 def _build_confirm_action(
     tool: str,
     arguments: dict[str, Any],
@@ -512,12 +530,12 @@ def build_status_change_preview_ui(
                 confirm_action=_build_confirm_action(
                     "update_order_status",
                     {
-                        "order_id": "{{ preview.order_id }}",
-                        "status_code": "{{ preview.new_status_code }}",
-                        "comment": "{{ preview.comment }}",
-                        "public": "{{ preview.public }}",
-                        "email_customer": "{{ preview.email_customer }}",
-                        "email_additional": "{{ preview.email_additional }}",
+                        "order_id": _preview_ref("order_id"),
+                        "status_code": _preview_ref("new_status_code"),
+                        "comment": _preview_ref("comment"),
+                        "public": _preview_ref("public"),
+                        "email_customer": _preview_ref("email_customer"),
+                        "email_additional": _preview_ref("email_additional"),
                         "confirm": True,
                     },
                 ),
@@ -636,9 +654,9 @@ def build_comment_preview_ui(preview: dict[str, Any]) -> PrefabApp:
                 confirm_action=_build_confirm_action(
                     "add_order_comment",
                     {
-                        "order_id": "{{ preview.order_id }}",
-                        "comment": "{{ preview.comment }}",
-                        "public": "{{ preview.public }}",
+                        "order_id": _preview_ref("order_id"),
+                        "comment": _preview_ref("comment"),
+                        "public": _preview_ref("public"),
                         "confirm": True,
                     },
                 ),
@@ -689,9 +707,9 @@ def build_due_date_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
                 confirm_action=_build_confirm_action(
                     "update_order_due_date",
                     {
-                        "order_id": "{{ preview.order_id }}",
-                        "due_date": "{{ preview.new_due_date }}",
-                        "due_date_to": "{{ preview.new_due_date_to }}",
+                        "order_id": _preview_ref("order_id"),
+                        "due_date": _preview_ref("new_due_date"),
+                        "due_date_to": _preview_ref("new_due_date_to"),
                         "confirm": True,
                     },
                 ),
@@ -759,12 +777,12 @@ def build_bulk_status_change_preview_ui(preview: dict[str, Any]) -> PrefabApp:
                 confirm_action=_build_confirm_action(
                     "bulk_update_order_status",
                     {
-                        "order_ids": "{{ preview.order_ids }}",
-                        "status_code": "{{ preview.target_status_code }}",
-                        "comment": "{{ preview.comment }}",
-                        "public": "{{ preview.public }}",
-                        "email_customer": "{{ preview.email_customer }}",
-                        "email_additional": "{{ preview.email_additional }}",
+                        "order_ids": _preview_ref("order_ids"),
+                        "status_code": _preview_ref("target_status_code"),
+                        "comment": _preview_ref("comment"),
+                        "public": _preview_ref("public"),
+                        "email_customer": _preview_ref("email_customer"),
+                        "email_additional": _preview_ref("email_additional"),
                         "confirm": True,
                     },
                 ),
