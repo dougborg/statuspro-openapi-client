@@ -31,8 +31,8 @@ importers:
         specifier: ^2.4.15
         version: 2.4.15
       '@hey-api/openapi-ts':
-        specifier: ^0.97.2
-        version: 0.97.2(magicast@0.5.2)(typescript@6.0.3)
+        specifier: ^0.97.3
+        version: 0.97.3(magicast@0.5.2)(typescript@6.0.3)
       '@semantic-release/changelog':
         specifier: ^6.0.3
         version: 6.0.3(semantic-release@25.0.3(typescript@6.0.3))
@@ -65,13 +65,13 @@ importers:
         version: 25.0.3(typescript@6.0.3)
       tsup:
         specifier: ^8.5.1
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.15)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.7
-        version: 4.1.7(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(vite@7.3.2(@types/node@25.9.1)(jiti@2.6.1)(yaml@2.8.3))
+        version: 4.1.7(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(vite@7.3.2(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.8.3))
 
 packages:
 
@@ -388,23 +388,23 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@hey-api/codegen-core@0.8.1':
-    resolution: {integrity: sha512-Iciv2vUCJTW9lWM/ROvyZLblmcbYJHPuXfzb1SzeDVVn4xEXu2ilLU1pq3fn+09FZ/Y0P7VyvRE47UDU6om8xA==}
+  '@hey-api/codegen-core@0.8.2':
+    resolution: {integrity: sha512-R2NMf3wq97rh1mjz33WJQU8svz3F0RYUjvx/QzXucjpSqQ3O5huTdDjErG4fMxSr1X+X56NuDrqtGfHmo1TRUQ==}
     engines: {node: '>=22.13.0'}
 
   '@hey-api/json-schema-ref-parser@1.4.2':
     resolution: {integrity: sha512-ZhCFSKI2ipZHEbgmtUHdyddvRU3wJ4elgCfYUC7T7hZa4EivSrVflTQf2w+v3TuaYxR1Y2V2kq3otqTttrrK8Q==}
     engines: {node: '>=22.13.0'}
 
-  '@hey-api/openapi-ts@0.97.2':
-    resolution: {integrity: sha512-nA+y0/I5O9loQMeJKumi6BQ40/Y71N0hIMmXZ/I7rh8jEOzYxSxmf5a4TBEI2Ap4RAfZyh7RJzJfVzT98KUYQQ==}
+  '@hey-api/openapi-ts@0.97.3':
+    resolution: {integrity: sha512-4sR6/E/POuy7aPZW9DDjhObzZCq7eSJWiW0+epXeKNczoTWEwdOyWFy9Ca/CnXYlZ3oJsrv0ZD0OO+YuczT7CA==}
     engines: {node: '>=22.13.0'}
     hasBin: true
     peerDependencies:
       typescript: '>=5.5.3 || >=6.0.0 || 6.0.1-rc'
 
-  '@hey-api/shared@0.4.4':
-    resolution: {integrity: sha512-UZgaQNEdo/OSGLeNXhSv0VQTHQQm5Q2mHOuoYhFPJkNvLVrz7KZtGdKR8O4QPrhyblshxY+caJli08WKM0gREg==}
+  '@hey-api/shared@0.4.5':
+    resolution: {integrity: sha512-au4eHpBXAe1du0iMp6ESYuEaMS2jsoEyrbcT246btRhI9rMeQFEs7ZjtcMGXGsxhpaR38A8cPGNHx7QOrWAdMw==}
     engines: {node: '>=22.13.0'}
 
   '@hey-api/spec-types@0.2.0':
@@ -1603,8 +1603,8 @@ packages:
     resolution: {integrity: sha512-qjdpeo2yKlYTH7nFdK0vbZWuTCesk4o63v5iVOlhMQPfuIZQfW/HI35SjfhA+4qpg36rnFSvUK5b1m+ckIblQQ==}
     engines: {node: '>= 0.6.0'}
 
-  jiti@2.6.1:
-    resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
+  jiti@2.7.0:
+    resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
   joycon@3.1.1:
@@ -2192,6 +2192,11 @@ packages:
 
   semver@7.7.4:
     resolution: {integrity: sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
+  semver@7.8.1:
+    resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -2939,7 +2944,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
-  '@hey-api/codegen-core@0.8.1(magicast@0.5.2)':
+  '@hey-api/codegen-core@0.8.2(magicast@0.5.2)':
     dependencies:
       '@hey-api/types': 0.1.4
       ansi-colors: 4.1.3
@@ -2954,11 +2959,11 @@ snapshots:
       '@types/json-schema': 7.0.15
       js-yaml: 4.1.1
 
-  '@hey-api/openapi-ts@0.97.2(magicast@0.5.2)(typescript@6.0.3)':
+  '@hey-api/openapi-ts@0.97.3(magicast@0.5.2)(typescript@6.0.3)':
     dependencies:
-      '@hey-api/codegen-core': 0.8.1(magicast@0.5.2)
+      '@hey-api/codegen-core': 0.8.2(magicast@0.5.2)
       '@hey-api/json-schema-ref-parser': 1.4.2
-      '@hey-api/shared': 0.4.4(magicast@0.5.2)
+      '@hey-api/shared': 0.4.5(magicast@0.5.2)
       '@hey-api/spec-types': 0.2.0
       '@hey-api/types': 0.1.4
       '@lukeed/ms': 2.0.2
@@ -2970,9 +2975,9 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
-  '@hey-api/shared@0.4.4(magicast@0.5.2)':
+  '@hey-api/shared@0.4.5(magicast@0.5.2)':
     dependencies:
-      '@hey-api/codegen-core': 0.8.1(magicast@0.5.2)
+      '@hey-api/codegen-core': 0.8.2(magicast@0.5.2)
       '@hey-api/json-schema-ref-parser': 1.4.2
       '@hey-api/spec-types': 0.2.0
       '@hey-api/types': 0.1.4
@@ -3401,7 +3406,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.7(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(vite@7.3.2(@types/node@25.9.1)(jiti@2.6.1)(yaml@2.8.3))
+      vitest: 4.1.7(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(vite@7.3.2(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.8.3))
 
   '@vitest/expect@4.1.7':
     dependencies:
@@ -3412,13 +3417,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.7(vite@7.3.2(@types/node@25.9.1)(jiti@2.6.1)(yaml@2.8.3))':
+  '@vitest/mocker@4.1.7(vite@7.3.2(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.8.3))':
     dependencies:
       '@vitest/spy': 4.1.7
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.3.2(@types/node@25.9.1)(jiti@2.6.1)(yaml@2.8.3)
+      vite: 7.3.2(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.8.3)
 
   '@vitest/pretty-format@4.1.7':
     dependencies:
@@ -3529,7 +3534,7 @@ snapshots:
       dotenv: 17.4.2
       exsolve: 1.0.8
       giget: 3.2.0
-      jiti: 2.6.1
+      jiti: 2.7.0
       ohash: 2.0.11
       pathe: 2.0.3
       perfect-debounce: 2.1.0
@@ -4099,7 +4104,7 @@ snapshots:
 
   java-properties@1.0.2: {}
 
-  jiti@2.6.1: {}
+  jiti@2.7.0: {}
 
   joycon@3.1.1: {}
 
@@ -4192,7 +4197,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.1
 
   marked-terminal@7.3.0(marked@15.0.12):
     dependencies:
@@ -4259,13 +4264,13 @@ snapshots:
   normalize-package-data@6.0.2:
     dependencies:
       hosted-git-info: 7.0.2
-      semver: 7.7.4
+      semver: 7.8.1
       validate-npm-package-license: 3.0.4
 
   normalize-package-data@8.0.0:
     dependencies:
       hosted-git-info: 9.0.2
-      semver: 7.7.4
+      semver: 7.8.1
       validate-npm-package-license: 3.0.4
 
   normalize-url@9.0.0: {}
@@ -4431,11 +4436,11 @@ snapshots:
       exsolve: 1.0.8
       pathe: 2.0.3
 
-  postcss-load-config@6.0.1(jiti@2.6.1)(postcss@8.5.15)(yaml@2.8.3):
+  postcss-load-config@6.0.1(jiti@2.7.0)(postcss@8.5.15)(yaml@2.8.3):
     dependencies:
       lilconfig: 3.1.3
     optionalDependencies:
-      jiti: 2.6.1
+      jiti: 2.7.0
       postcss: 8.5.15
       yaml: 2.8.3
 
@@ -4648,6 +4653,8 @@ snapshots:
 
   semver@7.7.4: {}
 
+  semver@7.8.1: {}
+
   shebang-command@2.0.0:
     dependencies:
       shebang-regex: 3.0.0
@@ -4830,7 +4837,7 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
-  tsup@8.5.1(jiti@2.6.1)(postcss@8.5.15)(typescript@6.0.3)(yaml@2.8.3):
+  tsup@8.5.1(jiti@2.7.0)(postcss@8.5.15)(typescript@6.0.3)(yaml@2.8.3):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.27.7)
       cac: 6.7.14
@@ -4841,7 +4848,7 @@ snapshots:
       fix-dts-default-cjs-exports: 1.0.1
       joycon: 3.1.1
       picocolors: 1.1.1
-      postcss-load-config: 6.0.1(jiti@2.6.1)(postcss@8.5.15)(yaml@2.8.3)
+      postcss-load-config: 6.0.1(jiti@2.7.0)(postcss@8.5.15)(yaml@2.8.3)
       resolve-from: 5.0.0
       rollup: 4.60.2
       source-map: 0.7.6
@@ -4910,7 +4917,7 @@ snapshots:
       spdx-correct: 3.2.0
       spdx-expression-parse: 3.0.1
 
-  vite@7.3.2(@types/node@25.9.1)(jiti@2.6.1)(yaml@2.8.3):
+  vite@7.3.2(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.8.3):
     dependencies:
       esbuild: 0.27.7
       fdir: 6.5.0(picomatch@4.0.4)
@@ -4921,13 +4928,13 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.9.1
       fsevents: 2.3.3
-      jiti: 2.6.1
+      jiti: 2.7.0
       yaml: 2.8.3
 
-  vitest@4.1.7(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(vite@7.3.2(@types/node@25.9.1)(jiti@2.6.1)(yaml@2.8.3)):
+  vitest@4.1.7(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(vite@7.3.2(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.7
-      '@vitest/mocker': 4.1.7(vite@7.3.2(@types/node@25.9.1)(jiti@2.6.1)(yaml@2.8.3))
+      '@vitest/mocker': 4.1.7(vite@7.3.2(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.8.3))
       '@vitest/pretty-format': 4.1.7
       '@vitest/runner': 4.1.7
       '@vitest/snapshot': 4.1.7
@@ -4944,7 +4951,7 @@ snapshots:
       tinyexec: 1.1.1
       tinyglobby: 0.2.16
       tinyrainbow: 3.1.0
-      vite: 7.3.2(@types/node@25.9.1)(jiti@2.6.1)(yaml@2.8.3)
+      vite: 7.3.2(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.8.3)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.9.1
