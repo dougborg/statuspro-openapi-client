@@ -24,7 +24,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Always sync against main, regardless of which ref triggered the
           # workflow. Manual `workflow_dispatch` from a feature branch
