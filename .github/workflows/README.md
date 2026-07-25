@@ -245,8 +245,7 @@ When adding new workflows:
 - Check if MCP dependency is already up to date
 - Review update-mcp-dependency workflow logs
 - Ensure the `dougborg-release-please` GitHub App is installed and its
-  `RELEASE_PLEASE_APP_ID`/`RELEASE_PLEASE_APP_PRIVATE_KEY` credentials are
-  valid
+  `RELEASE_PLEASE_APP_ID`/`RELEASE_PLEASE_APP_PRIVATE_KEY` credentials are valid
 
 **MCP release not triggering after dependency update:**
 
