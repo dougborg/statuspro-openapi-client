@@ -66,10 +66,18 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       tag: ${{ steps.release.outputs.tag }}
     steps:
+      - name: Mint GitHub App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -99,7 +107,7 @@ jobs:
         id: release
         uses: python-semantic-release/python-semantic-release@v10.5.3
         with:
-          github_token: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          github_token: ${{ steps.app-token.outputs.token }}
           verbosity: 2
 
       - name: Build client package
@@ -133,10 +141,18 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       tag: ${{ steps.release.outputs.tag }}
     steps:
+      - name: Mint GitHub App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -165,7 +181,7 @@ jobs:
         id: release
         uses: python-semantic-release/python-semantic-release@v10.5.3
         with:
-          github_token: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          github_token: ${{ steps.app-token.outputs.token }}
           verbosity: 2
           directory: statuspro_mcp_server
 
@@ -235,10 +251,25 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Mint GitHub App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      # CRITICAL: check out the *post-release* tip of main, not the workflow's
+      # triggering SHA. The release-client / release-mcp jobs this job `needs`
+      # push their `chore(release)` version-bump commits to main after this run
+      # started, so the default checkout (github.sha) carries the OLD versions —
+      # re-locking there is a silent no-op, and the push is rejected as
+      # non-fast-forward. Mirrors katana-openapi-client#901.
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          ref: main
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -246,6 +277,11 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
           python-version: "3.14"
+
+      - name: Fast-forward to the post-release tip of main
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
 
       - name: Sync lockfile
         run: uv sync --all-extras
@@ -255,8 +291,8 @@ jobs:
           if git diff --quiet uv.lock; then
             echo "uv.lock is up to date"
           else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name "dougborg-release-please[bot]"
+            git config user.email "309159260+dougborg-release-please[bot]@users.noreply.github.com"
             git add uv.lock
             git commit -m "chore: sync uv.lock after release"
             git push origin main
