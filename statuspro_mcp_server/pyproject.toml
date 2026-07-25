@@ -69,7 +69,7 @@ packages = ["src/statuspro_mcp"]
 # Pytest Configuration (Native TOML - pytest 9.0+)
 [tool.pytest]
 testpaths = ["tests"]
-asyncio_mode = "strict"
+asyncio_mode = "auto"
 markers = [
     "unit: Unit tests with mocks",
     "integration: Integration tests requiring API key",
