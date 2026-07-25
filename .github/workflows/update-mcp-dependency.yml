@@ -16,11 +16,19 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Mint GitHub App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - name: Checkout code
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Check for new client release
         id: check-release
@@ -99,8 +107,8 @@ jobs:
       - name: Commit and push
         if: steps.check-current.outputs.needs_update == 'true'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "dougborg-release-please[bot]"
+          git config user.email "309159260+dougborg-release-please[bot]@users.noreply.github.com"
           git add statuspro_mcp_server/pyproject.toml uv.lock
           git commit -m "chore(mcp): update client dependency to v${{ steps.check-release.outputs.client_version }}"
           git push origin main
