@@ -83,7 +83,11 @@ upload_to_repository = false
 remove_dist = false
 commit_author = "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
 commit_message = "chore(release): mcp v{version}"
-build_command = "pnpm exec prettier --write CHANGELOG.md"
+# Empty: nothing to run here. The MCP distribution is built by `uv build` in
+# the release workflow, and CHANGELOG.md is in .prettierignore, so formatting
+# it was a no-op that only ever failed — `pnpm` does not exist inside the
+# python-semantic-release container (exit 127). See #124.
+build_command = ""
 major_on_zero = false
 allow_zero_version = true
 tag_format = "mcp-v{version}"
