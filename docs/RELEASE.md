@@ -1,317 +1,167 @@
 # Release Process
 
-This repository uses **monorepo semantic-release** to independently version and release
-two packages:
+This repository uses **[release-please](https://github.com/googleapis/release-please) in
+manifest mode** to independently version three packages from a single, aggregated
+release PR:
 
-1. **statuspro-openapi-client** - The main Python API client
-1. **statuspro-mcp-server** - The Model Context Protocol server
+1. **statuspro-openapi-client** (component `client`) — the Python API client, at the
+   repo root
+1. **statuspro-mcp-server** (component `mcp`) — the Model Context Protocol server, in
+   `statuspro_mcp_server/`
+1. **statuspro-client** (component `ts`) — the TypeScript client, in
+   `packages/statuspro-client/`
 
-Each package is released independently based on **commit scopes**, allowing them to
-evolve at their own pace.
+Configuration lives in `release-please-config.json` and `.release-please-manifest.json`
+at the repo root. (Not linked: they sit outside the docs tree, and mkdocs runs in strict
+mode.)
 
-## Quick Reference
+## How releases work
 
-### For Client Package Releases
+### 1. Every push to `main` updates one Release PR
 
-```bash
-git commit -m "feat(client): add new domain helper classes"
-git commit -m "fix(client): resolve pagination edge case"
-```
+`.github/workflows/release-please.yml` runs on every push to `main`. It never pushes to
+`main` itself — it only opens or updates **one aggregated pull request** covering every
+package that has releasable commits since its last release
+(`separate-pull-requests: false`). That PR:
 
-### For MCP Server Releases
+- bumps `version` in each changed package's manifest (`pyproject.toml` / `package.json`)
+- updates each package's changelog
+- updates `.release-please-manifest.json`
 
-```bash
-git commit -m "feat(mcp): add inventory tools"
-git commit -m "fix(mcp): correct stock level calculation"
-```
+Because change detection is **path-based** (which files a commit touches), not
+**scope-based** (a `(client)`/`(mcp)`/`(ts)` prefix in the commit message), a commit
+that touches both `statuspro_mcp_server/` and the repo root will bump both packages.
+Commit scopes are still worth using for readability and changelog grouping, but they are
+no longer load-bearing for version-bump decisions the way they were under
+python-semantic-release.
 
-### No Release Needed
+### 2. A second workflow keeps the release PR internally consistent
 
-```bash
-git commit -m "docs: update contributing guide"
-git commit -m "chore: update dependencies"
-git commit -m "test: add integration tests"
-```
+`.github/workflows/release-pr-prepare.yml` runs on the release PR branch only (never on
+`main`). It:
 
-## How Releases Work
+- resyncs `uv.lock` to whatever versions release-please just bumped
+- keeps `statuspro_mcp_server/pyproject.toml`'s `statuspro-openapi-client>=X` floor
+  equal to the client version this PR proposes, so the MCP package's declared dependency
+  is always installable
 
-### Automated Release Workflow
+Both changes are pushed as an extra commit on the release PR branch, so they land
+**atomically with the version bump** when the PR is merged — never as a follow-up push
+to `main`.
 
-When a PR is merged to `main`, the `.github/workflows/release.yml` workflow runs **two
-independent semantic-release jobs**:
+### 3. Merging the release PR creates tags and draft GitHub Releases
 
-1. **Client Release** (`release-client` job):
-   - Checks for commits with `feat(client):`, `fix(client):`, or no scope
-   - Calculates next version based on conventional commits
-   - Creates tag: `client-v{version}` (e.g., `client-v0.24.0`)
-   - Updates `pyproject.toml` and `__init__.py` versions
-   - Generates `docs/CHANGELOG.md` from commits
-   - Builds and publishes to PyPI as `statuspro-openapi-client`
+When the release PR merges, `release-please.yml` runs once more (still triggered by the
+push to `main` the merge produces), notices the PR was just merged, and creates a tag +
+draft GitHub Release for every package that changed, all at that single merge commit:
 
-1. **MCP Server Release** (`release-mcp` job):
-   - Checks for commits with `feat(mcp):` or `fix(mcp):`
-   - Calculates next version based on conventional commits
-   - Creates tag: `mcp-v{version}` (e.g., `mcp-v0.1.0`)
-   - Updates `statuspro_mcp_server/pyproject.toml` version
-   - Generates `statuspro_mcp_server/CHANGELOG.md` from commits
-   - Builds and publishes to PyPI as `statuspro-mcp-server`
+- `client-vX.Y.Z`
+- `mcp-vX.Y.Z`
+- `ts-vX.Y.Z`
 
-Both jobs run **in parallel** and are **completely independent**.
+Releases are created as **drafts** (`"draft": true` in the config). Draft releases can
+still accept asset uploads; once a release is published it becomes
+[immutable](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
+and permanently rejects new assets. See step 4.
 
-### Version Bumps
+### 4. Each tag triggers a build-and-publish job
 
-| Commit Type                       | Example                         | Version Bump                   |
-| --------------------------------- | ------------------------------- | ------------------------------ |
-| `feat(scope):`                    | `feat(mcp): add search tool`    | MINOR (0.1.0 → 0.2.0)          |
-| `fix(scope):`                     | `fix(client): resolve auth bug` | PATCH (0.1.0 → 0.1.1)          |
-| `perf(scope):`                    | `perf(mcp): optimize queries`   | PATCH (0.1.0 → 0.1.1)          |
-| `feat(scope)!:` or Breaking       | `feat(client)!: redesign API`   | MAJOR (0.1.0 → 1.0.0)          |
-| Other (`docs:`, `chore:`, `test`) | `docs(mcp): update README`      | NO BUMP                        |
-| `feat:` (no scope)                | `feat: add pagination`          | Client MINOR (0.23.0 → 0.24.0) |
+`.github/workflows/publish.yml` triggers only on `client-v*` / `mcp-v*` / `ts-v*` tag
+pushes — never on a `main` push. For the matching component it:
 
-## Commit Message Format
+1. builds the package/tarball (the MCP job also builds the `.mcpb` bundle)
+1. publishes to the registry (PyPI or npm) via **OIDC** — no stored tokens
+1. uploads the build artifact(s) to the still-draft GitHub Release
+1. flips the release to published (`gh release edit --draft=false`)
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/) with scopes:
+The MCP job additionally builds and pushes a multi-arch Docker image to
+`ghcr.io/dougborg/statuspro-mcp-server` after its PyPI publish succeeds.
 
-### Structure
+This ordering — build, publish to registry, attach assets, _then_ finalize the release —
+means the release is never finalized before its assets exist, so nothing is ever lost to
+the immutability rule.
 
-```
-<type>(<scope>): <description>
+## Trusted Publisher environments (deviation from other repos in this migration)
 
-[optional body]
+`publish.yml`'s jobs deliberately declare **no** `environment:`. statuspro's existing
+PyPI Trusted Publishers for `statuspro-openapi-client` and `statuspro-mcp-server` were
+registered with the environment field blank, matching the old `release.yml`'s
+`publish-client-pypi`/`publish-mcp-pypi` jobs, which never set `environment:` either.
+PyPI includes the environment name in the OIDC claim it checks against the registered
+Trusted Publisher, so adding `environment:` here — without first re-registering the
+Trusted Publishers on PyPI to expect it — would make the already-working publishers stop
+matching and break every future release. If dedicated environments are wanted later,
+register them as Trusted Publishers on PyPI first, then add `environment:` to the
+corresponding jobs.
 
-[optional footer]
-```
+## Manual prerequisites before the first TS release
 
-### Examples
+**No npm Trusted Publisher exists yet for `statuspro-client`** — the TS client has never
+been published (no `ts-v*` tag exists). Until one is registered, `publish-ts` will fail
+its registry-publish step. Configure, before merging a release PR that bumps the `ts`
+component:
 
-**Client Package Release:**
+- npm Trusted Publisher for `statuspro-client`, workflow `publish.yml`, job `publish-ts`
 
-```bash
-feat(client): add Products domain helper class
+The PyPI Trusted Publishers for the client and MCP packages already exist and require no
+changes.
 
-- Implement CRUD operations
-- Add search and filtering methods
-- Full test coverage
-```
+## Commit message format
 
-**MCP Server Release:**
-
-```bash
-feat(mcp): implement check_inventory tool
-
-- Add CheckInventoryRequest and StockInfo models
-- Implement tool using Products domain helper
-- Add comprehensive unit tests
-
-Closes #35
-```
-
-**Breaking Change (Major Version):**
-
-```bash
-feat(client)!: redesign authentication flow
-
-BREAKING CHANGE: Removed legacy BasicAuth class. Use StatusProClient with API key instead.
-```
-
-**Documentation (No Release):**
+Conventional Commits still drive **what kind of** bump happens (`feat` → minor,
+`fix`/`perf` → patch, `!`/`BREAKING CHANGE` → major); scopes remain useful for changelog
+readability. Which **package(s)** get bumped is now determined by which paths a commit
+touches, not by its scope:
 
 ```bash
-docs: update monorepo release documentation
-
-Added comprehensive guide for semantic-release with scopes.
+git commit -m "feat(client): add helper for archived orders"       # bumps client
+git commit -m "fix(mcp): correct stock level calculation"          # bumps mcp
+git commit -m "feat(ts): export pagination helpers"                # bumps ts
+git commit -m "docs: update contributing guide"                    # bumps nothing
 ```
 
-## For Contributors
+## Tag format
 
-**You don't need to do anything special!** Just:
+Tags carry an explicit component prefix, matching the format used before this migration
+(`include-component-in-tag: true`), so existing tag history is continuous:
 
-1. Write good commit messages following conventional commits **with scopes**
-1. Use `(client)` scope for client changes, `(mcp)` scope for MCP server changes
-1. Merge your PR to `main`
-1. The release workflow automatically handles versioning and publishing
-
-### Which Scope Should I Use?
-
-- **Changed files in `statuspro_public_api_client/`?** → Use `(client)` scope
-- **Changed files in `statuspro_mcp_server/`?** → Use `(mcp)` scope
-- **Changed both?** → Make two separate commits, one for each scope
-- **Changed only docs or CI?** → Use `docs:` or `ci:` (no scope, no release)
-
-## Release Workflow Steps
-
-### 1. CI Tests Run
-
-All tests must pass before release:
-
-- Code quality checks (ruff, ty)
-- Unit and integration tests
-- Security scans (CodeQL, Semgrep, Trivy)
-
-### 2. Semantic-Release Analysis (Per Package)
-
-For **each package**, semantic-release:
-
-- Analyzes commits since last release for that package
-- Determines if a release is needed
-- Calculates the next version number
-
-### 3. Version Updates (If Releasing)
-
-For each package being released:
-
-- Updates version in `pyproject.toml`
-- Updates version variables (`__init__.py` for client)
-- Generates/updates changelog
-- Creates release commit
-- Creates version tag
-
-### 4. Build and Publish
-
-For each package being released:
-
-- Builds Python wheel and source distribution
-- Publishes to PyPI using **Trusted Publisher** (OIDC, no API tokens)
-- Creates GitHub release with auto-generated notes
-
-## Current Versions
-
-- **statuspro-openapi-client**: See
-  [PyPI](https://pypi.org/project/statuspro-openapi-client/)
-- **statuspro-mcp-server**: See [PyPI](https://pypi.org/project/statuspro-mcp-server/)
-
-## Tag Format
-
-- **Client tags**: `client-v0.23.0`, `client-v0.24.0`, etc.
-- **MCP tags**: `mcp-v0.1.0`, `mcp-v0.2.0`, etc.
-
-This prevents tag conflicts and makes it clear which package each tag refers to.
-
-## Manual Release (Emergency Only)
-
-If the automated workflow fails or you need to force a release:
-
-### Option 1: Trigger Workflow Manually
-
-```bash
-gh workflow run release.yml
-```
-
-This will analyze commits and release any packages with releasable changes.
-
-### Option 2: Manual Tag (Advanced)
-
-**For MCP Server only** (there's a backup workflow):
-
-```bash
-git tag mcp-v0.1.1
-git push origin mcp-v0.1.1
-```
-
-This triggers `.github/workflows/release-mcp.yml` which builds and publishes the MCP
-package directly.
+- `client-v0.1.0`, `client-v0.2.0`, …
+- `mcp-v0.1.0`, …
+- `ts-v0.1.0`, …
 
 ## Troubleshooting
 
-### "No release will be made"
+### No release PR appears after merging a PR to `main`
 
-**Cause**: No commits with `feat:`, `fix:`, or `perf:` since last release for that
-package.
+Check that at least one commit since the last release touches a path release-please
+watches (`.`, `statuspro_mcp_server/`, or `packages/statuspro-client/`) with a
+`feat`/`fix`/`perf`/breaking-change commit. `docs:`/`chore:`/`test:` commits do not
+trigger a release-worthy change on their own.
 
-**Solution**: Ensure your commits follow conventional commit format with appropriate
-scopes:
+### The release PR's `uv.lock` or MCP pin looks stale
 
-- Use `feat(client):` or `fix(client):` for client releases
-- Use `feat(mcp):` or `fix(mcp):` for MCP releases
+Check the `release-pr-prepare.yml` run for that PR — it runs on every push to the PR
+branch (including release-please's own force-pushes) and should show a
+`chore(release): sync uv.lock and MCP client pin` commit if anything needed resyncing.
 
-### Release not triggered?
+### Publish job failed with a PyPI/npm auth error
 
-**Check**:
+For npm: almost certainly the Trusted Publisher prerequisite above hasn't been
+configured yet. For PyPI: check that the Trusted Publisher on PyPI still has no
+`environment` set — if one was added there without a matching `environment:` here (or
+vice versa), the OIDC claim will stop matching.
 
-- Are there `feat:` or `fix:` commits with the correct scope?
-- Did the test job pass? (release only runs after tests pass)
-- Check Actions tab for workflow run details
+### Release created but no assets attached
 
-### Wrong package released?
+The publish job for that component failed _before_ the "attach assets" step (usually the
+registry publish itself). Fix the underlying failure and re-run — the release stays in
+draft state (and therefore mutable) until the workflow successfully reaches
+`gh release edit --draft=false`.
 
-**Cause**: Missing or incorrect commit scope.
+## Further reading
 
-**Solution**:
-
-- Use `feat(client):` or `fix(client):` for client releases
-- Use `feat(mcp):` or `fix(mcp):` for MCP releases
-- Commits without scope default to client package
-
-### Release created but PyPI publish failed?
-
-**Check**:
-
-- Verify PyPI Trusted Publisher is configured for the repository
-- Ensure workflow has `id-token: write` permission
-- Check PyPI status page for outages
-
-### Protected branch error?\*\*
-
-**Check**:
-
-- Verify `SEMANTIC_RELEASE_TOKEN` secret is set:
-  ```bash
-  gh secret list --repo dougborg/statuspro-openapi-client
-  ```
-- Ensure PAT has correct permissions (Contents: write, PRs: write)
-- Verify PAT hasn't expired
-
-### Version conflict?
-
-**Cause**: PyPI version already exists (can happen if manual release conflicts with
-automated).
-
-**Solution**: Semantic-release will skip the publish step. Wait for next release cycle.
-
-## Technical Details
-
-### Protected Branch Setup
-
-The `main` branch is protected with required status checks. The release workflow uses a
-Personal Access Token (`SEMANTIC_RELEASE_TOKEN`) to bypass protection and push release
-commits.
-
-### Workflow Configuration
-
-See `.github/workflows/release.yml` for the complete workflow configuration.
-
-### PyPI Trusted Publishers
-
-Both packages use PyPI Trusted Publishers for secure, tokenless authentication:
-
-- **statuspro-openapi-client**: Published from `release-client` job
-- **statuspro-mcp-server**: Published from `release-mcp` job
-
-Configuration: PyPI Project Settings → Publishing → Trusted Publishers
-
-### Semantic-Release Configuration
-
-Each package has its own semantic-release configuration:
-
-- **Client**: `pyproject.toml` (root) - `[tool.semantic_release]`
-- **MCP Server**: `statuspro_mcp_server/pyproject.toml` - `[tool.semantic_release]`
-
-Configuration includes:
-
-- Version file locations
-- Tag format
-- Commit message format
-- Changelog generation
-- Build commands
-
-## Further Reading
-
-- **[MONOREPO_SEMANTIC_RELEASE.md](MONOREPO_SEMANTIC_RELEASE.md)** - Comprehensive guide
-  with examples
-- **[Conventional Commits](https://www.conventionalcommits.org/)** - Commit message
-  specification
-- **[Python Semantic Release](https://python-semantic-release.readthedocs.io/)** -
-  Official documentation
-- **[PyPI Trusted Publishers](https://docs.pypi.org/trusted-publishers/)** - OIDC-based
-  publishing
+- [release-please manifest-releaser docs](https://github.com/googleapis/release-please/blob/main/docs/manifest-releaser.md)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+- [PyPI Trusted Publishers](https://docs.pypi.org/trusted-publishers/)
+- [npm Trusted Publishers](https://docs.npmjs.com/trusted-publishers)
+- [GitHub Docs: Immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)

@@ -77,7 +77,6 @@ autoapi/statuspro_public_api_client/index
 :caption: Development
 
 RELEASE
-MONOREPO_SEMANTIC_RELEASE
 UV_USAGE
 PYPI_SETUP
 ```

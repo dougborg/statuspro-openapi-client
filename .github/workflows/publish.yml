@@ -1,0 +1,233 @@
+name: Publish
+
+# The only workflow that builds and ships artifacts. Triggered exclusively
+# by the tags release-please creates when its release PR merges
+# (client-v*, mcp-v*, ts-v*). Nothing here ever pushes to main.
+#
+# release-please creates each GitHub Release as a DRAFT (see
+# release-please-config.json "draft": true). Draft releases accept asset
+# uploads; once published they become immutable and reject further
+# uploads (https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases).
+# So every job here builds its assets, publishes to the registry, THEN
+# uploads assets to the still-draft release, and only then flips it to
+# published - assets and registry publish always land before the release
+# is finalized.
+#
+# DEVIATION FROM THE frontapp-openapi-client#168 REFERENCE: no `environment:`
+# is set on any job here. statuspro's existing PyPI Trusted Publishers were
+# registered with the environment field BLANK (matching the old release.yml's
+# publish-*-pypi jobs, which declared no `environment:`). PyPI's OIDC claim
+# includes the environment name, so adding `environment:` here would make the
+# already-working Trusted Publishers stop matching and break publishing. If
+# dedicated environments (pypi-client / pypi-mcp) are wanted later, register
+# them as Trusted Publishers on PyPI FIRST, then add `environment:` here.
+#
+# PREREQUISITE: none for PyPI - Trusted Publishers for statuspro-openapi-client
+# and statuspro-mcp-server already exist and are unaffected by this migration.
+# npm Trusted Publisher for statuspro-client does NOT exist yet (the TS client
+# has never been published) - the publish-ts job will fail until one is
+# registered for workflow `publish.yml`, job `publish-ts`.
+
+on:
+  push:
+    tags:
+      - 'client-v*'
+      - 'mcp-v*'
+      - 'ts-v*'
+
+permissions: {}
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-client:
+    name: Publish client to PyPI
+    if: startsWith(github.ref_name, 'client-v')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          python-version: "3.14"
+
+      - name: Build client package
+        run: uv build
+
+      - name: Publish client to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
+
+      - name: Attach build artifacts to draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" dist/* --clobber
+
+      - name: Publish the (now immutable) release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false
+
+  publish-mcp:
+    name: Publish MCP server to PyPI
+    if: startsWith(github.ref_name, 'mcp-v')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          python-version: "3.14"
+
+      - name: Build MCP package
+        # uv build is workspace-aware: even invoked for a single member package it
+        # writes to the workspace root's dist/, not statuspro_mcp_server/dist/.
+        run: uv build --package statuspro-mcp-server
+
+      # scripts/build_mcpb.py is stdlib-only and shells out to the mcpb CLI -
+      # no project deps are needed for this step beyond Node for the CLI.
+      - name: Install Node.js (for mcpb CLI)
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install mcpb CLI
+        run: npm install -g @anthropic-ai/mcpb
+
+      - name: Build .mcpb bundle
+        id: mcpb
+        run: |
+          artifact=$(python3 scripts/build_mcpb.py | tail -n 1)
+          echo "artifact=${artifact}" >> "$GITHUB_OUTPUT"
+          ls -la "${artifact}"
+
+      - name: Publish MCP server to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
+
+      - name: Attach build artifacts to draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" dist/* "${{ steps.mcpb.outputs.artifact }}" --clobber
+
+      - name: Publish the (now immutable) release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false
+
+  publish-mcp-docker:
+    name: Publish MCP Docker image
+    needs: publish-mcp
+    if: startsWith(github.ref_name, 'mcp-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Determine MCP version for tagging
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#mcp-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/statuspro-mcp-server
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
+            type=semver,pattern={{major}},value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./statuspro_mcp_server
+          file: ./statuspro_mcp_server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  publish-ts:
+    name: Publish TS client to npm
+    if: startsWith(github.ref_name, 'ts-v')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: packages/statuspro-client
+        run: pnpm run build
+
+      - name: Pack npm tarball for release asset
+        working-directory: packages/statuspro-client
+        run: pnpm pack --pack-destination dist-npm
+
+      - name: Publish to npm via OIDC Trusted Publisher
+        working-directory: packages/statuspro-client
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+        run: pnpm publish --no-git-checks --access public
+
+      - name: Attach npm tarball to draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" packages/statuspro-client/dist-npm/*.tgz --clobber
+
+      - name: Publish the (now immutable) release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false

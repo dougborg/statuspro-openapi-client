@@ -240,7 +240,9 @@ pnpm --filter statuspro-client generate  # regenerate the TypeScript client
 
 ### Commit Standards
 
-Conventional commits drive per-package semantic-release versioning:
+Conventional commits drive per-package release-please versioning. Which package(s) get
+bumped is decided by which paths a commit touches, not its scope — but scopes remain
+useful for changelog readability:
 
 ```bash
 git commit -m "feat(client): add helper for archived orders"
@@ -252,7 +254,7 @@ git commit -m "docs: update quick-start"
 
 Use `!` for breaking changes: `feat(client)!: drop Python 3.11 support`.
 
-See [MONOREPO_SEMANTIC_RELEASE.md](docs/MONOREPO_SEMANTIC_RELEASE.md) for details.
+See [RELEASE.md](docs/RELEASE.md) for details.
 
 ## License
 

@@ -41,42 +41,51 @@ This directory contains the CI/CD workflows for the StatusPro OpenAPI Client pro
 **Note:** This workflow only runs when documentation files change (docs/\*\*,
 mkdocs.yml, etc.) to avoid unnecessary builds.
 
-### [release.yml](release.yml)
+### [release-please.yml](release-please.yml)
 
-**Trigger:**
+**Trigger:** Push to `main` branch
 
-- Push to `main` branch
-- Manual workflow dispatch
+**Purpose:** The only workflow that watches `main` for release purposes. Runs
+[release-please](https://github.com/googleapis/release-please) in manifest mode
+(`release-please-config.json` / `.release-please-manifest.json`) to open/update one
+aggregated release PR covering all three packages, or — once that PR has merged — create
+tags (`client-v*`, `mcp-v*`, `ts-v*`) and draft GitHub Releases at the merge commit.
+Never pushes to `main` itself.
 
-**Purpose:** Automated releases using semantic versioning for both packages
+**Permissions:** `contents: write`, `pull-requests: write`
 
-**Jobs:**
+### [release-pr-prepare.yml](release-pr-prepare.yml)
 
-1. **test**: Run full CI pipeline
-1. **release-client**: Create client package release
-   - Uses Python Semantic Release
-   - Creates `client-v*` tags
-   - Builds distribution packages
-1. **release-mcp**: Create MCP server package release
-   - Uses Python Semantic Release
-   - Creates `mcp-v*` tags
-   - Builds distribution packages
-1. **publish-client-pypi**: Publish client to PyPI (only if client released)
-   - Uses trusted publishing (OIDC)
-   - Includes package attestations
-1. **publish-mcp-pypi**: Publish MCP to PyPI (only if MCP released)
-   - Uses trusted publishing (OIDC)
-   - Includes package attestations
-1. **publish-mcp-docker**: Publish MCP Docker image to GHCR (only if MCP released)
+**Trigger:** `pull_request` events, filtered to release-please's own PR branch
+(`release-please--*`, same-repo only)
+
+**Purpose:** Resyncs `uv.lock` and the MCP server's `statuspro-openapi-client>=X` floor
+to match the versions the release PR proposes, committing the result back to the release
+PR branch — never to `main`.
+
+**Permissions:** `contents: write`
+
+### [publish.yml](publish.yml)
+
+**Trigger:** Push of a `client-v*`, `mcp-v*`, or `ts-v*` tag
+
+**Purpose:** The only workflow that builds and publishes artifacts. Per-component jobs
+build the package (the MCP job also builds the `.mcpb` bundle), publish it to the
+registry via OIDC (PyPI/npm Trusted Publishers — no tokens), upload the built asset(s)
+to the still-draft GitHub Release, then flip the release to published.
+`publish-mcp-docker` additionally builds and pushes a multi-arch image to GHCR after
+`publish-mcp` succeeds.
+
+**Note:** No `environment:` is set on any job — statuspro's PyPI Trusted Publishers were
+registered with a blank environment, and adding one here would break OIDC matching. See
+[RELEASE.md](../../docs/RELEASE.md#trusted-publisher-environments-deviation-from-other-repos-in-this-migration).
 
 **Permissions:**
 
-- test: `contents: read`
-- release-\*: `contents: write`, `id-token: write`
-- publish-\*: `id-token: write`
+- `publish-client` / `publish-mcp` / `publish-ts`: `id-token: write`, `contents: write`
+- `publish-mcp-docker`: `contents: read`, `packages: write`
 
-**Note:** This workflow supports monorepo releases using commit scopes. See
-[MONOREPO_SEMANTIC_RELEASE.md](../../docs/MONOREPO_SEMANTIC_RELEASE.md) for details.
+See [RELEASE.md](../../docs/RELEASE.md) for the full release process.
 
 ### [security.yml](security.yml)
 
@@ -91,37 +100,6 @@ mkdocs.yml, etc.) to avoid unnecessary builds.
 - License compliance checks
 
 **Permissions:** `contents: read`, `security-events: write`
-
-### [update-mcp-dependency.yml](update-mcp-dependency.yml)
-
-**Trigger:** After successful completion of Release workflow
-
-**Purpose:** Automatically update MCP's client dependency when a new client version is
-released
-
-**Steps:**
-
-- Check for new `client-v*` tags created in the Release workflow
-- Extract the new client version number
-- Update `statuspro_mcp_server/pyproject.toml` dependency specification
-- Update `uv.lock` file
-- Create a PR with conventional commit message
-  `feat(mcp): update client dependency to vX.Y.Z`
-
-**Permissions:** `contents: write`, `pull-requests: write`
-
-**How it works:**
-
-1. Detects if Release workflow created a new `client-v*` tag
-1. Compares tag timestamp with workflow start time to confirm it's new
-1. Checks current MCP dependency version
-1. Skips if dependency is already up to date
-1. Updates dependency and creates PR for review
-1. When PR is merged, triggers new MCP release via `feat(mcp):` commit
-
-See
-[Automated Dependency Management](../../docs/MONOREPO_SEMANTIC_RELEASE.md#automated-dependency-management)
-for details.
 
 ### [copilot-setup-steps.yml](copilot-setup-steps.yml)
 
@@ -140,43 +118,35 @@ for details.
 ```mermaid
 graph TD
     A[Push to main] --> B[CI checks]
-    A --> C[Release workflow]
+    A --> C[release-please.yml]
     A --> D[Docs workflow]
 
-    B --> E{Tests pass?}
-    E -->|Yes| F[Continue]
-    E -->|No| G[Fail]
+    C --> H{Releasable commits?}
+    H -->|Yes| I[Open/update aggregated release PR]
+    H -->|No| K[Skip]
 
-    C --> H{Semantic Release}
-    H -->|Client changes| I[Create Client Release]
-    H -->|MCP changes| J[Create MCP Release]
-    H -->|No changes| K[Skip]
+    I --> P[release-pr-prepare.yml: sync uv.lock + MCP pin]
+    P --> Q[Merge release PR]
+    Q --> R[release-please.yml: create tags + draft releases]
 
-    I --> L[Publish Client to PyPI]
-    I --> M[Trigger Update MCP Dependency]
+    R --> T[publish.yml: client-v*]
+    R --> U[publish.yml: mcp-v*]
+    R --> V[publish.yml: ts-v*]
 
-    J --> N[Publish MCP to PyPI]
-    J --> O[Publish MCP to GHCR]
+    T --> W[Publish to PyPI, attach asset, undraft]
+    U --> X[Publish to PyPI, .mcpb, GHCR, attach assets, undraft]
+    V --> Y[Publish to npm, attach asset, undraft]
 
-    M --> P{Dependency outdated?}
-    P -->|Yes| Q[Create PR: feat mcp: update client]
-    P -->|No| R[Skip]
-
-    Q --> S[Merge PR]
-    S --> T[Trigger MCP Release]
-
-    D --> U{Docs changed?}
-    U -->|Yes| V[Build & Deploy]
-    U -->|No| W[Skip]
+    D --> Z{Docs changed?}
+    Z -->|Yes| AA[Build & Deploy]
+    Z -->|No| AB[Skip]
 
     style A fill:#e1f5ff
     style I fill:#d4edda
-    style J fill:#d4edda
-    style L fill:#d4edda
-    style N fill:#d4edda
-    style O fill:#d4edda
+    style T fill:#d4edda
+    style U fill:#d4edda
     style V fill:#d4edda
-    style Q fill:#fff3cd
+    style AA fill:#d4edda
 ```
 
 ## Configuration
@@ -210,8 +180,8 @@ act pull_request -W .github/workflows/ci.yml
 # Test docs build (without deploy)
 act workflow_dispatch -W .github/workflows/docs.yml
 
-# Test release (dry-run)
-act push -W .github/workflows/release.yml
+# Test release-please (dry-run)
+act push -W .github/workflows/release-please.yml
 ```
 
 ## Maintenance
@@ -238,22 +208,17 @@ When adding new workflows:
 
 ### Common Issues
 
-**Dependency update PR not created:**
+**No release PR opens/updates:**
 
-- Check that Release workflow completed successfully
-- Verify a new `client-v*` tag was created
-- Check if MCP dependency is already up to date
-- Review update-mcp-dependency workflow logs
 - Ensure the `dougborg-release-please` GitHub App is installed and its
   `RELEASE_PLEASE_APP_ID`/`RELEASE_PLEASE_APP_PRIVATE_KEY` credentials are valid
+- Ensure commits follow conventional commit format and touch a watched path (`.`,
+  `statuspro_mcp_server/`, or `packages/statuspro-client/`)
+- Review `release-please.yml` run logs
 
-**MCP release not triggering after dependency update:**
+**`uv.lock` or MCP pin stale on the release PR:**
 
-- Ensure the dependency update PR was merged to `main`
-- Check that PR commit message follows format:
-  `feat(mcp): update client dependency to vX.Y.Z`
-- Review release workflow logs for MCP changes detection
-- Verify semantic-release configuration in `statuspro_mcp_server/pyproject.toml`
+- Check the `release-pr-prepare.yml` run for that PR branch
 
 **Docs not deploying:**
 
@@ -261,17 +226,12 @@ When adding new workflows:
 - Verify GitHub Pages is enabled in repository settings
 - Check workflow logs for build errors
 
-**Release not creating:**
+**PyPI/npm publish failing:**
 
-- Ensure commits follow conventional commit format
-- Check semantic-release configuration in `pyproject.toml`
-- Review workflow logs for PSR errors
-
-**PyPI publish failing:**
-
-- Verify Trusted Publisher is configured in PyPI
-- Check that release was actually created
-- Review PyPI environment protection rules
+- Verify the Trusted Publisher is configured for that package on PyPI/npm, with no
+  `environment` set (see [RELEASE.md](../../docs/RELEASE.md))
+- Check that a draft release for the tag was actually created
+- Review PyPI/npm status pages for outages
 
 ### Debug Mode
 
@@ -288,5 +248,5 @@ ACTIONS_RUNNER_DEBUG=true
 
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [uv Documentation](https://docs.astral.sh/uv/)
-- [Python Semantic Release](https://python-semantic-release.readthedocs.io/)
+- [release-please](https://github.com/googleapis/release-please)
 - [MkDocs](https://www.mkdocs.org/)
