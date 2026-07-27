@@ -62,9 +62,13 @@ jobs:
           echo "Client version on this release PR: $CLIENT_VERSION"
           echo "Current MCP -> client floor: $CURRENT_FLOOR"
           if [ "$CURRENT_FLOOR" != "$CLIENT_VERSION" ]; then
+            # The .mcpb bundle carries its own copy of the dependency list and
+            # scripts/build_mcpb.py hard-fails if the two drift apart, so both
+            # files have to move together.
             sed -i "s/statuspro-openapi-client>=[0-9.]\\+/statuspro-openapi-client>=$CLIENT_VERSION/" \
-              statuspro_mcp_server/pyproject.toml
-            echo "Updated floor to >=$CLIENT_VERSION"
+              statuspro_mcp_server/pyproject.toml \
+              statuspro_mcp_server/mcpb/pyproject.template.toml
+            echo "Updated floor to >=$CLIENT_VERSION (package + mcpb template)"
           else
             echo "Floor already matches; nothing to do"
           fi
@@ -77,12 +81,14 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- uv.lock statuspro_mcp_server/pyproject.toml; then
+          if git diff --quiet -- uv.lock statuspro_mcp_server/pyproject.toml \
+            statuspro_mcp_server/mcpb/pyproject.template.toml; then
             echo "Nothing to commit"
             exit 0
           fi
           git config user.name "dougborg-release-please[bot]"
           git config user.email "309159260+dougborg-release-please[bot]@users.noreply.github.com"
-          git add uv.lock statuspro_mcp_server/pyproject.toml
+          git add uv.lock statuspro_mcp_server/pyproject.toml \
+            statuspro_mcp_server/mcpb/pyproject.template.toml
           git commit -m "chore(release): sync uv.lock and MCP client pin"
           git push origin "HEAD:$HEAD_REF"
