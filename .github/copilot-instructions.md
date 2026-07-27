@@ -314,15 +314,17 @@ async with StatusProClient() as client:
 
 ## Conventional Commits (CRITICAL)
 
-This project uses **semantic-release** with conventional commits and **scopes** for
-monorepo versioning.
+This project uses **release-please** (manifest mode) with conventional commits for
+monorepo versioning. Which package(s) release is decided by which **paths** a commit
+touches, not its scope — but scopes remain useful for changelog readability. See
+[docs/RELEASE.md](../docs/RELEASE.md) for the full process.
 
-### Commit Scopes for Package Releases
+### Commit Scopes for Package Releases (readability only)
 
-- **`feat(client):`** / **`fix(client):`** - Releases **statuspro-openapi-client**
+- **`feat(client):`** / **`fix(client):`** - touches **statuspro-openapi-client**
   (MINOR/PATCH)
-- **`feat(mcp):`** / **`fix(mcp):`** - Releases **statuspro-mcp-server** (MINOR/PATCH)
-- **`feat:`** / **`fix:`** (no scope) - Releases **statuspro-openapi-client** (default)
+- **`feat(mcp):`** / **`fix(mcp):`** - touches **statuspro-mcp-server** (MINOR/PATCH)
+- **`feat:`** / **`fix:`** (no scope) - typically touches the client (default)
 
 ### Other Commit Types (No Version Bump)
 

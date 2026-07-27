@@ -1,41 +1,41 @@
 # MCP Server Deployment Guide
 
 This document describes how the StatusPro MCP Server is released and published to PyPI
-using **automated semantic-release**.
+using **release-please**, in manifest mode alongside the client and TS packages. See the
+[main release guide](https://github.com/dougborg/statuspro-openapi-client/blob/main/docs/RELEASE.md)
+for the full repo-wide process; this page covers what's specific to the MCP server.
 
 ## Overview
 
-Releases are **fully automated** using monorepo semantic-release. You don't manually
-update version numbers or publish to PyPI - the CI/CD pipeline handles everything based
-on conventional commits.
+Releases are fully automated. You don't manually update version numbers or publish to
+PyPI — merging a PR to `main` updates an aggregated release PR (across all three
+packages), and merging _that_ PR is what actually creates the `mcp-v{version}` tag and
+draft GitHub Release, which the tag-triggered `publish.yml` workflow then builds and
+publishes from.
 
 ## How Releases Work
 
-### Automated Release Process
-
-When a PR is merged to `main` with MCP-related changes:
-
-1. **CI Tests Run**: All quality checks, tests, and security scans must pass
-1. **Semantic-Release Analysis**: Analyzes commits with `(mcp)` scope since last release
-1. **Version Calculation**: Determines next version based on commit types:
-   - `feat(mcp):` → MINOR bump (0.1.0 → 0.2.0)
-   - `fix(mcp):` → PATCH bump (0.1.0 → 0.1.1)
-   - `feat(mcp)!:` → MAJOR bump (0.1.0 → 1.0.0)
-1. **Automatic Updates**:
-   - Version updated in `pyproject.toml`
-   - Changelog generated/updated
-   - Git commit and tag created (`mcp-v{version}`)
-   - Changes pushed to main
-1. **Build and Publish**:
-   - Package built with `uv build`
-   - Published to PyPI using Trusted Publisher (OIDC, no tokens)
-   - GitHub release created with auto-generated notes
+1. **Commits land on `main`** — release-please detects any commit touching
+   `statuspro_mcp_server/` since the last `mcp-v*` release and reflects it in the
+   aggregated release PR (path-based detection, not the `(mcp)` commit-scope filtering
+   used before this migration — scopes are now cosmetic for changelog grouping only).
+2. **The release PR proposes**: a version bump in `statuspro_mcp_server/pyproject.toml`,
+   an updated `CHANGELOG.md`, and (via `release-pr-prepare.yml`) a synced `uv.lock` +
+   client-dependency floor.
+3. **Merging the release PR** creates tag `mcp-v{version}` and a **draft** GitHub
+   Release at that commit.
+4. **`publish.yml`'s `publish-mcp` job**, triggered by the `mcp-v*` tag: builds the
+   wheel + sdist with `uv build --package statuspro-mcp-server`, builds the `.mcpb`
+   bundle (`scripts/build_mcpb.py`), publishes to PyPI via OIDC, uploads both the Python
+   and `.mcpb` artifacts to the still-draft release, then flips it to published.
+5. **`publish-mcp-docker`** runs after `publish-mcp` succeeds and pushes a multi-arch
+   image to `ghcr.io/dougborg/statuspro-mcp-server`.
 
 ## For Developers
 
 ### How to Trigger a Release
 
-**Just write good commit messages with the `(mcp)` scope:**
+Write commits touching `statuspro_mcp_server/` using Conventional Commits:
 
 ```bash
 # Feature (minor version bump)
@@ -53,24 +53,25 @@ BREAKING CHANGE: Tool request parameters now require explicit types"
 git commit -m "docs(mcp): update README examples"
 ```
 
-**That's it!** Merge your PR and the release happens automatically.
+Merge your PR — release-please picks it up on the next push to `main` and reflects it in
+the aggregated release PR. Merging that release PR is what actually ships the version.
 
-### Which Commits Trigger Releases?
+### Which Commits Bump the MCP Version?
 
-| Commit Type   | Example                    | Release? | Version Bump        |
-| ------------- | -------------------------- | -------- | ------------------- |
-| `feat(mcp):`  | Add new order tool         | ✅       | MINOR (0.1.0→0.2.0) |
-| `fix(mcp):`   | Fix auth error             | ✅       | PATCH (0.1.0→0.1.1) |
-| `perf(mcp):`  | Optimize query performance | ✅       | PATCH (0.1.0→0.1.1) |
-| `feat(mcp)!:` | Breaking API change        | ✅       | MAJOR (0.1.0→1.0.0) |
-| `docs(mcp):`  | Update documentation       | ❌       | No release          |
-| `test(mcp):`  | Add unit tests             | ❌       | No release          |
-| `chore(mcp):` | Update dependencies        | ❌       | No release          |
-| `feat:` (no   | Feature without scope      | ❌       | Releases client     |
-| scope)        |                            |          | instead             |
+release-please partitions by **path**, not commit scope: any commit whose diff touches
+`statuspro_mcp_server/` is eligible to bump the `mcp` component, based on its
+conventional-commit type:
 
-**IMPORTANT**: Always use the `(mcp)` scope for MCP server changes! Without it, the
-client package will be released instead.
+| Commit Type           | Release? | Version Bump        |
+| --------------------- | -------- | ------------------- |
+| `feat(mcp): ...`      | Yes      | MINOR (0.1.0→0.2.0) |
+| `fix(mcp): ...`       | Yes      | PATCH (0.1.0→0.1.1) |
+| `perf(mcp): ...`      | Yes      | PATCH (0.1.0→0.1.1) |
+| `feat(mcp)!: ...`     | Yes      | MAJOR (0.1.0→1.0.0) |
+| `docs`/`test`/`chore` | No       | No release          |
+
+A commit touching both `statuspro_mcp_server/` and the repo root bumps both `client` and
+`mcp` — this is new behavior versus the old scope-only filtering.
 
 ## Verify a Release
 
@@ -83,10 +84,10 @@ Visit: https://pypi.org/project/statuspro-mcp-server/
 
 Verify:
 
-- ✅ New version is listed
-- ✅ README renders correctly
-- ✅ Project metadata is correct
-- ✅ Installation command works
+- New version is listed
+- README renders correctly
+- Project metadata is correct
+- Installation command works
 
 ### 2. Test Installation from PyPI
 
@@ -132,13 +133,13 @@ Update Claude Desktop config
 
 Restart Claude Desktop and verify:
 
-- ✅ Server starts without errors
-- ✅ Inventory tools appear in MCP tools list
-- ✅ Tools work when invoked
+- Server starts without errors
+- Inventory tools appear in MCP tools list
+- Tools work when invoked
 
 ## Manual Testing Before Release
 
-Before merging a PR that will trigger a release, test locally:
+Before merging a PR that will feed into a release, test locally:
 
 ### Run All Tests
 
@@ -158,16 +159,15 @@ uv run pytest tests/
 ### Test Local Build
 
 ```bash
-cd statuspro_mcp_server
-
-# Build package
-uv build
+# From the repo root - uv build is workspace-aware and writes to the
+# workspace root's dist/, not statuspro_mcp_server/dist/.
+uv build --package statuspro-mcp-server
 
 # Install locally (in a test venv)
 cd /tmp
 python3 -m venv test-local
 source test-local/bin/activate
-pip install /path/to/statuspro-openapi-client/statuspro_mcp_server/dist/*.whl
+pip install /path/to/statuspro-openapi-client/dist/*.whl
 
 # Test
 statuspro-mcp-server --help
@@ -177,73 +177,50 @@ deactivate
 rm -rf /tmp/test-local
 ```
 
-## Emergency Manual Release
-
-If the automated workflow fails, you can trigger a manual release:
-
-### Option 1: Re-run GitHub Workflow
+### Test the `.mcpb` Bundle Build
 
 ```bash
-# Re-run the most recent workflow
-gh workflow run release.yml
-
-# Or check workflow runs and re-run a specific one
-gh run list --workflow=release.yml
-gh run rerun <run-id> --failed
+npm install -g @anthropic-ai/mcpb   # once
+uv run poe build-mcpb
 ```
 
-### Option 2: Manual Tag (Last Resort)
+## Emergency Manual Actions
 
-Only use if semantic-release is completely broken:
+If `publish.yml` fails partway through for a tag that already has a draft release, fix
+the underlying failure and re-run the failed job — the release stays draft (and
+therefore mutable) until `gh release edit --draft=false` succeeds, so nothing is lost by
+retrying.
 
-```bash
-# WARNING: This bypasses semantic-release and version management!
-# Only use in emergencies after coordinating with maintainers
-
-# Manually update version in pyproject.toml first
-# Then create and push tag
-git tag mcp-v0.1.0
-git push origin mcp-v0.1.0
-
-# This triggers the backup release-mcp.yml workflow
-```
-
-**Note**: Manual tags bypass changelog generation and version file updates. Use
-sparingly.
+There is no supported way to force a release outside release-please's PR flow; manually
+pushing a `mcp-v*` tag without a corresponding release-please-created draft release will
+cause `publish.yml`'s `gh release upload`/`gh release edit` steps to fail (no release
+exists for that tag).
 
 ## Troubleshooting
 
-### Release Not Triggered
+### Release Not Appearing After Merge
 
-**Symptom**: PR merged but no release created
+**Symptom**: PR merged but no MCP entry in the next release PR
 
 **Causes**:
 
-1. No `feat(mcp):` or `fix(mcp):` commits since last release
-1. Forgot the `(mcp)` scope - released client instead
-1. CI tests failed - release only runs after tests pass
+1. No `feat(mcp):`/`fix(mcp):`/`perf(mcp):`/breaking commits touching
+   `statuspro_mcp_server/` since the last `mcp-v*` release
+1. `release-please.yml` failed to run — check the Actions tab
 
 **Solutions**:
 
-- Check commit messages: `git log --oneline main`
-- Verify scope is present: `git log --grep="(mcp)" main`
-- Check GitHub Actions for failures
-
-### Wrong Package Released
-
-**Symptom**: Client package released instead of MCP server
-
-**Cause**: Missing `(mcp)` scope in commit message
-
-**Solution**: Use `feat(mcp):` or `fix(mcp):` for all MCP changes
+- Check commit messages: `git log --oneline -- statuspro_mcp_server/`
+- Review `release-please.yml` run logs
 
 ### PyPI Publish Failed
 
-**Symptom**: Release created but PyPI publish failed
+**Symptom**: Draft release created (tag exists) but PyPI publish failed
 
 **Causes**:
 
-1. PyPI Trusted Publisher misconfigured
+1. PyPI Trusted Publisher misconfigured (must still have **no** `environment` set — see
+   [RELEASE.md](https://github.com/dougborg/statuspro-openapi-client/blob/main/docs/RELEASE.md#trusted-publisher-environments-deviation-from-other-repos-in-this-migration))
 1. Version already exists on PyPI (can't overwrite)
 1. PyPI service outage
 
@@ -252,55 +229,42 @@ sparingly.
 1. Check PyPI Trusted Publisher configuration (no environment, correct repo/workflow)
 1. Check if version exists: https://pypi.org/project/statuspro-mcp-server/#history
 1. Check PyPI status: https://status.python.org/
-1. Re-run the workflow: `gh run rerun <run-id> --failed`
+1. Re-run the failed `publish.yml` job — the tag and draft release persist
 
 ### Tests Failed in CI
 
-**Symptom**: PR checks failing, blocking release
+**Symptom**: PR checks failing
 
 **Solutions**:
 
 1. Run tests locally: `uv run pytest tests/`
 1. Check test output in GitHub Actions
-1. Fix the issue and push new commit
-1. Ensure commit uses `(mcp)` scope for release
-
-### Version Conflict
-
-**Symptom**: "Version X.Y.Z already exists on PyPI"
-
-**Cause**: PyPI doesn't allow re-uploading the same version
-
-**Solutions**:
-
-1. This shouldn't happen with semantic-release (it always increments)
-1. If it does, check if someone manually published that version
-1. Force next version with additional commit: `fix(mcp): force version bump`
+1. Fix the issue and push a new commit
 
 ## Release Workflow Details
 
-### Semantic-Release Configuration
+### release-please Configuration
 
-Located in `statuspro_mcp_server/pyproject.toml`:
+The MCP server's component is declared in the repo root's `release-please-config.json`:
 
-```toml
-[tool.semantic_release]
-version_toml = ["statuspro_mcp_server/pyproject.toml:project.version"]
-tag_format = "mcp-v{version}"
-commit_message = "chore(release): mcp v{version}"
-build_command = "cd statuspro_mcp_server && uv build"
-# Only processes commits with (mcp) scope
+```jsonc
+"statuspro_mcp_server": {
+  "release-type": "python",
+  "component": "mcp",
+  "package-name": "statuspro-mcp-server",
+  "changelog-path": "CHANGELOG.md"
+}
 ```
 
-### GitHub Workflow
+### GitHub Workflows
 
-Located in `.github/workflows/release.yml`:
-
-- **Trigger**: Every push to `main` branch
-- **Jobs**:
-  1. `test` - Runs full CI pipeline
-  1. `release-mcp` - Semantic-release for MCP server
-  1. `publish-mcp-pypi` - Publishes to PyPI if released
+- **`.github/workflows/release-please.yml`** — opens/updates the aggregated release PR;
+  creates the `mcp-v{version}` tag + draft release on merge
+- **`.github/workflows/release-pr-prepare.yml`** — keeps `uv.lock` and the MCP's
+  `statuspro-openapi-client>=X` floor in sync with the release PR's proposed client
+  version
+- **`.github/workflows/publish.yml`** (`publish-mcp`, `publish-mcp-docker` jobs) —
+  builds, publishes to PyPI + GHCR, and finalizes the release
 
 ### PyPI Trusted Publisher
 
@@ -308,9 +272,10 @@ Configured at: https://pypi.org/manage/project/statuspro-mcp-server/settings/pub
 
 - **Owner**: `dougborg`
 - **Repository**: `statuspro-openapi-client`
-- **Workflow**: `release.yml`
-- **Job**: `publish-mcp-pypi`
-- **Environment**: (none)
+- **Workflow**: `publish.yml`
+- **Job**: `publish-mcp`
+- **Environment**: (none — deliberately left blank; see
+  [RELEASE.md](https://github.com/dougborg/statuspro-openapi-client/blob/main/docs/RELEASE.md#trusted-publisher-environments-deviation-from-other-repos-in-this-migration))
 
 ## Version Numbering
 
@@ -329,55 +294,35 @@ This project uses semantic versioning with pre-release identifiers:
 - **RC** (0.1.0rc1): Release candidate, final testing
 - **Stable** (0.1.0, 1.0.0): Production-ready release
 
-**Current Phase**: Alpha - API may change between versions
-
-### Example Version Progression:
-
-```
-0.1.0a1  (initial release)
-  ↓ feat(mcp): add search
-0.2.0a1  (new feature added)
-  ↓ fix(mcp): auth error
-0.2.1a1  (bug fix)
-  ↓ feat(mcp): sales orders
-0.3.0a1  (new feature)
-  ↓ ready for beta
-0.3.0b1  (beta testing)
-  ↓ fix(mcp): critical bug
-0.3.1b1  (bug fix in beta)
-  ↓ ready for release
-0.3.1    (stable release)
-```
-
 ## Checklist for Contributors
 
-Before submitting a PR that will trigger a release:
+Before submitting a PR touching the MCP server:
 
 - [ ] All tests pass locally: `uv run pytest tests/`
-- [ ] Commit messages use `(mcp)` scope
+- [ ] Commit messages use `(mcp)` scope (for changelog readability)
 - [ ] Commit messages follow conventional commits
 - [ ] README updated if adding new features
 - [ ] Integration tests added/updated if needed
 - [ ] Breaking changes documented in commit body (if any)
 
-After PR is merged:
+After the release PR is merged:
 
-- [ ] Check GitHub Actions for successful release
+- [ ] Check `publish.yml`'s `publish-mcp`/`publish-mcp-docker` runs succeeded
 - [ ] Verify new version on PyPI
 - [ ] Test installation from PyPI
-- [ ] Check GitHub Release notes
+- [ ] Check GitHub Release notes and attached assets (wheel, sdist, `.mcpb`)
 
 ## Related Documentation
 
-- **Main Release Guide**: [docs/RELEASE.md](../docs/RELEASE.md) - Monorepo release
-  process
-- **Monorepo Semantic-Release**:
-  [docs/MONOREPO_SEMANTIC_RELEASE.md](../docs/MONOREPO_SEMANTIC_RELEASE.md) -
-  Comprehensive guide
-- **Contributing**: [docs/CONTRIBUTING.md](../docs/CONTRIBUTING.md) - Commit message
-  format
-- **MCP Documentation Index**: [docs/mcp-server/README.md](../docs/mcp-server/README.md)
-  \- All MCP documentation
+- **Main Release Guide**:
+  [docs/RELEASE.md](https://github.com/dougborg/statuspro-openapi-client/blob/main/docs/RELEASE.md)
+  — full monorepo release process
+- **Contributing**:
+  [docs/CONTRIBUTING.md](https://github.com/dougborg/statuspro-openapi-client/blob/main/docs/CONTRIBUTING.md)
+  — commit message format
+- **MCP Documentation Index**:
+  [docs/mcp-server/README.md](https://github.com/dougborg/statuspro-openapi-client/blob/main/statuspro_mcp_server/docs/README.md)
+  — all MCP documentation
 
 ## Related Links
 

@@ -41,7 +41,7 @@ succeed and developers to contribute confidently.
 - `docs/COOKBOOK.md` - Usage patterns and recipes
 - `docs/STATUSPRO_CLIENT_GUIDE.md` - Client library guide
 - `docs/UV_USAGE.md` - uv package manager guide
-- `docs/MONOREPO_SEMANTIC_RELEASE.md` - Release strategy
+- `docs/RELEASE.md` - Release strategy (release-please, manifest mode)
 
 ### Architecture Decision Records
 
