@@ -2649,7 +2649,7 @@ wheels = [
 
 [[package]]
 name = "statuspro-mcp-server"
-version = "0.2.0"
+version = "1.0.0"
 source = { editable = "statuspro_mcp_server" }
 dependencies = [
     { name = "aiosqlite" },
@@ -2676,7 +2676,7 @@ requires-dist = [
 
 [[package]]
 name = "statuspro-openapi-client"
-version = "0.3.0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "attrs" },
