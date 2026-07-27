@@ -17,6 +17,9 @@ concurrency:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      tags: ${{ steps.tags.outputs.tags }}
     permissions:
       contents: write
       pull-requests: write
@@ -35,3 +38,35 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # release-please creates DRAFT releases, and a draft release has no git
+      # tag until it is published - so publishing cannot be tag-triggered.
+      # Collect the tags it just created and hand them to publish.yml directly.
+      - name: Collect released tags
+        id: tags
+        if: steps.release.outputs.releases_created == 'true'
+        env:
+          RELEASE_OUTPUTS: ${{ toJSON(steps.release.outputs) }}
+        run: |
+          set -euo pipefail
+          tags=$(printf '%s' "$RELEASE_OUTPUTS" \
+            | jq -c '[to_entries[] | select(.key | endswith("--tag_name")) | .value | select(. != null and . != "")]')
+          echo "Tags to publish: $tags"
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.releases_created == 'true'
+    strategy:
+      # One call per released component; never cancel a publish mid-flight.
+      fail-fast: false
+      matrix:
+        tag: ${{ fromJSON(needs.release-please.outputs.tags) }}
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag: ${{ matrix.tag }}
+    secrets: inherit
