@@ -1,8 +1,8 @@
 name: Publish
 
-# The only workflow that builds and ships artifacts. Triggered exclusively
-# by the tags release-please creates when its release PR merges
-# (client-v*, mcp-v*, ts-v*). Nothing here ever pushes to main.
+# The only workflow that builds and ships artifacts. Invoked by
+# release-please.yml after it creates the draft releases, one call per
+# released component. Nothing here ever pushes to main.
 #
 # release-please creates each GitHub Release as a DRAFT (see
 # release-please-config.json "draft": true). Draft releases accept asset
@@ -28,23 +28,34 @@ name: Publish
 # has never been published) - the publish-ts job will fail until one is
 # registered for workflow `publish.yml`, job `publish-ts`.
 
+# Invoked by release-please.yml once it has created the draft releases, and
+# manually re-runnable via workflow_dispatch. It is NOT tag-triggered: the
+# releases are created as drafts, and a draft release does not create its git
+# tag until it is published, so `on: push: tags` would never fire.
 on:
-  push:
-    tags:
-      - 'client-v*'
-      - 'mcp-v*'
-      - 'ts-v*'
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Release tag to publish, e.g. client-v0.3.0'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish, e.g. client-v0.3.0'
+        required: true
+        type: string
 
 permissions: {}
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   publish-client:
     name: Publish client to PyPI
-    if: startsWith(github.ref_name, 'client-v')
+    if: startsWith(inputs.tag, 'client-v')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -52,7 +63,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref_name }}
+          # The tag does not exist yet: the release is still a draft and GitHub
+          # only creates the tag when it is published. Build from the commit
+          # release-please released from.
+          ref: ${{ github.sha }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -72,16 +86,16 @@ jobs:
       - name: Attach build artifacts to draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.ref_name }}" dist/* --clobber
+        run: gh release upload "${{ inputs.tag }}" dist/* --clobber
 
       - name: Publish the (now immutable) release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ github.ref_name }}" --draft=false
+        run: gh release edit "${{ inputs.tag }}" --draft=false
 
   publish-mcp:
     name: Publish MCP server to PyPI
-    if: startsWith(github.ref_name, 'mcp-v')
+    if: startsWith(inputs.tag, 'mcp-v')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -89,7 +103,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref_name }}
+          # The tag does not exist yet: the release is still a draft and GitHub
+          # only creates the tag when it is published. Build from the commit
+          # release-please released from.
+          ref: ${{ github.sha }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -128,17 +145,17 @@ jobs:
       - name: Attach build artifacts to draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.ref_name }}" dist/* "${{ steps.mcpb.outputs.artifact }}" --clobber
+        run: gh release upload "${{ inputs.tag }}" dist/* "${{ steps.mcpb.outputs.artifact }}" --clobber
 
       - name: Publish the (now immutable) release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ github.ref_name }}" --draft=false
+        run: gh release edit "${{ inputs.tag }}" --draft=false
 
   publish-mcp-docker:
     name: Publish MCP Docker image
     needs: publish-mcp
-    if: startsWith(github.ref_name, 'mcp-v')
+    if: startsWith(inputs.tag, 'mcp-v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -146,7 +163,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref_name }}
+          # The tag does not exist yet: the release is still a draft and GitHub
+          # only creates the tag when it is published. Build from the commit
+          # release-please released from.
+          ref: ${{ github.sha }}
 
       - name: Determine MCP version for tagging
         id: version
@@ -187,7 +207,7 @@ jobs:
 
   publish-ts:
     name: Publish TS client to npm
-    if: startsWith(github.ref_name, 'ts-v')
+    if: startsWith(inputs.tag, 'ts-v')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -195,7 +215,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref_name }}
+          # The tag does not exist yet: the release is still a draft and GitHub
+          # only creates the tag when it is published. Build from the commit
+          # release-please released from.
+          ref: ${{ github.sha }}
 
       - uses: pnpm/action-setup@v6
 
@@ -225,9 +248,9 @@ jobs:
       - name: Attach npm tarball to draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.ref_name }}" packages/statuspro-client/dist-npm/*.tgz --clobber
+        run: gh release upload "${{ inputs.tag }}" packages/statuspro-client/dist-npm/*.tgz --clobber
 
       - name: Publish the (now immutable) release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ github.ref_name }}" --draft=false
+        run: gh release edit "${{ inputs.tag }}" --draft=false
