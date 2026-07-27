@@ -61,7 +61,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # The tag does not exist yet: the release is still a draft and GitHub
           # only creates the tag when it is published. Build from the commit
@@ -101,7 +101,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # The tag does not exist yet: the release is still a draft and GitHub
           # only creates the tag when it is published. Build from the commit
@@ -123,7 +123,7 @@ jobs:
       # scripts/build_mcpb.py is stdlib-only and shells out to the mcpb CLI -
       # no project deps are needed for this step beyond Node for the CLI.
       - name: Install Node.js (for mcpb CLI)
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
 
@@ -161,7 +161,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # The tag does not exist yet: the release is still a draft and GitHub
           # only creates the tag when it is published. Build from the commit
@@ -213,7 +213,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # The tag does not exist yet: the release is still a draft and GitHub
           # only creates the tag when it is published. Build from the commit
@@ -222,7 +222,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
