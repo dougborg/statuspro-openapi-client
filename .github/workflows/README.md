@@ -112,7 +112,7 @@ one.
 **Steps:**
 
 - Run `@commitlint/cli` (pinned) over the pull request's `base..head` commits, with the
-  rules in [`.commitlintrc.json`](../../.commitlintrc.json)
+  rules in [`commitlint.config.mjs`](../../commitlint.config.mjs)
 
 **Permissions:** `contents: read`
 
