@@ -101,6 +101,21 @@ See [RELEASE.md](../../docs/RELEASE.md) for the full release process.
 
 **Permissions:** `contents: read`, `security-events: write`
 
+### [commitlint.yml](commitlint.yml)
+
+**Trigger:** Pull requests
+
+**Purpose:** Lint every commit in the pull request as a Conventional Commit. `main`
+takes rebase merges only, so each commit lands as written and release-please reads each
+one.
+
+**Steps:**
+
+- Run `@commitlint/cli` (pinned) over the pull request's `base..head` commits, with the
+  rules in [`.commitlintrc.json`](../../.commitlintrc.json)
+
+**Permissions:** `contents: read`
+
 ### [copilot-setup-steps.yml](copilot-setup-steps.yml)
 
 **Type:** Reusable workflow
