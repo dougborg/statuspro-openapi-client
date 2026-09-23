@@ -3,7 +3,7 @@ name: Commit conventions
 # Rebase merges land every commit of a pull request on main as written, and
 # release-please reads each one to pick version bumps and write the changelog.
 # So every commit in the pull request must be a Conventional Commit, not only
-# the PR title. Rules live in .commitlintrc.json; the type list matches the
+# the PR title. Rules live in commitlint.config.mjs; the type list matches the
 # changelog-sections in release-please-config.json.
 
 on:
