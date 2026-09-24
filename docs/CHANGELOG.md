@@ -2,6 +2,13 @@
 
 <!-- version list -->
 
+## [0.3.1](https://github.com/dougborg/statuspro-openapi-client/compare/client-v0.3.0...client-v0.3.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **release:** invoke publish from release-please, not from tags ([#134](https://github.com/dougborg/statuspro-openapi-client/issues/134)) ([b7f0d7b](https://github.com/dougborg/statuspro-openapi-client/commit/b7f0d7b94f69f0f8b7fdd0d8521ec703e9a3947c))
+
 ## [0.3.0](https://github.com/dougborg/statuspro-openapi-client/compare/client-v0.2.0...client-v0.3.0) (2026-07-27)
 
 
