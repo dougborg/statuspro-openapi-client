@@ -120,6 +120,13 @@ jobs:
         # writes to the workspace root's dist/, not statuspro_mcp_server/dist/.
         run: uv build --package statuspro-mcp-server
 
+      # Upload before building the .mcpb: build_mcpb.py writes it into dist/,
+      # and the PyPI action rejects any file there that is not a distribution.
+      - name: Publish MCP server to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          attestations: true
+
       # scripts/build_mcpb.py is stdlib-only and shells out to the mcpb CLI -
       # no project deps are needed for this step beyond Node for the CLI.
       - name: Install Node.js (for mcpb CLI)
@@ -137,15 +144,10 @@ jobs:
           echo "artifact=${artifact}" >> "$GITHUB_OUTPUT"
           ls -la "${artifact}"
 
-      - name: Publish MCP server to PyPI
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
-        with:
-          attestations: true
-
       - name: Attach build artifacts to draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ inputs.tag }}" dist/* "${{ steps.mcpb.outputs.artifact }}" --clobber
+        run: gh release upload "${{ inputs.tag }}" dist/* --clobber  # wheel, sdist and .mcpb
 
       - name: Publish the (now immutable) release
         env:
