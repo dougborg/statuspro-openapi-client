@@ -18,7 +18,7 @@ class ProgressTimelineItem:
     name: str | Unset = UNSET
     description: str | Unset = UNSET
     progress: str | Unset = UNSET
-    timestamp: None | str | Unset = UNSET
+    timestamp: str | Unset | None = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -28,7 +28,7 @@ class ProgressTimelineItem:
 
         progress = self.progress
 
-        timestamp: None | str | Unset
+        timestamp: str | Unset | None
         if isinstance(self.timestamp, Unset):
             timestamp = UNSET
         else:
@@ -57,12 +57,12 @@ class ProgressTimelineItem:
 
         progress = d.pop("progress", UNSET)
 
-        def _parse_timestamp(data: object) -> None | str | Unset:
+        def _parse_timestamp(data: object) -> str | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(str | Unset | None, data)
 
         timestamp = _parse_timestamp(d.pop("timestamp", UNSET))
 

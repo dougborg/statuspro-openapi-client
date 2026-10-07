@@ -8,7 +8,6 @@ from attrs import (
     define as _attrs_define,
     field as _attrs_field,
 )
-from dateutil.parser import isoparse
 
 from ..client_types import UNSET, Unset
 
@@ -23,11 +22,11 @@ T = TypeVar("T", bound="HistoryItem")
 @_attrs_define
 class HistoryItem:
     event: str | Unset = UNSET
-    status: None | Status | Unset = UNSET
-    comment: None | str | Unset = UNSET
+    status: Status | Unset | None = UNSET
+    comment: str | Unset | None = UNSET
     comment_is_public: bool | Unset = UNSET
     created_at: datetime.datetime | Unset = UNSET
-    mail_log: MailLog | None | Unset = UNSET
+    mail_log: MailLog | Unset | None = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -36,7 +35,7 @@ class HistoryItem:
 
         event = self.event
 
-        status: dict[str, Any] | None | Unset
+        status: dict[str, Any] | Unset | None
         if isinstance(self.status, Unset):
             status = UNSET
         elif isinstance(self.status, Status):
@@ -44,7 +43,7 @@ class HistoryItem:
         else:
             status = self.status
 
-        comment: None | str | Unset
+        comment: str | Unset | None
         if isinstance(self.comment, Unset):
             comment = UNSET
         else:
@@ -56,7 +55,7 @@ class HistoryItem:
         if not isinstance(self.created_at, Unset):
             created_at = self.created_at.isoformat()
 
-        mail_log: dict[str, Any] | None | Unset
+        mail_log: dict[str, Any] | Unset | None
         if isinstance(self.mail_log, Unset):
             mail_log = UNSET
         elif isinstance(self.mail_log, MailLog):
@@ -90,7 +89,7 @@ class HistoryItem:
         d = dict(src_dict)
         event = d.pop("event", UNSET)
 
-        def _parse_status(data: object) -> None | Status | Unset:
+        def _parse_status(data: object) -> Status | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -103,16 +102,16 @@ class HistoryItem:
                 return status_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(None | Status | Unset, data)
+            return cast(Status | Unset | None, data)
 
         status = _parse_status(d.pop("status", UNSET))
 
-        def _parse_comment(data: object) -> None | str | Unset:
+        def _parse_comment(data: object) -> str | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(str | Unset | None, data)
 
         comment = _parse_comment(d.pop("comment", UNSET))
 
@@ -123,9 +122,9 @@ class HistoryItem:
         if isinstance(_created_at, Unset):
             created_at = UNSET
         else:
-            created_at = isoparse(_created_at)
+            created_at = datetime.datetime.fromisoformat(_created_at)
 
-        def _parse_mail_log(data: object) -> MailLog | None | Unset:
+        def _parse_mail_log(data: object) -> MailLog | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -138,7 +137,7 @@ class HistoryItem:
                 return mail_log_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(MailLog | None | Unset, data)
+            return cast(MailLog | Unset | None, data)
 
         mail_log = _parse_mail_log(d.pop("mail_log", UNSET))
 

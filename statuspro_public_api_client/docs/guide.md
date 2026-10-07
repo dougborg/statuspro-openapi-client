@@ -27,12 +27,14 @@ STATUSPRO_BASE_URL=https://app.orderstatuspro.com/api/v1  # optional
 import asyncio
 from statuspro_public_api_client import StatusProClient
 
+
 async def main():
     async with StatusProClient() as client:
         # High-level helper: returns Pydantic Order domain models
         orders = await client.orders.list(per_page=25)
         for order in orders:
             print(f"{order.name}: {order.status.name if order.status else '(none)'}")
+
 
 asyncio.run(main())
 ```

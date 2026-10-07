@@ -8,7 +8,6 @@ from attrs import (
     define as _attrs_define,
     field as _attrs_field,
 )
-from dateutil.parser import isoparse
 
 from ..client_types import UNSET, Unset
 
@@ -24,11 +23,11 @@ class Status:
     is_set: bool | Unset = UNSET
     code: str | Unset = UNSET
     name: str | Unset = UNSET
-    public_name: None | str | Unset = UNSET
+    public_name: str | Unset | None = UNSET
     description: str | Unset = UNSET
     public: bool | Unset = UNSET
-    set_at: datetime.datetime | None | Unset = UNSET
-    auto_change_at: datetime.datetime | None | Unset = UNSET
+    set_at: datetime.datetime | Unset | None = UNSET
+    auto_change_at: datetime.datetime | Unset | None = UNSET
     translations: StatusTranslations | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -39,7 +38,7 @@ class Status:
 
         name = self.name
 
-        public_name: None | str | Unset
+        public_name: str | Unset | None
         if isinstance(self.public_name, Unset):
             public_name = UNSET
         else:
@@ -49,7 +48,7 @@ class Status:
 
         public = self.public
 
-        set_at: None | str | Unset
+        set_at: str | Unset | None
         if isinstance(self.set_at, Unset):
             set_at = UNSET
         elif isinstance(self.set_at, datetime.datetime):
@@ -57,7 +56,7 @@ class Status:
         else:
             set_at = self.set_at
 
-        auto_change_at: None | str | Unset
+        auto_change_at: str | Unset | None
         if isinstance(self.auto_change_at, Unset):
             auto_change_at = UNSET
         elif isinstance(self.auto_change_at, datetime.datetime):
@@ -104,12 +103,12 @@ class Status:
 
         name = d.pop("name", UNSET)
 
-        def _parse_public_name(data: object) -> None | str | Unset:
+        def _parse_public_name(data: object) -> str | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(None | str | Unset, data)
+            return cast(str | Unset | None, data)
 
         public_name = _parse_public_name(d.pop("public_name", UNSET))
 
@@ -117,7 +116,7 @@ class Status:
 
         public = d.pop("public", UNSET)
 
-        def _parse_set_at(data: object) -> datetime.datetime | None | Unset:
+        def _parse_set_at(data: object) -> datetime.datetime | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -125,16 +124,16 @@ class Status:
             try:
                 if not isinstance(data, str):
                     raise TypeError()
-                set_at_type_0 = isoparse(data)
+                set_at_type_0 = datetime.datetime.fromisoformat(data)
 
                 return set_at_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(datetime.datetime | None | Unset, data)
+            return cast(datetime.datetime | Unset | None, data)
 
         set_at = _parse_set_at(d.pop("set_at", UNSET))
 
-        def _parse_auto_change_at(data: object) -> datetime.datetime | None | Unset:
+        def _parse_auto_change_at(data: object) -> datetime.datetime | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -142,12 +141,12 @@ class Status:
             try:
                 if not isinstance(data, str):
                     raise TypeError()
-                auto_change_at_type_0 = isoparse(data)
+                auto_change_at_type_0 = datetime.datetime.fromisoformat(data)
 
                 return auto_change_at_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(datetime.datetime | None | Unset, data)
+            return cast(datetime.datetime | Unset | None, data)
 
         auto_change_at = _parse_auto_change_at(d.pop("auto_change_at", UNSET))
 

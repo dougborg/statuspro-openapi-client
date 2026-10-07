@@ -252,6 +252,7 @@ Automatically instruments MCP tool functions with comprehensive observability.
 from statuspro_mcp.logging import observe_tool
 from fastmcp import Context
 
+
 @observe_tool
 @mcp.tool()
 async def my_tool(request: MyRequest, context: Context) -> MyResponse:
@@ -336,6 +337,7 @@ Instruments service layer methods with debug-level logging.
 
 ```python
 from statuspro_mcp.logging import observe_service
+
 
 class MyService:
     @observe_service("get_item")

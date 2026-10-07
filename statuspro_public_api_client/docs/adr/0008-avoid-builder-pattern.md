@@ -20,7 +20,7 @@ response = await get_all_products.asyncio_detailed(
     created_at_min=datetime(2024, 1, 1),
     created_at_max=datetime(2024, 12, 31),
     limit=100,
-    page=1
+    page=1,
 )
 ```
 
@@ -224,7 +224,7 @@ response = await get_all_products.asyncio_detailed(
     is_producible=True,
     created_at_min=datetime(2024, 1, 1),
     created_at_max=datetime(2024, 12, 31),
-    limit=250  # Use max limit for efficiency
+    limit=250,  # Use max limit for efficiency
 )
 products = unwrap_data(response)
 ```
