@@ -167,19 +167,19 @@ Create a new instruction when you have:
 
 ```yaml
 # All Python files
-applyTo: '**/*.py'
+applyTo: "**/*.py"
 
 # Test files only
-applyTo: '**/test_*.py'
+applyTo: "**/test_*.py"
 
 # All Markdown files
-applyTo: '**/*.md'
+applyTo: "**/*.md"
 
 # Specific package directory
-applyTo: '**/statuspro_mcp_server/**/*.py'
+applyTo: "**/statuspro_mcp_server/**/*.py"
 
 # Multiple patterns (if supported)
-applyTo: ['**/*.py', '**/*.pyi']
+applyTo: ["**/*.py", "**/*.pyi"]
 ```
 
 ## Layer 3: Prompts

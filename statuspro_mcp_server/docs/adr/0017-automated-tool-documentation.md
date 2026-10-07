@@ -106,12 +106,16 @@ class UpdateOrderStatusRequest(BaseModel):
     order_id: int = Field(..., description="StatusPro order id")
     status_code: str = Field(..., description="8-char status code, e.g. 'st000003'")
     comment: str | None = Field(None, description="Optional history comment")
-    public: bool = Field(False, description="Whether the comment is visible to the customer")
+    public: bool = Field(
+        False, description="Whether the comment is visible to the customer"
+    )
     email_customer: bool = Field(True, description="Send the customer a status email")
-    email_additional: bool = Field(True, description="Send additional notification emails")
+    email_additional: bool = Field(
+        True, description="Send additional notification emails"
+    )
     confirm: bool = Field(
         False,
-        description="If false, returns preview. If true, applies after user confirmation."
+        description="If false, returns preview. If true, applies after user confirmation.",
     )
 ```
 

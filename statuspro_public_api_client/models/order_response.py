@@ -8,7 +8,6 @@ from attrs import (
     define as _attrs_define,
     field as _attrs_field,
 )
-from dateutil.parser import isoparse
 
 from ..client_types import UNSET, Unset
 
@@ -31,8 +30,8 @@ class OrderResponse:
     status: Status | Unset = UNSET
     history: list[HistoryItem] | Unset = UNSET
     public_progress_timeline: list[ProgressTimelineItem] | Unset = UNSET
-    due_date: datetime.datetime | None | Unset = UNSET
-    due_date_to: datetime.datetime | None | Unset = UNSET
+    due_date: datetime.datetime | Unset | None = UNSET
+    due_date_to: datetime.datetime | Unset | None = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -66,7 +65,7 @@ class OrderResponse:
                 )
                 public_progress_timeline.append(public_progress_timeline_item)
 
-        due_date: None | str | Unset
+        due_date: str | Unset | None
         if isinstance(self.due_date, Unset):
             due_date = UNSET
         elif isinstance(self.due_date, datetime.datetime):
@@ -74,7 +73,7 @@ class OrderResponse:
         else:
             due_date = self.due_date
 
-        due_date_to: None | str | Unset
+        due_date_to: str | Unset | None
         if isinstance(self.due_date_to, Unset):
             due_date_to = UNSET
         elif isinstance(self.due_date_to, datetime.datetime):
@@ -110,7 +109,9 @@ class OrderResponse:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.customer import Customer
         from ..models.history_item import HistoryItem
-        from ..models.progress_timeline_item import ProgressTimelineItem
+        from ..models.progress_timeline_item import (
+            ProgressTimelineItem,
+        )
         from ..models.status import Status
 
         d = dict(src_dict)
@@ -154,7 +155,7 @@ class OrderResponse:
 
                 public_progress_timeline.append(public_progress_timeline_item)
 
-        def _parse_due_date(data: object) -> datetime.datetime | None | Unset:
+        def _parse_due_date(data: object) -> datetime.datetime | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -162,16 +163,16 @@ class OrderResponse:
             try:
                 if not isinstance(data, str):
                     raise TypeError()
-                due_date_type_0 = isoparse(data)
+                due_date_type_0 = datetime.datetime.fromisoformat(data)
 
                 return due_date_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(datetime.datetime | None | Unset, data)
+            return cast(datetime.datetime | Unset | None, data)
 
         due_date = _parse_due_date(d.pop("due_date", UNSET))
 
-        def _parse_due_date_to(data: object) -> datetime.datetime | None | Unset:
+        def _parse_due_date_to(data: object) -> datetime.datetime | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -179,12 +180,12 @@ class OrderResponse:
             try:
                 if not isinstance(data, str):
                     raise TypeError()
-                due_date_to_type_0 = isoparse(data)
+                due_date_to_type_0 = datetime.datetime.fromisoformat(data)
 
                 return due_date_to_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(datetime.datetime | None | Unset, data)
+            return cast(datetime.datetime | Unset | None, data)
 
         due_date_to = _parse_due_date_to(d.pop("due_date_to", UNSET))
 

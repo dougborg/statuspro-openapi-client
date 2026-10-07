@@ -391,6 +391,10 @@ export type ListOrdersData = {
      */
     due_date_to?: string;
     /**
+     * Page number to return (1-based).
+     */
+    page?: number;
+    /**
      * Number of orders to return per page. Defaults to 15. Maximum 100.
      */
     per_page?: number;

@@ -52,6 +52,7 @@ Generate complete test coverage for a component following pytest and project sta
        result = process_items([])
        assert result == []
 
+
    def test_process_items_with_none():
        """Test handling of None input."""
        with pytest.raises(ValueError):
@@ -72,13 +73,14 @@ Generate complete test coverage for a component following pytest and project sta
    ```python
    import responses
 
+
    @responses.activate
    def test_api_call():
        responses.add(
            responses.GET,
            "https://app.orderstatuspro.com/api/v1/endpoint",
            json={"data": []},
-           status=200
+           status=200,
        )
        # Test code...
    ```
@@ -138,11 +140,14 @@ class TestCheckInventory:
         with pytest.raises(ProductNotFoundError):
             await check_inventory(sku)
 
-    @pytest.mark.parametrize("sku,expected", [
-        ("VALID-1", True),
-        ("VALID-2", True),
-        ("INVALID", False),
-    ])
+    @pytest.mark.parametrize(
+        "sku,expected",
+        [
+            ("VALID-1", True),
+            ("VALID-2", True),
+            ("INVALID", False),
+        ],
+    )
     async def test_validation_with_multiple_skus(self, sku, expected):
         """Test SKU validation with various inputs."""
         result = validate_sku(sku)
