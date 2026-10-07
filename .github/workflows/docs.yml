@@ -9,6 +9,9 @@ on:
       - "mkdocs.yml"
       - "statuspro_public_api_client/**"
       - ".github/workflows/docs.yml"
+      - "overrides/**"
+      - "scripts/site_analytics.mjs"
+      - "scripts/site-analytics.json"
   workflow_dispatch:
 
 permissions:
@@ -40,10 +43,23 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Prepare visitor analytics
+        # Fetches the pinned @dougborg/site-analytics, checks its integrity, and
+        # writes the config element and module; see scripts/site_analytics.mjs.
+        run: node scripts/site_analytics.mjs prepare
+
       - name: Build documentation
         run: uv run poe docs-build
         env:
           CI_DOCS_BUILD: "true"
+
+      - name: Check every page is tracked and links the privacy page
+        run: node scripts/site_analytics.mjs check site
 
       - name: Upload documentation artifacts
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
