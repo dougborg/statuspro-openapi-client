@@ -52,8 +52,8 @@ to `main`.
 ### 3. Merging the release PR creates tags and draft GitHub Releases
 
 When the release PR merges, `release-please.yml` runs once more (still triggered by the
-push to `main` the merge produces), notices the PR was just merged, and creates a tag +
-draft GitHub Release for every package that changed, all at that single merge commit:
+push to `main` the merge produces), notices the PR was just merged, and creates a draft
+GitHub Release for every package that changed, all at that single merge commit:
 
 - `client-vX.Y.Z`
 - `mcp-vX.Y.Z`
@@ -62,12 +62,15 @@ draft GitHub Release for every package that changed, all at that single merge co
 Releases are created as **drafts** (`"draft": true` in the config). Draft releases can
 still accept asset uploads; once a release is published it becomes
 [immutable](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
-and permanently rejects new assets. See step 4.
+and permanently rejects new assets. A draft has no git tag until it is published, so
+release-please dispatches `publish.yml` for each release instead (step 4).
 
-### 4. Each tag triggers a build-and-publish job
+### 4. Each release is dispatched to a build-and-publish job
 
-`.github/workflows/publish.yml` triggers only on `client-v*` / `mcp-v*` / `ts-v*` tag
-pushes — never on a `main` push. For the matching component it:
+`.github/workflows/publish.yml` runs only by `workflow_dispatch`, with the release's
+`tag` and `sha`: release-please dispatches it, and a release left in draft can be
+published by hand with `gh workflow run publish.yml -f tag=<tag> -f sha=<commit>`. For
+the matching component it:
 
 1. builds the package/tarball (the MCP job also builds the `.mcpb` bundle)
 1. publishes to the registry (PyPI or npm) via **OIDC** — no stored tokens
