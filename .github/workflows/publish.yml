@@ -1,7 +1,7 @@
 name: Publish
 
-# The only workflow that builds and ships artifacts. Invoked by
-# release-please.yml after it creates the draft releases, one call per
+# The only workflow that builds and ships artifacts. Dispatched by
+# release-please.yml after it creates the draft releases, once per
 # released component. Nothing here ever pushes to main.
 #
 # release-please creates each GitHub Release as a DRAFT (see
@@ -28,22 +28,21 @@ name: Publish
 # has never been published) - the publish-ts job will fail until one is
 # registered for workflow `publish.yml`, job `publish-ts`.
 
-# Invoked by release-please.yml once it has created the draft releases, and
-# manually re-runnable via workflow_dispatch. It is NOT tag-triggered: the
-# releases are created as drafts, and a draft release does not create its git
-# tag until it is published, so `on: push: tags` would never fire.
+# Dispatched by release-please.yml once per draft release it creates, and
+# runnable by hand for a release left in draft. It is NOT tag-triggered: a
+# draft release has no git tag until it is published, so `on: push: tags`
+# would never fire. Dispatched rather than called as a reusable workflow so
+# the OIDC token names this file, which the Trusted Publishers match.
 on:
-  workflow_call:
-    inputs:
-      tag:
-        description: 'Release tag to publish, e.g. client-v0.3.0'
-        required: true
-        type: string
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to publish, e.g. client-v0.3.0'
+        description: 'Draft release to publish, e.g. client-v0.3.0'
         required: true
+        type: string
+      sha:
+        description: 'Commit the release was cut from (defaults to the dispatched ref)'
+        required: false
         type: string
 
 permissions: {}
@@ -66,7 +65,7 @@ jobs:
           # The tag does not exist yet: the release is still a draft and GitHub
           # only creates the tag when it is published. Build from the commit
           # release-please released from.
-          ref: ${{ github.sha }}
+          ref: ${{ inputs.sha || github.sha }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
@@ -106,7 +105,7 @@ jobs:
           # The tag does not exist yet: the release is still a draft and GitHub
           # only creates the tag when it is published. Build from the commit
           # release-please released from.
-          ref: ${{ github.sha }}
+          ref: ${{ inputs.sha || github.sha }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
@@ -168,7 +167,7 @@ jobs:
           # The tag does not exist yet: the release is still a draft and GitHub
           # only creates the tag when it is published. Build from the commit
           # release-please released from.
-          ref: ${{ github.sha }}
+          ref: ${{ inputs.sha || github.sha }}
 
       - name: Determine MCP version for tagging
         id: version
@@ -220,7 +219,7 @@ jobs:
           # The tag does not exist yet: the release is still a draft and GitHub
           # only creates the tag when it is published. Build from the commit
           # release-please released from.
-          ref: ${{ github.sha }}
+          ref: ${{ inputs.sha || github.sha }}
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 

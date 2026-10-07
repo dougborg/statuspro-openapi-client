@@ -17,10 +17,8 @@ concurrency:
 jobs:
   release-please:
     runs-on: ubuntu-latest
-    outputs:
-      releases_created: ${{ steps.release.outputs.releases_created }}
-      tags: ${{ steps.tags.outputs.tags }}
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -40,35 +38,25 @@ jobs:
           manifest-file: .release-please-manifest.json
 
       # release-please creates DRAFT releases, and a draft release has no git
-      # tag until it is published - so publishing cannot be tag-triggered.
-      # Collect the tags it just created and hand them to publish.yml directly.
-      # The root package (path ".") reports its tag as plain `tag_name`; the
-      # others as `<path>--tag_name`.
-      - name: Collect released tags
-        id: tags
+      # tag until it is published, so publishing cannot be tag-triggered.
+      # Dispatch publish.yml once per new release instead (a GITHUB_TOKEN
+      # dispatch does start a run). The root package (path ".") reports its
+      # outputs unprefixed, the others as `<path>--<output>`.
+      - name: Dispatch publish for each new release
         if: steps.release.outputs.releases_created == 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
           RELEASE_OUTPUTS: ${{ toJSON(steps.release.outputs) }}
         run: |
           set -euo pipefail
-          tags=$(printf '%s' "$RELEASE_OUTPUTS" \
-            | jq -c '[to_entries[] | select(.key == "tag_name" or (.key | endswith("--tag_name"))) | .value | select(. != null and . != "")] | unique')
-          echo "Tags to publish: $tags"
-          echo "tags=$tags" >> "$GITHUB_OUTPUT"
-
-  publish:
-    needs: release-please
-    if: needs.release-please.outputs.releases_created == 'true'
-    strategy:
-      # One call per released component; never cancel a publish mid-flight.
-      fail-fast: false
-      matrix:
-        tag: ${{ fromJSON(needs.release-please.outputs.tags) }}
-    permissions:
-      contents: write
-      id-token: write
-      packages: write
-    uses: ./.github/workflows/publish.yml
-    with:
-      tag: ${{ matrix.tag }}
-    secrets: inherit
+          printf '%s' "$RELEASE_OUTPUTS" | jq -r '
+            to_entries
+            | map(select(.key == "tag_name" or (.key | endswith("--tag_name"))))
+            | map({tag: .value, prefix: (.key | sub("tag_name$"; ""))})
+            | .[] | select(.tag != null and .tag != "") | "\(.tag) \(.prefix)sha"' \
+            | while read -r tag sha_key; do
+                sha=$(printf '%s' "$RELEASE_OUTPUTS" | jq -r --arg k "$sha_key" '.[$k]')
+                echo "Dispatching publish for $tag at $sha"
+                gh workflow run publish.yml --repo "$GITHUB_REPOSITORY" --ref main \
+                  -f tag="$tag" -f sha="$sha"
+              done
