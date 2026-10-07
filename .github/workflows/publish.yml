@@ -47,14 +47,36 @@ on:
 
 permissions: {}
 
+# Inputs reach shell steps only through the environment, never interpolated
+# into a script; check-inputs rejects anything that is not a release tag.
+env:
+  RELEASE_TAG: ${{ inputs.tag }}
+
 concurrency:
   group: publish-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
+  check-inputs:
+    name: Check inputs
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require a release tag and, if given, a full commit SHA
+        env:
+          RELEASE_SHA: ${{ inputs.sha }}
+        run: |
+          if ! [[ "$RELEASE_TAG" =~ ^(client|mcp|ts)-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::not a release tag: $RELEASE_TAG"; exit 1
+          fi
+          if [[ -n "$RELEASE_SHA" && ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::not a full commit SHA: $RELEASE_SHA"; exit 1
+          fi
+
   publish-client:
     name: Publish client to PyPI
     if: startsWith(inputs.tag, 'client-v')
+    needs: check-inputs
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -85,16 +107,17 @@ jobs:
       - name: Attach build artifacts to draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ inputs.tag }}" dist/* --clobber
+        run: gh release upload "$RELEASE_TAG" dist/* --clobber
 
       - name: Publish the (now immutable) release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ inputs.tag }}" --draft=false
+        run: gh release edit "$RELEASE_TAG" --draft=false
 
   publish-mcp:
     name: Publish MCP server to PyPI
     if: startsWith(inputs.tag, 'mcp-v')
+    needs: check-inputs
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -146,12 +169,12 @@ jobs:
       - name: Attach build artifacts to draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ inputs.tag }}" dist/* --clobber  # wheel, sdist and .mcpb
+        run: gh release upload "$RELEASE_TAG" dist/* --clobber  # wheel, sdist and .mcpb
 
       - name: Publish the (now immutable) release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ inputs.tag }}" --draft=false
+        run: gh release edit "$RELEASE_TAG" --draft=false
 
   publish-mcp-docker:
     name: Publish MCP Docker image
@@ -171,7 +194,7 @@ jobs:
 
       - name: Determine MCP version for tagging
         id: version
-        run: echo "version=${GITHUB_REF_NAME#mcp-v}" >> "$GITHUB_OUTPUT"
+        run: echo "version=${RELEASE_TAG#mcp-v}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -209,6 +232,7 @@ jobs:
   publish-ts:
     name: Publish TS client to npm
     if: startsWith(inputs.tag, 'ts-v')
+    needs: check-inputs
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -249,9 +273,9 @@ jobs:
       - name: Attach npm tarball to draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ inputs.tag }}" packages/statuspro-client/dist-npm/*.tgz --clobber
+        run: gh release upload "$RELEASE_TAG" packages/statuspro-client/dist-npm/*.tgz --clobber
 
       - name: Publish the (now immutable) release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ inputs.tag }}" --draft=false
+        run: gh release edit "$RELEASE_TAG" --draft=false
