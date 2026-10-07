@@ -8,7 +8,6 @@ from attrs import (
     define as _attrs_define,
     field as _attrs_field,
 )
-from dateutil.parser import isoparse
 
 from ..client_types import UNSET, Unset
 
@@ -91,7 +90,7 @@ class BulkStatusUpdateRequest:
         if isinstance(_due_date, Unset):
             due_date = UNSET
         else:
-            due_date = isoparse(_due_date).date()
+            due_date = datetime.date.fromisoformat(_due_date)
 
         bulk_status_update_request = cls(
             order_ids=order_ids,

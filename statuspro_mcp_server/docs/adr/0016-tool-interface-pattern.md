@@ -41,13 +41,16 @@ async def update_order_status(
     status_code: Annotated[
         str, Field(description="8-char status code, e.g. 'st000003'")
     ],
-    comment: Annotated[str | None, Field(description="Optional history comment")] = None,
+    comment: Annotated[
+        str | None, Field(description="Optional history comment")
+    ] = None,
     public: Annotated[bool, Field(description="Visible to the customer")] = False,
     email_customer: bool = True,
     email_additional: bool = True,
-    confirm: Annotated[bool, Field(description="Must be true to apply the change")] = False,
-) -> dict[str, Any]:
-    ...
+    confirm: Annotated[
+        bool, Field(description="Must be true to apply the change")
+    ] = False,
+) -> dict[str, Any]: ...
 ```
 
 #### 2. Request model + Unpack decorator (for complex bodies)
@@ -64,12 +67,12 @@ class BulkStatusUpdateRequest(BaseModel):
     email_customer: bool = True
     confirm: bool = False
 
+
 @unpack_pydantic_params
 async def bulk_update_order_status(
     request: Annotated[BulkStatusUpdateRequest, Unpack()],
     context: Context,
-) -> dict[str, Any]:
-    ...
+) -> dict[str, Any]: ...
 ```
 
 #### 3. Response shape
@@ -80,7 +83,7 @@ StatusPro tools return plain dicts. The mutation tools follow this shape:
 {
     "confirmed": bool,
     "success": bool,
-    "status_code": int,    # HTTP status from the API
+    "status_code": int,  # HTTP status from the API
     # For bulk ops:
     "note": "Bulk updates are queued and processed asynchronously.",
 }
@@ -120,11 +123,13 @@ the same confirmation flow:
 # statuspro_mcp/tools/schemas.py
 class ConfirmationSchema(BaseModel):
     """Schema for user confirmation elicitation."""
+
     confirm: bool = Field(..., description="Confirm the action (true to proceed)")
 
 
-async def require_confirmation(context: Context, message: str) -> ConfirmationResult:
-    ...
+async def require_confirmation(
+    context: Context, message: str
+) -> ConfirmationResult: ...
 ```
 
 ### Benefits
@@ -180,10 +185,9 @@ harder to keep tools consistent.
 
 ```python
 async def update_order_status(
-    params: dict,    # ❌ No type safety
+    params: dict,  # ❌ No type safety
     context: Context,
-) -> dict:
-    ...
+) -> dict: ...
 ```
 
 **Why rejected**: No IDE support, no validation, no documentation.

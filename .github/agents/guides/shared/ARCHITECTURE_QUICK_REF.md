@@ -90,7 +90,7 @@ intervention.
 async with StatusProClient() as client:
     response = await get_all_products.asyncio_detailed(
         client=client,
-        limit=50  # Transparent pagination handles all pages
+        limit=50,  # Transparent pagination handles all pages
     )
     # response.parsed contains ALL results, not just first page
 ```
@@ -123,17 +123,17 @@ import httpx
 # - distributed tracing
 # - performance monitoring
 
+
 async def log_request(request):
     print(f"Request: {request.method} {request.url}")
+
 
 async def log_response(response):
     print(f"Response: {response.status_code}")
 
+
 client = httpx.AsyncClient(
-    event_hooks={
-        'request': [log_request],
-        'response': [log_response]
-    }
+    event_hooks={"request": [log_request], "response": [log_response]}
 )
 ```
 
@@ -247,6 +247,7 @@ async with Products() as products:
 
 ```python
 from pydantic import BaseModel, Field
+
 
 class Product(BaseModel):
     id: int
@@ -458,6 +459,7 @@ async with StatusProClient() as client:
 import pytest
 from statuspro_public_api_client import StatusProClient
 
+
 @pytest.mark.asyncio
 async def test_get_product():
     async with StatusProClient() as client:
@@ -487,8 +489,7 @@ async with StatusProClient() as client:
 
 # Explicit configuration
 async with StatusProClient(
-    api_key="explicit-key",
-    base_url="https://custom.api.com"
+    api_key="explicit-key", base_url="https://custom.api.com"
 ) as client:
     pass
 ```

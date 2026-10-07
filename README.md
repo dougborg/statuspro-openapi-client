@@ -49,12 +49,14 @@ pip install statuspro-openapi-client
 import asyncio
 from statuspro_public_api_client import StatusProClient
 
+
 async def main():
     async with StatusProClient() as client:
         orders = await client.orders.list(per_page=25)
         for order in orders:
             status = order.status.name if order.status else "(no status)"
             print(f"{order.name}: {status}")
+
 
 asyncio.run(main())
 ```

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from statuspro_public_api_client import StatusProClient
 
+
 async def main():
     now = datetime.now(timezone.utc)
     horizon = now + timedelta(days=7)
@@ -22,7 +23,10 @@ async def main():
             due_date_to=horizon.isoformat(),
         )
     for order in orders:
-        print(f"{order.due_date} — {order.name} — {order.status.name if order.status else '—'}")
+        print(
+            f"{order.due_date} — {order.name} — {order.status.name if order.status else '—'}"
+        )
+
 
 asyncio.run(main())
 ```
@@ -81,6 +85,7 @@ from statuspro_public_api_client.models.update_order_status_request import (
     UpdateOrderStatusRequest,
 )
 from statuspro_public_api_client.utils import is_success
+
 
 async def advance_to_shipped(order_id: int) -> bool:
     async with StatusProClient() as client:

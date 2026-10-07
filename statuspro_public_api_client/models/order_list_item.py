@@ -8,7 +8,6 @@ from attrs import (
     define as _attrs_define,
     field as _attrs_field,
 )
-from dateutil.parser import isoparse
 
 from ..client_types import UNSET, Unset
 
@@ -27,8 +26,8 @@ class OrderListItem:
     order_number: str | Unset = UNSET
     customer: Customer | Unset = UNSET
     status: Status | Unset = UNSET
-    due_date: datetime.datetime | None | Unset = UNSET
-    due_date_to: datetime.datetime | None | Unset = UNSET
+    due_date: datetime.datetime | Unset | None = UNSET
+    due_date_to: datetime.datetime | Unset | None = UNSET
     history_count: int | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -47,7 +46,7 @@ class OrderListItem:
         if not isinstance(self.status, Unset):
             status = self.status.to_dict()
 
-        due_date: None | str | Unset
+        due_date: str | Unset | None
         if isinstance(self.due_date, Unset):
             due_date = UNSET
         elif isinstance(self.due_date, datetime.datetime):
@@ -55,7 +54,7 @@ class OrderListItem:
         else:
             due_date = self.due_date
 
-        due_date_to: None | str | Unset
+        due_date_to: str | Unset | None
         if isinstance(self.due_date_to, Unset):
             due_date_to = UNSET
         elif isinstance(self.due_date_to, datetime.datetime):
@@ -113,7 +112,7 @@ class OrderListItem:
         else:
             status = Status.from_dict(_status)
 
-        def _parse_due_date(data: object) -> datetime.datetime | None | Unset:
+        def _parse_due_date(data: object) -> datetime.datetime | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -121,16 +120,16 @@ class OrderListItem:
             try:
                 if not isinstance(data, str):
                     raise TypeError()
-                due_date_type_0 = isoparse(data)
+                due_date_type_0 = datetime.datetime.fromisoformat(data)
 
                 return due_date_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(datetime.datetime | None | Unset, data)
+            return cast(datetime.datetime | Unset | None, data)
 
         due_date = _parse_due_date(d.pop("due_date", UNSET))
 
-        def _parse_due_date_to(data: object) -> datetime.datetime | None | Unset:
+        def _parse_due_date_to(data: object) -> datetime.datetime | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -138,12 +137,12 @@ class OrderListItem:
             try:
                 if not isinstance(data, str):
                     raise TypeError()
-                due_date_to_type_0 = isoparse(data)
+                due_date_to_type_0 = datetime.datetime.fromisoformat(data)
 
                 return due_date_to_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(datetime.datetime | None | Unset, data)
+            return cast(datetime.datetime | Unset | None, data)
 
         due_date_to = _parse_due_date_to(d.pop("due_date_to", UNSET))
 

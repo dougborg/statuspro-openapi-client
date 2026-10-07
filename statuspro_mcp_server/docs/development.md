@@ -186,17 +186,24 @@ Hot reload makes debugging much faster:
 
 ```python
 # Before (in src/statuspro_mcp/tools/orders.py)
-async def _update_order_status_impl(request: UpdateOrderStatusRequest, context: Context) -> dict[str, object]:
+async def _update_order_status_impl(
+    request: UpdateOrderStatusRequest, context: Context
+) -> dict[str, object]:
     server_context = context.request_context.lifespan_context
     client = server_context.client
     product = await client.orders.update_status(request.order_id, request.status_code)
     # ... rest of function
 
+
 # After (add logging - save file - test immediately!)
 import logging
+
 logger = logging.getLogger(__name__)
 
-async def _update_order_status_impl(request: UpdateOrderStatusRequest, context: Context) -> dict[str, object]:
+
+async def _update_order_status_impl(
+    request: UpdateOrderStatusRequest, context: Context
+) -> dict[str, object]:
     logger.debug(f"Context structure: {dir(context)}")  # See what's available
     logger.debug(f"Request context: {dir(context.request_context)}")  # Debug paths
 

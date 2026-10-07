@@ -16,17 +16,17 @@ T = TypeVar("T", bound="OrderListMeta")
 @_attrs_define
 class OrderListMeta:
     current_page: int | Unset = UNSET
-    from_: int | None | Unset = UNSET
+    from_: int | Unset | None = UNSET
     last_page: int | Unset = UNSET
     per_page: int | Unset = UNSET
-    to: int | None | Unset = UNSET
+    to: int | Unset | None = UNSET
     total: int | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         current_page = self.current_page
 
-        from_: int | None | Unset
+        from_: int | Unset | None
         if isinstance(self.from_, Unset):
             from_ = UNSET
         else:
@@ -36,7 +36,7 @@ class OrderListMeta:
 
         per_page = self.per_page
 
-        to: int | None | Unset
+        to: int | Unset | None
         if isinstance(self.to, Unset):
             to = UNSET
         else:
@@ -67,12 +67,12 @@ class OrderListMeta:
         d = dict(src_dict)
         current_page = d.pop("current_page", UNSET)
 
-        def _parse_from_(data: object) -> int | None | Unset:
+        def _parse_from_(data: object) -> int | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(int | None | Unset, data)
+            return cast(int | Unset | None, data)
 
         from_ = _parse_from_(d.pop("from", UNSET))
 
@@ -80,12 +80,12 @@ class OrderListMeta:
 
         per_page = d.pop("per_page", UNSET)
 
-        def _parse_to(data: object) -> int | None | Unset:
+        def _parse_to(data: object) -> int | Unset | None:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(int | None | Unset, data)
+            return cast(int | Unset | None, data)
 
         to = _parse_to(d.pop("to", UNSET))
 

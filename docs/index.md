@@ -19,12 +19,13 @@ client for the StatusPro Manufacturing ERP API with automatic resilience feature
 from statuspro_public_api_client import StatusProClient
 from statuspro_public_api_client.api.product import get_all_products
 
+
 async def main():
     async with StatusProClient() as client:
         # This call automatically gets retries, rate limiting, and pagination
         response = await get_all_products.asyncio_detailed(
             client=client,
-            limit=50  # Will auto-paginate if needed
+            limit=50,  # Will auto-paginate if needed
         )
 
         if response.status_code == 200:

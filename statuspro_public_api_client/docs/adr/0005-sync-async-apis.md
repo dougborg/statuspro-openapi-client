@@ -68,6 +68,7 @@ async def main():
         response = await list_orders.asyncio_detailed(client=client)
         products = response.parsed.data
 
+
 # Sync application (scripts, notebooks)
 def main():
     with StatusProClient() as client:
@@ -160,11 +161,11 @@ Provide sync API, users can wrap in async:
 ```python
 import asyncio
 
+
 async def async_wrapper():
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(
-        None,
-        lambda: list_orders.sync_detailed(client=client)
+        None, lambda: list_orders.sync_detailed(client=client)
     )
 ```
 
@@ -249,9 +250,7 @@ class StatusProClient(AuthenticatedClient):
         sync_transport = ResilientSyncTransport.create(...)
 
         super().__init__(
-            transport=sync_transport,
-            async_transport=async_transport,
-            **kwargs
+            transport=sync_transport, async_transport=async_transport, **kwargs
         )
 ```
 

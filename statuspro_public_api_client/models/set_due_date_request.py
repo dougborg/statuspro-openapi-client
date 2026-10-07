@@ -8,7 +8,6 @@ from attrs import (
     define as _attrs_define,
     field as _attrs_field,
 )
-from dateutil.parser import isoparse
 
 from ..client_types import UNSET, Unset
 
@@ -22,7 +21,7 @@ class SetDueDateRequest:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        due_date: None | str
+        due_date: str | None
         if isinstance(self.due_date, datetime.date):
             due_date = self.due_date.isoformat()
         else:
@@ -54,7 +53,7 @@ class SetDueDateRequest:
             try:
                 if not isinstance(data, str):
                     raise TypeError()
-                due_date_type_0 = isoparse(data).date()
+                due_date_type_0 = datetime.date.fromisoformat(data)
 
                 return due_date_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
@@ -68,7 +67,7 @@ class SetDueDateRequest:
         if isinstance(_due_date_to, Unset):
             due_date_to = UNSET
         else:
-            due_date_to = isoparse(_due_date_to).date()
+            due_date_to = datetime.date.fromisoformat(_due_date_to)
 
         set_due_date_request = cls(
             due_date=due_date,
