@@ -2,7 +2,6 @@ site_name: StatusPro OpenAPI Client
 site_description: Production-ready Python client, TypeScript client, and MCP server for the StatusPro API
 site_author: Doug Borg
 site_url: https://dougborg.org/statuspro-openapi-client/
-# Note: Custom domain (statuspro-openapi-client.dougborg.org) available once DNS is configured
 
 repo_name: dougborg/statuspro-openapi-client
 repo_url: https://github.com/dougborg/statuspro-openapi-client

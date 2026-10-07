@@ -129,8 +129,7 @@ async with StatusProClient(
 
 ## Support
 
-- **Documentation**:
-  [GitHub Pages](https://dougborg.github.io/statuspro-openapi-client/)
+- **Documentation**: [dougborg.org](https://dougborg.org/statuspro-openapi-client/)
 - **Issues**:
   [GitHub Issues](https://github.com/dougborg/statuspro-openapi-client/issues)
 - **Source**: [GitHub Repository](https://github.com/dougborg/statuspro-openapi-client)

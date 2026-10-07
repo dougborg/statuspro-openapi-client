@@ -5,7 +5,7 @@ MkDocs and deployed to GitHub Pages.
 
 ## Documentation Site
 
-**Live Site**: https://dougborg.github.io/statuspro-openapi-client/
+**Live Site**: https://dougborg.org/statuspro-openapi-client/
 
 The documentation is automatically built and deployed on every release via GitHub
 Actions.
@@ -107,7 +107,6 @@ uv run mkdocs gh-deploy
 
 ### High Priority
 
-- [ ] Configure custom domain DNS (statuspro-openapi-client.dougborg.org)
 - [ ] Add version information to docs (currently using mike but not configured)
 - [ ] Consider removing or consolidating 248 statuspro-api-comprehensive files
 
